@@ -12,6 +12,7 @@ const PORT = Number(process.env.PORT || 3000);
 const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 7);
 const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 40);
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+const { PLANS } = require('./plans');
 const STORE_URL = process.env.STORE_URL || 'https://miyar.store';
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
@@ -60,7 +61,7 @@ function auth(req, res, next) {
   next();
 }
 function active(req, res, next) {
-  if (!status(req.user).active) return res.status(402).json({ error: 'انتهت الفترة التجريبية. فعّل حسابك بكود التفعيل لإكمال التوثيق.', code: 'expired' });
+  if (!status(req.user).active) return res.status(402).json({ error: 'انتهى اشتراكك. شواهدك محفوظة، جدّد بكود التفعيل لإكمال التوثيق.', code: 'expired' });
   next();
 }
 function admin(req, res, next) {
@@ -118,7 +119,7 @@ app.post('/api/logout', (req, res) => {
 });
 
 app.get('/api/me', auth, (req, res) => {
-  res.json({ user: publicUser(req.user), standards: STANDARDS.map(({ keywords, ...s }) => s), ai: aiEnabled(), storeUrl: STORE_URL, base: baseUrl(req) });
+  res.json({ user: publicUser(req.user), standards: STANDARDS.map(({ keywords, ...s }) => s), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req) });
 });
 
 const PROFILE_FIELDS = { full_name: 80, gender: 1, job_title: 40, subject: 60, school: 100, stage: 40, office: 80, principal: 80, bio: 400, year: 20, theme: 20 };
@@ -309,7 +310,7 @@ app.get('/v/:code/:std?', (req, res) => {
 function printGuard(req, res) {
   const u = currentUser(req);
   if (!u) { res.redirect('/app'); return null; }
-  if (!status(u).active) { res.status(402).send(views.message('انتهت الفترة التجريبية', 'فعّل حسابك بكود التفعيل حتى تقدر تطبع التقارير.', '/app#/subscription')); return null; }
+  if (!status(u).active) { res.status(402).send(views.message('انتهى اشتراكك', 'شواهدك محفوظة. جدّد بكود التفعيل حتى تقدر تطبع التقارير.', '/app#/subscription')); return null; }
   return u;
 }
 app.get('/print/portfolio', async (req, res) => {
@@ -328,7 +329,7 @@ app.get('/print/evidence/:id', async (req, res) => {
   res.send(await views.printReport({ u, evs: [e], template: req.query.t === 'modern' ? 'modern' : 'classic', base: baseUrl(req), scope: 'evidence' }));
 });
 
-app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS)));
+app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS, PLANS)));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'app.html')));
 app.use((req, res) => res.status(404).send(views.notFound()));

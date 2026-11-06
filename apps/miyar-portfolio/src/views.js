@@ -23,7 +23,7 @@ const notFound = () => shell({ title: 'غير موجود', body: `<div class="wr
 const message = (t, m, href) => shell({ title: t, body: `<div class="wrap" style="padding:80px 16px;text-align:center"><h1>${esc(t)}</h1><p class="muted">${esc(m)}</p><a class="btn" href="${esc(href)}">متابعة</a></div>` });
 
 // ---------- الصفحة التعريفية ----------
-function landing(storeUrl, trialDays) {
+function landing(storeUrl, trialDays, plans = []) {
   const feats = [
     ['🤖', 'مساعد ذكي يصيغ الشاهد', 'اكتب فكرة الشاهد بكلمتين، ويجهّز لك العنوان الرسمي والأهداف والوصف وآلية التنفيذ ويربطه بالعنصر المناسب.'],
     ['🗂️', 'مرتّب على العناصر الـ11', 'كل شاهد في مكانه الصحيح حسب عناصر تقييم الأداء الوظيفي، مع نسبة إنجاز لكل عنصر.'],
@@ -56,6 +56,17 @@ function landing(storeUrl, trialDays) {
     <h2>عناصر التقييم الـ11 كلها في مكان واحد</h2>
     <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px">${STANDARDS.map((s) => `<span class="pill">${s.icon} ${s.name}</span>`).join('')}</div>
   </div>
+</section>
+<section class="wrap" style="padding-bottom:50px" id="pricing">
+  <h2 style="text-align:center">الباقات</h2>
+  <p class="muted" style="text-align:center;margin-top:0">ابدأ بتجربة مجانية ${trialDays} أيام، وبعدها اختر الباقة اللي تناسبك.</p>
+  <div class="grid g3">${plans.map((p) => `<div class="card" style="text-align:center;${p.best ? 'border:2px solid var(--brand-2)' : ''}">
+    ${p.best ? `<span class="pill">⭐ الأوفر${p.saving ? `، توفّر ${p.saving}%` : ''}</span>` : '<span class="pill" style="visibility:hidden">.</span>'}
+    <h3 style="margin-top:10px">${p.name}</h3>
+    <div style="font-size:34px;font-weight:800;color:var(--brand-text)">${p.price} <small style="font-size:15px">ريال / ${p.per}</small></div>
+    <p class="muted" style="margin:6px 0 14px">${p.note}</p>
+    <a class="btn ${p.best ? '' : 'ghost'}" href="${esc(storeUrl)}">اشترِ الكود</a></div>`).join('')}</div>
+  <p class="muted" style="text-align:center;font-size:13px;margin-top:12px">إذا انتهى اشتراكك، تبقى شواهدك محفوظة وصفحتك ظاهرة، وتتوقف الإضافة والطباعة فقط إلى أن تجدد.</p>
 </section>
 <footer class="wrap muted" style="padding:20px 16px 40px;text-align:center;font-size:13px">ملف معيار من متجر معيار للمنتجات التعليمية الرقمية</footer>`,
   });

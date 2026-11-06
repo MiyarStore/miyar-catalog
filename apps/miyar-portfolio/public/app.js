@@ -2,7 +2,7 @@
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const view = $('#view');
-const S = { me: null, standards: [], evs: [], ai: false, base: '', storeUrl: '' };
+const S = { me: null, standards: [], evs: [], ai: false, base: '', storeUrl: '', plans: [] };
 const COLORS = { miyar: '#0f766e', navy: '#1e3a8a', violet: '#5b21b6', rose: '#9f1239', gold: '#8a5a00', slate: '#334155' };
 
 function toast(msg) {
@@ -49,7 +49,7 @@ function topbar(route) {
 function banner() {
   const st = S.me.status;
   if (st.plan === 'trial') return `<div class="banner trial"><span>⏳ أنت في الفترة التجريبية، باقي ${st.daysLeft} ${st.daysLeft > 10 ? 'يوم' : 'أيام'}</span><a class="btn sm" href="#/subscription">فعّل حسابك</a></div>`;
-  if (st.plan === 'expired') return `<div class="banner expired"><span>انتهت الفترة التجريبية. شواهدك محفوظة، فعّل حسابك لإكمال التوثيق والطباعة.</span><a class="btn sm" href="#/subscription">أدخل كود التفعيل</a></div>`;
+  if (st.plan === 'expired') return `<div class="banner expired"><span>انتهى اشتراكك. شواهدك محفوظة وصفحتك ظاهرة، جدّد لإكمال التوثيق والطباعة.</span><a class="btn sm" href="#/subscription">أدخل كود التفعيل</a></div>`;
   return '';
 }
 
@@ -243,12 +243,17 @@ function subscription() {
   view.innerHTML = `<h1>الاشتراك</h1>
   <div class="card" style="margin-bottom:16px">
     <div class="head" style="margin-bottom:6px"><h3 style="margin:0">حالة حسابك</h3><span class="pill">${st.plan === 'paid' ? '⭐ مفعّل' : st.plan === 'trial' ? '⏳ تجريبي' : '⛔ منتهي'}</span></div>
-    <p style="margin:0">${st.plan === 'expired' ? 'انتهت الفترة التجريبية. شواهدك محفوظة وصفحتك ظاهرة، لكن الإضافة والطباعة تحتاج تفعيل.' : `ينتهي في ${ends} (باقي ${st.daysLeft} يوم)`}</p>
+    <p style="margin:0">${st.plan === 'expired' ? 'انتهى اشتراكك أو فترتك التجريبية. شواهدك محفوظة وصفحتك ظاهرة، لكن الإضافة والطباعة تحتاج تفعيل.' : `ينتهي في ${ends} (باقي ${st.daysLeft} يوم)`}</p>
   </div>
   <form id="rf" class="card" style="margin-bottom:16px"><h3>عندك كود تفعيل؟</h3>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><input name="code" placeholder="MYR-XXXX-XXXX" dir="ltr" style="flex:1;min-width:200px;text-transform:uppercase" required><button class="btn">تفعيل</button></div></form>
-  <div class="card"><h3>ما عندك كود؟</h3><p class="muted" style="margin-top:0">اشترِ كود التفعيل من متجر معيار ويوصلك فوراً على جوالك وإيميلك.</p>
-    <a class="btn" href="${esc(S.storeUrl)}" target="_blank">🛒 اشترِ من متجر معيار</a></div>`;
+  <h3>ما عندك كود؟ اختر باقتك</h3><p class="muted" style="margin-top:0">اشترِ كود التفعيل من متجر معيار ويوصلك فوراً على جوالك وإيميلك. ولو عندك اشتراك، المدة الجديدة تنضاف على الباقي.</p>
+  <div class="grid g3">${S.plans.map((p) => `<div class="card" style="text-align:center;${p.best ? 'border:2px solid var(--brand-2)' : ''}">
+    ${p.best ? `<span class="pill">⭐ الأوفر${p.saving ? `، توفّر ${p.saving}%` : ''}</span>` : ''}
+    <h3 style="margin:8px 0 2px">${esc(p.name)}</h3>
+    <div style="font-size:28px;font-weight:800;color:var(--brand-text)">${p.price} <small style="font-size:14px">ريال / ${esc(p.per)}</small></div>
+    <p class="muted" style="margin:4px 0 12px;font-size:13px">${esc(p.note)}</p>
+    <a class="btn ${p.best ? '' : 'ghost'}" href="${esc(S.storeUrl)}" target="_blank">🛒 اشترِ</a></div>`).join('')}</div>`;
   $('#rf').onsubmit = async (e) => {
     e.preventDefault();
     try { ({ user: S.me } = await api('/api/redeem', { method: 'POST', body: { code: e.target.code.value } })); toast('تم تفعيل حسابك ⭐'); subscription(); } catch (err) { toast(err.message); }
@@ -264,7 +269,7 @@ async function adminView() {
   view.innerHTML = `<h1>لوحة الإدارة</h1>
   <div class="stats"><div class="card stat"><b>${s.users}</b>مستخدم</div><div class="card stat"><b>${s.paid}</b>مفعّل</div><div class="card stat"><b>${s.trial}</b>تجريبي</div><div class="card stat"><b>${s.evidences}</b>شاهد</div><div class="card stat"><b>${s.codesFree}</b>كود متاح</div><div class="card stat"><b>${s.codesUsed}</b>كود مستخدم</div></div>
   <form id="cf" class="card" style="margin-bottom:16px"><h3>توليد أكواد تفعيل</h3><p class="muted" style="margin-top:0">ولّد الأكواد ونزّلها CSV، وارفعها في سلة كمنتج "بطاقات رقمية" عشان تنرسل للعميل تلقائياً بعد الدفع.</p>
-    <div class="grid g3"><div class="field"><label>العدد</label><input name="count" type="number" value="50" min="1" max="500"></div><div class="field"><label>المدة بالأيام</label><select name="days"><option value="365">سنة (365 يوم)</option><option value="180">فصلين (180 يوم)</option><option value="120">فصل (120 يوم)</option><option value="30">شهر</option></select></div><div class="field"><label>ملاحظة</label><input name="note" placeholder="دفعة سلة نوفمبر"></div></div>
+    <div class="grid g3"><div class="field"><label>العدد</label><input name="count" type="number" value="50" min="1" max="500"></div><div class="field"><label>المدة بالأيام</label><select name="days">${[...S.plans].reverse().map((p) => `<option value="${p.days}">${esc(p.name)}: ${p.days} يوم (${p.price} ريال)</option>`).join('')}</select></div><div class="field"><label>ملاحظة</label><input name="note" placeholder="دفعة سلة نوفمبر"></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn">توليد</button><a class="btn ghost" href="/api/admin/codes.csv">⬇️ تنزيل كل الأكواد CSV</a></div>
     <pre id="out" style="direction:ltr;white-space:pre-wrap;font-size:13px"></pre></form>
   <div class="card"><h3>آخر المسجلين</h3><div style="overflow:auto"><table class="t"><tr><th>الاسم</th><th>البريد</th><th>المدرسة</th><th>التسجيل</th><th>الحالة</th></tr>
@@ -276,7 +281,7 @@ async function adminView() {
 async function loadEvs() { S.evs = (await api('/api/evidences')).evidences; }
 async function load() {
   const d = await api('/api/me');
-  Object.assign(S, { me: d.user, standards: d.standards, ai: d.ai, base: d.base, storeUrl: d.storeUrl });
+  Object.assign(S, { me: d.user, standards: d.standards, ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
   applyColor();
   await loadEvs();
 }
