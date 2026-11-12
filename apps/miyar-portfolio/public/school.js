@@ -28,6 +28,21 @@ async function api(path, opts = {}) {
   }
   return data;
 }
+const procs = (r) => (r.procedures || []).map((p) => (typeof p === 'string' ? { text: p, when: '', done: false } : p));
+const progress = (rows) => { const a = rows.flatMap(procs); const d = a.filter((p) => p.done).length; return { d, t: a.length, pct: a.length ? Math.round((d / a.length) * 100) : 0 }; };
+const DRAFT_KEY = 'miyar-school-draft';
+const saveDraft = () => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(S.draft)); } catch {} };
+const loadDraft = () => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch { return null; } };
+const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch {} };
+async function runSample(stage) {
+  const { report: r } = await api(`/api/school/sample/${stage}`);
+  const saved = await api('/api/school/report', { method: 'PUT', body: { ...r, sample: true } });
+  S.data.report = saved.report;
+  const res = await api('/api/school/plan', { method: 'POST' });
+  S.data.plan = res.plan; S.draft = null;
+  location.hash = '#/plan';
+}
+window.trySample = async (stage, btn) => { if (btn) busy(btn, true, 'نجهز النموذج...'); try { await runSample(stage); } catch (e) { toast(e.message); if (btn) busy(btn, false); } };
 const load = async () => { S.data = await api('/api/school'); };
 const busy = (btn, on, label) => { btn.disabled = on; if (on) { btn._t = btn.innerHTML; btn.innerHTML = `<span class="spin"></span> ${label || 'لحظات...'}`; } else if (btn._t) btn.innerHTML = btn._t; };
 function toggleDark() {
@@ -52,7 +67,7 @@ function banner() {
 // ---------- الرئيسية ----------
 function home() {
   const { school, report, plan } = S.data;
-  const s1 = !!(school.name && school.ministry_number), s2 = !!(report && report.complete), s3 = !!plan;
+  const s1 = !!(school.name && school.ministry_number), s2 = !!(report && report.complete && !report.sample), s3 = !!plan;
   const step = (n, done, href, t, d) => `<a class="card step ${done ? 'done' : ''}" href="#/${href}"><span class="n">${done ? '✓' : n}</span><h3>${t}</h3><p class="muted" style="margin:0">${d}</p></a>`;
   const dist = report ? LEVELS.map((l) => `<span class="lv" style="background:${l.color}">${l.name}: ${report.indicators.filter((i) => i.pct != null && levelOf(i.pct).key === l.key).length}</span>`).join('') : '';
   view.innerHTML = `${banner()}
@@ -63,7 +78,10 @@ function home() {
     ${step(3, s3, 'plan', 'خطة التحسين', 'تتولد تلقائياً للمؤشرات اللي تحت التميز')}
     ${step(4, s3 && lic().active, 'plan', 'الطباعة وWord', 'PDF جاهز للطباعة وملف Word تعدّل عليه')}
   </div>
-  ${report ? `<div class="card"><h2 style="font-size:18px">ملخص التقرير</h2>
+  ${!report ? `<div class="card" style="text-align:center;border-style:dashed"><h2 style="font-size:18px;margin-bottom:4px">تبغى تشوف النتيجة قبل ما تدخل بياناتك؟</h2><p class="muted" style="margin-top:0">جرّب الأداة على تقرير مدرسة حقيقية (مخفية البيانات) وشوف الخطة كاملة في ثواني.</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn soft" onclick="trySample('basic', this)">نموذج متوسطة</button><button class="btn soft" onclick="trySample('secondary', this)">نموذج ثانوية</button></div></div>` : ''}
+  ${plan && !plan.trial ? (() => { const g = progress(plan.rows); return `<a class="card" href="#/plan" style="display:block;text-decoration:none;color:inherit;margin-bottom:14px"><div style="display:flex;justify-content:space-between"><b>متابعة تنفيذ الخطة</b><b style="color:var(--brand-text)">${g.pct}%</b></div><div class="bar" style="margin-top:8px"><i style="width:${g.pct}%"></i></div><p class="muted" style="margin:6px 0 0;font-size:13px">${g.d} من ${g.t} إجراء منجز. أشّر على الإجراء أول ما يتنفذ، ويطلع لك تقرير متابعة جاهز.</p></a>`; })() : ''}
+  ${report ? `<div class="card"><h2 style="font-size:18px">ملخص التقرير ${report.sample ? '<span class="pill">نموذج</span>' : ''}</h2>
     <div class="stats"><div class="card stat">الأداء العام<b>${fmt(report.overall)}</b></div><div class="card stat">المؤشرات<b>${report.indicators.length}</b></div><div class="card stat">تحت التميز<b>${report.indicators.filter((i) => i.pct != null && i.pct < 90).length}</b></div></div>
     <div class="dist">${dist}</div></div>` : ''}`;
 }
@@ -106,7 +124,7 @@ function emptyDraft(stage) {
 }
 function report() {
   const r = S.data.report;
-  if (!S.draft) S.draft = r ? JSON.parse(JSON.stringify(r)) : null;
+  if (!S.draft) { const dr = loadDraft(); S.draft = dr && (!r || r.sample) ? dr : r && !r.sample ? JSON.parse(JSON.stringify(r)) : null; }
   if (!S.draft) {
     view.innerHTML = `${banner()}<div class="card" style="max-width:760px;margin:auto">
       <h2>تقرير التقويم المدرسي</h2>
@@ -114,8 +132,9 @@ function report() {
       ${S.data.reader ? `<label class="drop" style="display:block;margin-bottom:14px">📄 اسحب ملف التقرير PDF هنا أو اضغط للاختيار<input type="file" id="pdf" accept="application/pdf" hidden></label>
         <p class="muted" style="font-size:13px">ملف التقرير يُقرأ ولا يُحفظ عندنا. نحفظ النسب فقط.</p>` : `<p class="banner trial" style="font-weight:500">القراءة التلقائية للملف غير مفعّلة حالياً. أدخل النسب من التقرير يدوياً، تاخذ تقريباً 5 دقائق.</p>`}
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="man" data-s="basic">إدخال يدوي (ابتدائي / متوسط، 46 مؤشر)</button><button class="btn ghost" id="man2" data-s="secondary">إدخال يدوي (ثانوي، 45 مؤشر)</button></div>
+      <p class="muted" style="font-size:13px;margin-bottom:0">ما عندك التقرير الحين؟ <a href="#" onclick="trySample('basic');return false">جرّب على تقرير نموذجي</a> وشوف شكل الخطة.</p>
     </div>`;
-    const manual = (e) => { S.draft = emptyDraft(e.target.dataset.s); report(); };
+    const manual = (e) => { S.draft = emptyDraft(e.target.dataset.s); saveDraft(); report(); };
     $('#man').onclick = manual; $('#man2').onclick = manual;
     const pdf = $('#pdf');
     if (pdf) pdf.onchange = async (e) => {
@@ -147,6 +166,11 @@ function report() {
       <div class="field"><label>عدد الطلبة</label><input id="h_students" type="number" value="${d.students ?? ''}"></div>
       <div class="field"><label>المرحلة</label><input value="${d.stage === 'secondary' ? 'ثانوي (45 مؤشر)' : 'ابتدائي / متوسط (46 مؤشر)'}" readonly></div>
     </div>
+    <details class="card" style="margin:14px 0;background:var(--bg)" ${miss === d.indicators.length ? 'open' : ''}><summary style="cursor:pointer;font-weight:700">⚡ إدخال سريع: الصق كل النسب دفعة وحدة</summary>
+      <p class="muted" style="font-size:13px">اكتب أو الصق النسب بنفس ترتيب التقرير (من 1-1-1-1 إلى آخر مؤشر)، يفصل بينها مسافة أو سطر. علامة % اختيارية.</p>
+      <textarea id="bulk" dir="ltr" placeholder="91.5 92.25 92 89.5 ..." style="min-height:70px"></textarea>
+      <button class="btn sm" id="bulkgo" style="margin-top:8px">عبّي النسب</button> <span class="muted" id="bulkmsg" style="font-size:13px"></span></details>
+    <p class="muted" style="font-size:13px">💡 اضغط Enter بعد كل نسبة وينتقل المؤشر للي بعده. إدخالك يُحفظ تلقائياً على جهازك لو قفلت الصفحة.</p>
     ${html}
     <div style="position:sticky;bottom:0;background:var(--card);padding:12px 0;margin-top:10px;border-top:1px solid var(--line)"><button class="btn" id="save">حفظ التقرير والانتقال للخطة</button></div>
   </div>`;
@@ -157,12 +181,22 @@ function report() {
     inp.parentElement.classList.toggle('miss', d.indicators[k].pct == null);
     const m = d.indicators.filter((i) => i.pct == null).length;
     $('#miss').textContent = m ? `باقي ${m} مؤشر بدون نسبة` : 'كل المؤشرات مكتملة ✓';
+    saveDraft();
   });
-  $('#reset').onclick = () => { S.draft = null; S.data.report = null; report(); };
+  const inputs = [...view.querySelectorAll('.ind input')];
+  inputs.forEach((inp, k) => inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); (inputs[k + 1] || $('#save')).focus(); } });
+  $('#bulkgo').onclick = () => {
+    const nums = ($('#bulk').value.match(/\d+(?:[.,٫]\d+)?/g) || []).map((x) => Number(x.replace(/[,٫]/, '.'))).filter((x) => x >= 0 && x <= 100);
+    if (!nums.length) return toast('ما لقيت أرقام');
+    nums.slice(0, inputs.length).forEach((v, k) => { inputs[k].value = v; inputs[k].dispatchEvent(new Event('input')); });
+    $('#bulkmsg').textContent = nums.length === inputs.length ? `تم تعبئة ${nums.length} نسبة ✓ راجعها مع التقرير` : `تم تعبئة ${Math.min(nums.length, inputs.length)} من ${inputs.length}، تأكد من الترتيب`;
+  };
+  $('#reset').onclick = () => { S.draft = null; clearDraft(); S.data.report = null; report(); };
   $('#save').onclick = async (e) => {
     for (const f of ['school_name', 'ministry_number', 'cycle', 'overall', 'students']) d[f] = $(`#h_${f}`).value;
+    d.sample = false;
     busy(e.target, true, 'نحفظ...');
-    try { const r = await api('/api/school/report', { method: 'PUT', body: d }); S.data.report = r.report; S.data.school = r.school; S.draft = null; toast('تم حفظ التقرير'); location.hash = '#/plan'; }
+    try { const r = await api('/api/school/report', { method: 'PUT', body: d }); S.data.report = r.report; S.data.school = r.school; S.draft = null; clearDraft(); toast('تم حفظ التقرير'); location.hash = '#/plan'; }
     catch (err) { toast(err.message); busy(e.target, false); }
   };
 }
@@ -171,11 +205,11 @@ function report() {
 function rowCard(r, i, editable) {
   return `<div class="card row-card" id="row${i}">
     <div class="top"><div><code><bdi dir="ltr">${esc(r.code)}</bdi></code> <span class="muted" style="font-size:13px">${esc(r.domain)} / ${esc(r.standard)}</span><h3>${esc(r.indicator)}</h3></div>
-    <div style="text-align:left"><div class="pct">${fmt(r.pct)}</div>${chip(r.pct)} <span class="pill">أولوية ${esc(r.priority)}</span></div></div>
-    <p class="need">${esc(r.need)}</p>
+    <div style="text-align:left"><div class="pct">${fmt(r.pct)} <small class="muted" style="font-size:13px">← ${r.target}%</small></div>${chip(r.pct)} <span class="pill">أولوية ${esc(r.priority)}</span>${editable ? `<div class="bar" style="margin-top:8px;width:140px"><i style="width:${progress([r]).pct}%"></i></div>` : ''}</div></div>
+    <details class="need"><summary>توصية التقرير لهذا المؤشر</summary>${esc(r.rec || r.need)}</details>
     <dl>
       <dt>الهدف</dt><dd>${esc(r.goal)}</dd>
-      <dt>الإجراءات</dt><dd><ol>${r.procedures.map((p) => `<li>${esc(p)}</li>`).join('')}</ol></dd>
+      <dt>الإجراءات</dt><dd><ul class="procs">${procs(r).map((p, j) => `<li class="${p.done ? 'done' : ''}">${editable ? `<input type="checkbox" ${p.done ? 'checked' : ''} onchange="toggleProc(${i}, ${j}, this)" aria-label="تم التنفيذ">` : '<span class="dot">•</span>'}<span>${esc(p.text)}${p.when ? ` <span class="when">${esc(p.when)}</span>` : ''}</span></li>`).join('')}</ul></dd>
       <dt>المسؤول</dt><dd>${esc(r.responsible)}</dd>
       <dt>الزمن</dt><dd>${esc(r.from)} إلى ${esc(r.to)}</dd>
       <dt>مؤشر التحقق</dt><dd>${esc(r.measure)}</dd>
@@ -192,24 +226,31 @@ function plan() {
   view.innerHTML = `${banner()}
   <div class="head"><div><h1 style="margin:0">خطة التحسين</h1><p class="muted" style="margin:0">${p ? `${p.total} مؤشر تحت مستوى التميز، مرتبة من الأضعف.` : 'جاهز نبنيها من تقريرك.'}</p></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    ${p ? `<a class="btn ghost" href="/school/print/plan" target="_blank">🖨️ PDF للطباعة</a>${full && !p.trial ? '<a class="btn ghost" href="/school/export/plan.docx">📝 Word</a>' : ''}` : ''}
-    <button class="btn" id="gen">${p ? (stale ? 'ابنِ الخطة كاملة' : 'إعادة بناء الخطة') : 'ابنِ الخطة'}</button></div></div>
+    ${p ? `<a class="btn ghost" href="/school/print/plan" target="_blank">🖨️ PDF للطباعة</a>${full && !p.trial ? '<a class="btn ghost" href="/school/export/plan.docx">📝 Word</a><a class="btn ghost" href="/school/print/followup" target="_blank">📈 تقرير المتابعة</a>' : ''}` : ''}
+    ${p && (p.sample || !stale) ? '' : `<button class="btn" id="gen">${p ? 'ابنِ الخطة كاملة' : 'ابنِ الخطة'}</button>`}${p && !p.sample && !stale ? '<button class="btn ghost" id="gen" title="يمسح التعديلات والمتابعة">↻ إعادة البناء</button>' : ''}</div></div>
+  ${p && p.sample ? `<div class="banner trial"><span>هذا نموذج على تقرير مدرسة حقيقية (مخفية البيانات). جاهز تسويها لمدرستك؟</span><a class="btn sm" href="#/report" onclick="S.data.report=null;S.draft=null">ارفع تقرير مدرستك</a></div>` : ''}
+  ${p && full && !p.trial ? (() => { const g = progress(p.rows); return `<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><b>متابعة التنفيذ: ${g.d} من ${g.t} إجراء منجز</b><b style="color:var(--brand-text)">${g.pct}%</b></div><div class="bar" style="margin-top:8px"><i style="width:${g.pct}%"></i></div></div>`; })() : ''}
   ${full ? `<p class="muted" style="font-size:13px">المستخدم هذا العام: ${usage.plans} من ${usage.planLimit} عملية بناء.</p>` : ''}
   <div id="rows">${p ? p.rows.map((r, i) => rowCard(r, i, full && !p.trial)).join('') : ''}</div>
   ${p && p.limited ? `<div class="card" style="text-align:center;border-style:dashed"><h3>باقي ${p.total - p.rows.length} مؤشر في خطتك</h3><p class="muted">فعّل باقة المدرسة وتطلع لك الخطة كاملة بملف Word قابل للتعديل وPDF بدون علامة مائية.</p><a class="btn" href="#/license">فعّل الباقة</a></div>` : ''}`;
-  $('#gen').onclick = async (e) => {
+  if ($('#gen')) $('#gen').onclick = async (e) => {
+    if (p && !p.sample && !p.trial && !confirm('إعادة البناء تمسح تعديلاتك وحالة المتابعة. متأكد؟')) return;
     busy(e.target, true, 'نبني الخطة...');
     try { const r = await api('/api/school/plan', { method: 'POST' }); S.data.plan = r.plan; await load(); toast('تم بناء الخطة'); plan(); }
     catch (err) { toast(err.message); busy(e.target, false); if (err.code === 'license') location.hash = '#/license'; }
   };
 }
+window.toggleProc = async (i, j, el) => {
+  try { const res = await api(`/api/school/plan/rows/${i}/procs/${j}`, { method: 'PUT', body: { done: el.checked } }); S.data.plan = res.plan; toast(el.checked ? 'تم ✓' : 'تم إلغاء التأشير'); const y = window.scrollY; plan(); window.scrollTo(0, y); }
+  catch (e) { el.checked = !el.checked; toast(e.message); }
+};
 window.editRow = (i) => {
   const r = S.data.plan.rows[i];
   const box = $(`#row${i}`);
   box.innerHTML = `<h3><code><bdi dir="ltr">${esc(r.code)}</bdi></code> ${esc(r.indicator)}</h3>
   <form id="ef${i}">
     <div class="field"><label>الهدف</label><textarea name="goal" style="min-height:60px">${esc(r.goal)}</textarea></div>
-    <div class="field"><label>الإجراءات (كل إجراء في سطر)</label><textarea name="procedures">${esc(r.procedures.join('\n'))}</textarea></div>
+    <div class="field"><label>الإجراءات (كل إجراء في سطر، والتوقيت بعد علامة |)</label><textarea name="procedures" style="min-height:130px">${esc(procs(r).map((p) => `${p.text} | ${p.when}`).join('\n'))}</textarea></div>
     <div class="grid g2"><div class="field"><label>المسؤول</label><input name="responsible" value="${esc(r.responsible)}"></div>
     <div class="field"><label>من</label><input name="from" value="${esc(r.from)}"></div>
     <div class="field"><label>إلى</label><input name="to" value="${esc(r.to)}"></div></div>

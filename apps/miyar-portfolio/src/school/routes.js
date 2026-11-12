@@ -7,7 +7,7 @@ const { SCHOOL_PACKAGES } = require('../plans');
 const { catalog } = require('./indicators');
 const { readPdf, normalize, readerEnabled } = require('./report');
 const { buildPlan } = require('./plan');
-const { printHtml, planDocx } = require('./export');
+const { printHtml, planDocx, followupHtml } = require('./export');
 
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
@@ -116,10 +116,18 @@ function mountSchool(app, { auth, currentUser }) {
     });
   });
 
+  // تقرير نموذجي (بيانات حقيقية مخفية الهوية) حتى يشوف المستخدم النتيجة قبل ما يدخل بياناته
+  app.get('/api/school/sample/:stage', auth, (req, res) => {
+    const f = req.params.stage === 'secondary' ? 'report-secondary.json' : 'report-intermediate.json';
+    const r = normalize(require(path.join(__dirname, 'samples', f)));
+    res.json({ report: { ...r, ministry_number: '', school_name: '', sample: true } });
+  });
+
   // حفظ التقرير بعد المراجعة
   app.put('/api/school/report', auth, (req, res) => {
     const s = schoolOf(req.user.id);
     const r = normalize(req.body || {});
+    r.sample = !!req.body.sample;
     const filled = r.indicators.filter((i) => i.pct != null).length;
     if (filled < 1) return res.status(400).json({ error: 'أدخل نسبة مؤشر واحد على الأقل' });
     const data = JSON.stringify(r);
@@ -129,8 +137,9 @@ function mountSchool(app, { auth, currentUser }) {
     else db.prepare('INSERT INTO school_reports (school_id, data, source, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').run(s.id, data, src, Date.now(), Date.now());
     // نعبّي ملف المدرسة من التقرير إذا كانت الحقول فاضية
     const fill = { name: r.school_name, office: r.office, gender: r.gender, stage: r.stage };
+    if (r.sample) Object.keys(fill).forEach((k) => delete fill[k]);
     for (const [k, v] of Object.entries(fill)) if (v && (!s[k] || k === 'stage')) db.prepare(`UPDATE schools SET ${k} = ? WHERE id = ?`).run(v, s.id);
-    if (r.ministry_number && !s.ministry_number && /^S-[A-Z]?\d{3,10}$/.test(r.ministry_number) && !db.prepare('SELECT id FROM schools WHERE ministry_number = ?').get(r.ministry_number)) db.prepare('UPDATE schools SET ministry_number = ? WHERE id = ?').run(r.ministry_number, s.id);
+    if (!r.sample && r.ministry_number && !s.ministry_number && /^S-[A-Z]?\d{3,10}$/.test(r.ministry_number) && !db.prepare('SELECT id FROM schools WHERE ministry_number = ?').get(r.ministry_number)) db.prepare('UPDATE schools SET ministry_number = ? WHERE id = ?').run(r.ministry_number, s.id);
     res.json({ report: latestReport(s.id), school: publicSchool(db.prepare('SELECT * FROM schools WHERE id = ?').get(s.id)) });
   });
 
@@ -140,6 +149,14 @@ function mountSchool(app, { auth, currentUser }) {
     const report = latestReport(s.id);
     if (!report) return res.status(400).json({ error: 'ارفع تقرير التقويم أولاً' });
     if (!report.complete) return res.status(400).json({ error: 'أكمل نسب كل المؤشرات قبل بناء الخطة' });
+    // التقرير النموذجي: الخطة كاملة للعرض فقط (علامة مائية وبدون Word) ولا تُحسب من المحاولات
+    if (report.sample) {
+      const plan = await buildPlan(report, { ai: false });
+      plan.trial = true; plan.sample = true;
+      const { usage, ...data } = plan;
+      db.prepare('INSERT INTO school_plans (school_id, report_id, kind, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)').run(s.id, report.id, 'improvement', JSON.stringify(data), Date.now(), Date.now());
+      return res.json({ plan: latestPlan(s.id) });
+    }
     const full = canPlan(s);
     if (full && used(s.id, 'plan') >= YEAR_PLAN_LIMIT) return res.status(429).json({ error: 'وصلت للحد السنوي لتوليد الخطط. عدّل على خطتك الحالية أو تواصل معنا.' });
     if (!full && used(s.id, 'trial') >= 3) return res.status(402).json({ error: 'انتهت محاولات التجربة. فعّل باقة المدرسة لتحصل على الخطة كاملة.', code: 'license' });
@@ -162,12 +179,31 @@ function mountSchool(app, { auth, currentUser }) {
     const list = (v, n) => (Array.isArray(v) ? v : String(v || '').split('\n')).map((x) => clip(x, 300).trim()).filter(Boolean).slice(0, n);
     const row = p.rows[i];
     if (b.goal !== undefined) row.goal = clip(b.goal, 400);
-    if (b.procedures !== undefined) row.procedures = list(b.procedures, 10);
+    if (b.procedures !== undefined) {
+      // كل سطر: الإجراء | التوقيت ، ونحافظ على حالة الإنجاز للإجراءات اللي ما تغيرت
+      const old = new Map((row.procedures || []).map((x) => (typeof x === 'string' ? [x, false] : [x.text, x.done])));
+      row.procedures = list(b.procedures, 10).map((line) => { const [text, when] = line.split('|').map((x) => x.trim()); return { text, when: when || 'طوال العام', done: !!old.get(text) }; });
+    }
     if (b.responsible !== undefined) row.responsible = clip(b.responsible, 200);
     if (b.from !== undefined) row.from = clip(b.from, 60);
     if (b.to !== undefined) row.to = clip(b.to, 60);
     if (b.measure !== undefined) row.measure = clip(b.measure, 400);
     if (b.evidence !== undefined) row.evidence = list(b.evidence, 8);
+    const { id, report_id, updated_at, ...data } = p;
+    db.prepare('UPDATE school_plans SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), Date.now(), id);
+    res.json({ plan: latestPlan(s.id) });
+  });
+
+  // متابعة التنفيذ: تأشير إنجاز إجراء
+  app.put('/api/school/plan/rows/:i/procs/:j', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    if (!canPlan(s)) return res.status(402).json({ error: 'متابعة التنفيذ متاحة بعد تفعيل الباقة', code: 'license' });
+    const p = latestPlan(s.id);
+    const row = p && p.rows[Number(req.params.i)];
+    const pr = row && row.procedures[Number(req.params.j)];
+    if (!pr || typeof pr !== 'object') return res.status(404).json({ error: 'الإجراء غير موجود' });
+    pr.done = !!req.body.done;
+    pr.done_at = pr.done ? Date.now() : null;
     const { id, report_id, updated_at, ...data } = p;
     db.prepare('UPDATE school_plans SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), Date.now(), id);
     res.json({ plan: latestPlan(s.id) });
@@ -203,6 +239,11 @@ function mountSchool(app, { auth, currentUser }) {
   app.get('/school/print/plan', (req, res) => {
     const g = exportGuard(req, res); if (!g) return;
     res.send(printHtml({ school: g.s, report: g.report, plan: g.plan, trial: !canPlan(g.s) || g.plan.trial, uploadsDir: UPLOADS }));
+  });
+  app.get('/school/print/followup', (req, res) => {
+    const g = exportGuard(req, res); if (!g) return;
+    if (!canPlan(g.s) || g.plan.trial) return res.redirect('/school#/license');
+    res.send(followupHtml({ school: g.s, report: g.report, plan: g.plan, uploadsDir: UPLOADS }));
   });
   app.get('/school/export/plan.docx', async (req, res) => {
     const g = exportGuard(req, res); if (!g) return;

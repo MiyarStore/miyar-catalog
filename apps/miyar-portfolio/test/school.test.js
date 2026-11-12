@@ -13,7 +13,7 @@ test('عدد المؤشرات حسب المرحلة', () => {
 });
 
 test('تقرير المتوسطة: 9 مؤشرات تحت التميز وأضعفها القراءة', async () => {
-  const r = normalize(require('./fixtures/report-intermediate.json'));
+  const r = normalize(require('../src/school/samples/report-intermediate.json'));
   assert.ok(r.complete);
   const p = await buildPlan(r, { ai: false });
   assert.strictEqual(p.total, 9);
@@ -22,12 +22,12 @@ test('تقرير المتوسطة: 9 مؤشرات تحت التميز وأضعف
 });
 
 test('تقرير الثانوية: 42 مؤشراً والتجربة تعرض 3 فقط', async () => {
-  const r = normalize(require('./fixtures/report-secondary.json'));
+  const r = normalize(require('../src/school/samples/report-secondary.json'));
   const p = await buildPlan(r, { ai: false, limit: 3 });
   assert.strictEqual(p.total, 42);
   assert.strictEqual(p.rows.length, 3);
   assert.ok(p.limited);
-  assert.match(p.rows[0].procedures.join(' '), /التحصيلي/);
+  assert.match(p.rows[0].procedures.map((x) => x.text).join(' '), /التحصيلي/);
 });
 
 test('النسبة المستهدفة', () => {
@@ -41,4 +41,12 @@ test('التحقق من النسب الناقصة والخاطئة', () => {
   assert.ok(!r.complete);
   assert.ok(r.warnings.some((w) => w.includes('خارج النطاق')));
   assert.ok(r.warnings.some((w) => w.includes('9-9-9-9')));
+});
+
+test('كل مؤشر له إجراءات خاصة بتوقيت وشواهد', () => {
+  const { actionsFor } = require('../src/school/actions');
+  for (const s of ['basic', 'secondary']) for (const i of catalog(s)) {
+    const a = actionsFor(i.code, s);
+    assert.ok(a && a.p.length >= 4 && a.p.every(([t, w]) => t && w) && a.ev.length >= 3, `${s} ${i.code}`);
+  }
 });

@@ -3,6 +3,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { LEVELS, levelOf, standardName, domainName } = require('./indicators');
 const { recFor } = require('./recs');
 const { bankFor } = require('./bank');
+const { actionsFor } = require('./actions');
 
 const MODEL = process.env.AI_MODEL || 'claude-opus-5-5';
 const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
@@ -22,11 +23,8 @@ function templateRow(ind, stage, rx = {}) {
   const b = bankFor(ind.standard, stage);
   const rec = recFor(ind.code, stage);
   const target = targetFor(ind.pct);
-  const lead = rec.split(/[،؛]/)[0].replace(/[.]+$/, '');
-  // تدوير إجراءات البنك حتى لا تتكرر نفس الإجراءات لكل مؤشرات المعيار
-  const k = Number(ind.code.split('-')[3]) || 0;
-  const rot = b.procedures.map((_, i) => b.procedures[(i + k - 1) % b.procedures.length]);
-  const procedures = lead.length <= 95 ? [lead, ...rot.slice(0, 3)] : rot.slice(0, 4);
+  const act = actionsFor(ind.code, stage);
+  const procedures = (act ? act.p : b.procedures.slice(0, 4).map((t) => [t, 'طوال العام'])).map(([text, when]) => ({ text, when, done: false }));
   return {
     code: ind.code,
     indicator: ind.text,
@@ -39,10 +37,11 @@ function templateRow(ind, stage, rx = {}) {
     goal: `رفع نسبة تحقق المؤشر من ${fmt(ind.pct)}% إلى ${target}% في دورة التقويم القادمة.`,
     target,
     procedures,
+    rec,
     responsible: b.responsible,
     ...timing(ind.pct),
     measure: `نسبة تحقق المؤشر في التقويم الذاتي القادم لا تقل عن ${target}%، وتنفيذ جميع الإجراءات المخطط لها في وقتها.`,
-    evidence: b.evidence,
+    evidence: act ? act.ev : b.evidence,
     source: 'template',
     ...rx,
   };
@@ -60,7 +59,7 @@ const ROW_SCHEMA = {
         properties: {
           code: { type: 'string' },
           goal: { type: 'string', description: 'هدف ذكي محدد بالنسبة المستهدفة' },
-          procedures: { type: 'array', items: { type: 'string' }, description: '4 إلى 5 إجراءات تنفيذية محددة' },
+          procedures: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['text', 'when'], properties: { text: { type: 'string' }, when: { type: 'string', description: 'التوقيت مثل: الشهر الأول، شهرياً، كل فصل دراسي' } } }, description: '4 إلى 5 إجراءات تنفيذية خاصة بهذا المؤشر' },
           responsible: { type: 'string' },
           measure: { type: 'string', description: 'مؤشر قياس التحقق' },
           evidence: { type: 'array', items: { type: 'string' }, description: '3 شواهد' },
@@ -76,7 +75,7 @@ const SYSTEM = `أنت خبير سعودي في التخطيط المدرسي و
 اكتب المسؤول بالمسميات الوظيفية فقط (قائد المدرسة، الوكيل، الموجه الطلابي...).`;
 
 async function aiRows(rows, ctx) {
-  const payload = rows.map((r) => ({ code: r.code, indicator: r.indicator, standard: r.standard, pct: r.pct, level: r.level, target: r.target, recommendation: r.need, reference_procedures: bankFor(r.code.split('-').slice(0, 2).join('-'), ctx.stage).procedures }));
+  const payload = rows.map((r) => ({ code: r.code, indicator: r.indicator, standard: r.standard, pct: r.pct, level: r.level, target: r.target, recommendation: r.need, reference_procedures: r.procedures.map((p) => p.text) }));
   const res = await client.beta.messages.create({
     model: MODEL,
     max_tokens: 32000,
@@ -89,7 +88,7 @@ async function aiRows(rows, ctx) {
   if (res.stop_reason === 'refusal') throw new Error('refusal');
   const out = JSON.parse(res.content.filter((b) => b.type === 'text').map((b) => b.text).join(''));
   const byCode = new Map(out.rows.map((r) => [r.code, r]));
-  return { rows: rows.map((r) => { const a = byCode.get(r.code); return a ? { ...r, goal: a.goal, procedures: a.procedures, responsible: a.responsible, measure: a.measure, evidence: a.evidence, source: 'ai' } : r; }), usage: res.usage };
+  return { rows: rows.map((r) => { const a = byCode.get(r.code); return a ? { ...r, goal: a.goal, procedures: a.procedures.map((p) => ({ text: p.text, when: p.when, done: false })), responsible: a.responsible, measure: a.measure, evidence: a.evidence, source: 'ai' } : r; }), usage: res.usage };
 }
 
 // report: ناتج normalize. opts.limit يحدد عدد الصفوف (للتجربة المجانية).
