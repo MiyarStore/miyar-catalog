@@ -1,8 +1,8 @@
 // محرك خطة التحسين: يبني صفوف الخطة للمؤشرات التي لم تبلغ التميز، مرتبة من الأضعف.
 const Anthropic = require('@anthropic-ai/sdk');
-const { LEVELS, levelOf, standardName, domainName } = require('./indicators');
+const { LEVELS, levelOf, standardName, domainName, supervisoryOf } = require('./indicators');
 const { recFor } = require('./recs');
-const { bankFor } = require('./bank');
+const { bankFor, methodsFor } = require('./bank');
 const { actionsFor } = require('./actions');
 
 const MODEL = process.env.AI_MODEL || 'claude-opus-5-5';
@@ -30,6 +30,7 @@ function templateRow(ind, stage, rx = {}) {
     indicator: ind.text,
     standard: standardName(ind.standard),
     domain: domainName(ind.domain),
+    supervisory: supervisoryOf(ind.code),
     pct: ind.pct,
     level: levelOf(ind.pct).name,
     priority: priority(ind.pct),
@@ -39,6 +40,10 @@ function templateRow(ind, stage, rx = {}) {
     procedures,
     rec,
     responsible: b.responsible,
+    methods: methodsFor(ind.standard),
+    committee: b.responsible,
+    supervisor: '',
+    note: '',
     ...timing(ind.pct),
     measure: `نسبة تحقق المؤشر في التقويم الذاتي القادم لا تقل عن ${target}%، وتنفيذ جميع الإجراءات المخطط لها في وقتها.`,
     evidence: act ? act.ev : b.evidence,
@@ -106,7 +111,7 @@ async function buildPlan(report, opts = {}) {
   }
   const strengths = report.indicators.filter((i) => i.pct != null && i.pct >= 90).sort((a, b) => b.pct - a.pct).map((i) => ({ code: i.code, indicator: i.text, pct: i.pct }));
   const byLevel = Object.fromEntries(LEVELS.map((l) => [l.name, report.indicators.filter((i) => i.pct != null && levelOf(i.pct).key === l.key).length]));
-  return { rows, total, limited: !!opts.limit && total > rows.length, strengths, byLevel, usage, generated_at: Date.now() };
+  return { rows, total, limited: !!opts.limit && total > rows.length, strengths, byLevel, recommendations: '', usage, generated_at: Date.now() };
 }
 
 module.exports = { buildPlan, targetFor, planAiEnabled: () => !!client };

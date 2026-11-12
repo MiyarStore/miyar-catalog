@@ -100,7 +100,10 @@ function profile() {
       <div class="field"><label>إدارة التعليم</label><input name="office" value="${esc(s.office)}"></div>
       <div class="field"><label>اسم قائد/ة المدرسة</label><input name="principal" value="${esc(s.principal)}"></div>
       <div class="field"><label>العام الدراسي</label><input name="year" value="${esc(s.year)}"></div>
+      <div class="field"><label>نوع المبنى</label><select name="building"><option value="">-</option>${['حكومي','مستأجر'].map((v) => `<option ${s.building === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+      <div class="field"><label>الفترة</label><select name="period"><option value="">-</option>${['صباحي','مسائي'].map((v) => `<option ${s.period === v ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
     </div>
+    <p class="muted" style="font-size:13px">نوع المبنى والفترة تظهر في البيانات الأساسية لاستمارتي بناء الخطة ومتابعة تنفيذها.</p>
     <button class="btn">حفظ</button>
   </form>
   <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
@@ -210,10 +213,12 @@ function rowCard(r, i, editable) {
     <dl>
       <dt>الهدف</dt><dd>${esc(r.goal)}</dd>
       <dt>الإجراءات</dt><dd><ul class="procs">${procs(r).map((p, j) => `<li class="${p.done ? 'done' : ''}">${editable ? `<input type="checkbox" ${p.done ? 'checked' : ''} onchange="toggleProc(${i}, ${j}, this)" aria-label="تم التنفيذ">` : '<span class="dot">•</span>'}<span>${esc(p.text)}${p.when ? ` <span class="when">${esc(p.when)}</span>` : ''}</span></li>`).join('')}</ul></dd>
+      <dt>أساليب التحسين</dt><dd>${esc(r.methods || '')}</dd>
       <dt>المسؤول</dt><dd>${esc(r.responsible)}</dd>
       <dt>الزمن</dt><dd>${esc(r.from)} إلى ${esc(r.to)}</dd>
       <dt>مؤشر التحقق</dt><dd>${esc(r.measure)}</dd>
       <dt>الشواهد</dt><dd><ul>${r.evidence.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></dd>
+      ${editable ? `<dt>دعم التميز</dt><dd>لجان المدرسة: ${esc(r.committee || r.responsible)}${r.supervisor ? `<br>المشرف التربوي: ${esc(r.supervisor)}` : ''}${r.note ? `<br><span class="muted">ملاحظة: ${esc(r.note)}</span>` : ''}</dd>` : ''}
     </dl>
     ${editable ? `<button class="btn ghost sm" style="margin-top:10px" onclick="editRow(${i})">✏️ تعديل</button>` : ''}
   </div>`;
@@ -226,13 +231,20 @@ function plan() {
   view.innerHTML = `${banner()}
   <div class="head"><div><h1 style="margin:0">خطة التحسين</h1><p class="muted" style="margin:0">${p ? `${p.total} مؤشر تحت مستوى التميز، مرتبة من الأضعف.` : 'جاهز نبنيها من تقريرك.'}</p></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    ${p ? `<a class="btn ghost" href="/school/print/plan" target="_blank">🖨️ PDF للطباعة</a>${full && !p.trial ? '<a class="btn ghost" href="/school/export/plan.docx">📝 Word</a><a class="btn ghost" href="/school/print/followup" target="_blank">📈 تقرير المتابعة</a>' : ''}` : ''}
+    ${p ? `<a class="btn ghost" href="/school/print/plan" target="_blank">🖨️ PDF للطباعة</a>${full && !p.trial ? '<a class="btn ghost" href="/school/export/plan.docx">📝 Word</a><a class="btn ghost" href="/school/print/followup" target="_blank">📈 تقرير المتابعة</a><a class="btn ghost" href="/school/export/followup.docx">📝 المتابعة Word</a>' : ''}` : ''}
     ${p && (p.sample || !stale) ? '' : `<button class="btn" id="gen">${p ? 'ابنِ الخطة كاملة' : 'ابنِ الخطة'}</button>`}${p && !p.sample && !stale ? '<button class="btn ghost" id="gen" title="يمسح التعديلات والمتابعة">↻ إعادة البناء</button>' : ''}</div></div>
   ${p && p.sample ? `<div class="banner trial"><span>هذا نموذج على تقرير مدرسة حقيقية (مخفية البيانات). جاهز تسويها لمدرستك؟</span><a class="btn sm" href="#/report" onclick="S.data.report=null;S.draft=null">ارفع تقرير مدرستك</a></div>` : ''}
   ${p && full && !p.trial ? (() => { const g = progress(p.rows); return `<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><b>متابعة التنفيذ: ${g.d} من ${g.t} إجراء منجز</b><b style="color:var(--brand-text)">${g.pct}%</b></div><div class="bar" style="margin-top:8px"><i style="width:${g.pct}%"></i></div></div>`; })() : ''}
   ${full ? `<p class="muted" style="font-size:13px">المستخدم هذا العام: ${usage.plans} من ${usage.planLimit} عملية بناء.</p>` : ''}
   <div id="rows">${p ? p.rows.map((r, i) => rowCard(r, i, full && !p.trial)).join('') : ''}</div>
+  ${p && full && !p.trial ? `<div class="card"><h3 style="margin-top:0">التوصيات والمقترحات</h3><p class="muted" style="margin-top:0;font-size:13px">تظهر في القسم الثالث من الخطة وتقرير المتابعة. كل توصية في سطر، ولو تركتها فاضية نقترح لك توصيات من حالة التنفيذ.</p>
+  <form id="recf"><textarea name="recommendations" style="min-height:90px">${esc(p.recommendations || '')}</textarea><button class="btn sm" style="margin-top:8px">حفظ التوصيات</button></form></div>` : ''}
   ${p && p.limited ? `<div class="card" style="text-align:center;border-style:dashed"><h3>باقي ${p.total - p.rows.length} مؤشر في خطتك</h3><p class="muted">فعّل باقة المدرسة وتطلع لك الخطة كاملة بملف Word قابل للتعديل وPDF بدون علامة مائية.</p><a class="btn" href="#/license">فعّل الباقة</a></div>` : ''}`;
+  if ($('#recf')) $('#recf').onsubmit = async (e) => {
+    e.preventDefault();
+    try { const r = await api('/api/school/plan/recommendations', { method: 'PUT', body: { recommendations: e.target.recommendations.value } }); S.data.plan = r.plan; toast('تم حفظ التوصيات'); }
+    catch (err) { toast(err.message); }
+  };
   if ($('#gen')) $('#gen').onclick = async (e) => {
     if (p && !p.sample && !p.trial && !confirm('إعادة البناء تمسح تعديلاتك وحالة المتابعة. متأكد؟')) return;
     busy(e.target, true, 'نبني الخطة...');
@@ -256,6 +268,10 @@ window.editRow = (i) => {
     <div class="field"><label>إلى</label><input name="to" value="${esc(r.to)}"></div></div>
     <div class="field"><label>مؤشر التحقق</label><textarea name="measure" style="min-height:60px">${esc(r.measure)}</textarea></div>
     <div class="field"><label>الشواهد (كل شاهد في سطر)</label><textarea name="evidence">${esc(r.evidence.join('\n'))}</textarea></div>
+    <div class="field"><label>أساليب وطرق التحسين</label><input name="methods" value="${esc(r.methods || '')}"></div>
+    <div class="grid g2"><div class="field"><label>لجان المدرسة المنفذة (لتقرير المتابعة)</label><input name="committee" value="${esc(r.committee || r.responsible)}"></div>
+    <div class="field"><label>دعم المشرف التربوي (إن وجد)</label><input name="supervisor" value="${esc(r.supervisor || '')}" placeholder="مثال: زيارة إشرافية وورشة للمعلمين"></div></div>
+    <div class="field"><label>ملاحظة المتابعة أو سبب التأخر</label><input name="note" value="${esc(r.note || '')}"></div>
     <button class="btn">حفظ</button> <button type="button" class="btn ghost" onclick="plan()">إلغاء</button>
   </form>`;
   $(`#ef${i}`).onsubmit = async (e) => {

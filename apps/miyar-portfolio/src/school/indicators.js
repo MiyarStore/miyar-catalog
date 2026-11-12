@@ -92,4 +92,26 @@ function catalog(stage = 'basic') {
 const standardName = (code) => (STANDARDS.find((s) => s.code === code) || {}).name || '';
 const domainName = (code) => (DOMAINS.find((d) => d.code === code) || {}).name || '';
 
-module.exports = { DOMAINS, STANDARDS, LEVELS, levelOf, catalog, standardName, domainName };
+// مجالات الممارسات الإشرافية (النموذج الإشرافي لوزارة التعليم) وربطها بمعايير التقويم المدرسي،
+// كما في استمارة «تحليل واقع المدرسة في مجالات الممارسات الإشرافية».
+const SUPERVISORY = [
+  { name: 'التدريس', standards: ['2-1', '2-2'] },
+  { name: 'نواتج التعلم', standards: ['3-1'] },
+  { name: 'الأنشطة المدرسية', codes: ['1-2-1-5', '1-2-1-6'], standards: [] },
+  { name: 'التوجيه الطلابي', codes: ['1-2-1-1', '1-2-1-2', '1-2-1-3', '1-2-1-4'], standards: ['3-2', '1-3'] },
+];
+function supervisoryOf(code) {
+  const std = code.split('-').slice(0, 2).join('-');
+  const hit = SUPERVISORY.find((d) => (d.codes || []).includes(code)) || SUPERVISORY.find((d) => d.standards.includes(std));
+  return hit ? hit.name : '';
+}
+// نوع الخطة المطلوبة حسب مستوى أداء المدرسة العام (دليل النموذج الإشرافي في ضوء تمكين المدرسة)
+const PLAN_TYPES = {
+  tamayuz: 'خطة استدامة من المدرسة',
+  taqaddum: 'خطة تحسين من المدرسة',
+  intilaq: 'خطة تنفيذية بالتنسيق مع إدارة التعليم',
+  tahyia: 'خطة طوارئ بالتنسيق مع إدارة التعليم',
+};
+const planTypeOf = (overall) => (overall == null || overall === '' ? '' : PLAN_TYPES[levelOf(overall).key]);
+
+module.exports = { DOMAINS, STANDARDS, LEVELS, levelOf, catalog, standardName, domainName, SUPERVISORY, supervisoryOf, planTypeOf };

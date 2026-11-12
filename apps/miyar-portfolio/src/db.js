@@ -121,5 +121,7 @@ CREATE TABLE IF NOT EXISTS school_usage (
 
 // ترقية: نوع المنتج لكل كود (ملف المعلم أو باقات المدرسة)
 try { db.exec("ALTER TABLE codes ADD COLUMN product TEXT NOT NULL DEFAULT 'portfolio'"); } catch {}
+// ترقية: حقول البيانات الأساسية في استمارات الوزارة (نوع المبنى والفترة)
+for (const col of ['building', 'period']) { try { db.exec(`ALTER TABLE schools ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`); } catch {} }
 
 module.exports = { db, DATA_DIR };

@@ -7,7 +7,7 @@ const { SCHOOL_PACKAGES } = require('../plans');
 const { catalog } = require('./indicators');
 const { readPdf, normalize, readerEnabled } = require('./report');
 const { buildPlan } = require('./plan');
-const { printHtml, planDocx, followupHtml } = require('./export');
+const { printHtml, planDocx, followupHtml, followupDocx } = require('./export');
 
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
@@ -63,7 +63,7 @@ function mountSchool(app, { auth, currentUser }) {
     });
   });
 
-  const FIELDS = { name: 120, stage: 10, gender: 10, office: 120, principal: 80, year: 20 };
+  const FIELDS = { name: 120, stage: 10, gender: 10, office: 120, principal: 80, year: 20, building: 10, period: 10 };
   app.put('/api/school', auth, (req, res) => {
     const s = schoolOf(req.user.id);
     const b = req.body || {};
@@ -189,6 +189,19 @@ function mountSchool(app, { auth, currentUser }) {
     if (b.to !== undefined) row.to = clip(b.to, 60);
     if (b.measure !== undefined) row.measure = clip(b.measure, 400);
     if (b.evidence !== undefined) row.evidence = list(b.evidence, 8);
+    for (const [k, n] of [['methods', 300], ['committee', 200], ['supervisor', 300], ['note', 400]]) if (b[k] !== undefined) row[k] = clip(b[k], n).trim();
+    const { id, report_id, updated_at, ...data } = p;
+    db.prepare('UPDATE school_plans SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), Date.now(), id);
+    res.json({ plan: latestPlan(s.id) });
+  });
+
+  // التوصيات والمقترحات (قسم ثالث في استمارتي البناء والتنفيذ)
+  app.put('/api/school/plan/recommendations', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    if (!canPlan(s)) return res.status(402).json({ error: 'التعديل متاح بعد تفعيل الباقة', code: 'license' });
+    const p = latestPlan(s.id);
+    if (!p) return res.status(404).json({ error: 'ابنِ الخطة أولاً' });
+    p.recommendations = clip((req.body || {}).recommendations, 3000).trim();
     const { id, report_id, updated_at, ...data } = p;
     db.prepare('UPDATE school_plans SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), Date.now(), id);
     res.json({ plan: latestPlan(s.id) });
@@ -251,6 +264,15 @@ function mountSchool(app, { auth, currentUser }) {
     const buf = await planDocx({ school: g.s, report: g.report, plan: g.plan, uploadsDir: UPLOADS });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`خطة-التحسين-${g.s.name || 'المدرسة'}.docx`)}`);
+    res.send(buf);
+  });
+
+  app.get('/school/export/followup.docx', async (req, res) => {
+    const g = exportGuard(req, res); if (!g) return;
+    if (!canPlan(g.s) || g.plan.trial) return res.redirect('/school#/license');
+    const buf = await followupDocx({ school: g.s, report: g.report, plan: g.plan, uploadsDir: UPLOADS });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`متابعة-تنفيذ-خطة-التحسين-${g.s.name || 'المدرسة'}.docx`)}`);
     res.send(buf);
   });
 
