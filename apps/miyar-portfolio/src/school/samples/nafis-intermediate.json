@@ -1,0 +1,17 @@
+{
+  "_note": "بطاقة نافس لمدرسة متوسطة حقيقية (الثالث المتوسط) بعد إخفاء اسم المدرسة ورقمها الوزاري وأسماء منسوبيها",
+  "year": "1447",
+  "grades": [
+    {
+      "grade": "g3m", "students": 14, "tested": 13, "index": 0, "index_last": 10,
+      "subjects": [
+        { "subject": "reading", "mastery": 7.7, "office": 21.5, "ksa": 23.9, "mean": 50.25,
+          "domains": [ { "name": "استيعاب المقروء", "school": 7.7, "ksa": 26.2 }, { "name": "دلالات الألفاظ", "school": 15.4, "ksa": 30.2 } ] },
+        { "subject": "math", "mastery": 0, "office": 25.6, "ksa": 23.8, "mean": 45.34,
+          "domains": [ { "name": "الأعداد والعمليات عليها", "school": 0, "ksa": 39 }, { "name": "الجبر", "school": 15.4, "ksa": 35.9 }, { "name": "الهندسة والقياس", "school": 7.7, "ksa": 34.7 }, { "name": "البيانات والاحتمالات", "school": 15.4, "ksa": 41.1 } ] },
+        { "subject": "science", "mastery": 15.4, "office": 43.4, "ksa": 42.5, "mean": 50.85,
+          "domains": [ { "name": "علوم الحياة", "school": 38.5, "ksa": 63.5 }, { "name": "علم الأرض والفلك", "school": 15.4, "ksa": 52.7 }, { "name": "العلوم الفيزيائية والكيميائية", "school": 7.7, "ksa": 33.4 } ] }
+      ]
+    }
+  ]
+}

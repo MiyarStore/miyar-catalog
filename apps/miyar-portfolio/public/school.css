@@ -41,3 +41,14 @@
 .when { display: inline-block; font-size: 12px; color: var(--brand-text); background: var(--brand-soft); border-radius: 99px; padding: 0 8px; margin-inline-start: 4px; }
 details.need summary { cursor: pointer; color: var(--brand-text); font-weight: 600; font-size: 13px; }
 details.need { margin: 8px 0 0; }
+
+.nf-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.nf-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
+.nf-grid input { text-align: center; }
+.nf-sub { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
+.nf-sub h4 { margin: 0 0 8px; font-size: 16px; color: var(--brand-text); }
+.nf-dom input { padding: 6px 8px; } .nf-dom td:not(:first-child) input { text-align: center; width: 80px; }
+.nf-dom td:first-child { min-width: 160px; }
+.nf-grade { margin-bottom: 14px; }
+.nf-chip { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; padding: 4px 12px; }
+@media (max-width: 640px) { .tbl.nf-dom th:nth-child(2), .tbl.nf-dom td:nth-child(2) { display: table-cell; } .nf-dom td:not(:first-child) input { width: 58px; } }

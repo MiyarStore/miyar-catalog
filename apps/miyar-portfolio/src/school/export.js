@@ -357,4 +357,4 @@ async function followupDocx({ school, report, plan, uploadsDir }) {
   return docx.Packer.toBuffer(doc);
 }
 
-module.exports = { printHtml, planDocx, followupHtml, followupDocx, progress, procs };
+module.exports = { printHtml, planDocx, followupHtml, followupDocx, progress, procs, esc, LH_CSS, letterheadHtml, letterheadDocx, logoData, useMoe, run, para, cell, lines, heading, signDocx, FONT, dateAr };

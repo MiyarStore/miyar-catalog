@@ -9,6 +9,8 @@ const { readPdf, normalize, readerEnabled } = require('./report');
 const { buildPlan } = require('./plan');
 const { printHtml, planDocx, followupHtml, followupDocx } = require('./export');
 const { guessStandard } = require('../standards');
+const nafis = require('./nafis');
+const { nafisHtml, nafisDocx } = require('./nafis-export');
 
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
@@ -56,6 +58,13 @@ function withPeople(plan, sid) {
   }
   return plan;
 }
+const nafisOf = (sid) => { const r = db.prepare('SELECT * FROM school_nafis WHERE school_id = ?').get(sid); return r ? { card: JSON.parse(r.data), plan: r.plan ? JSON.parse(r.plan) : null, updated_at: r.updated_at } : { card: null, plan: null }; };
+const saveNafis = (sid, { card, plan }) => {
+  const now = Date.now();
+  db.prepare('INSERT INTO school_nafis (school_id, data, plan, created_at, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(school_id) DO UPDATE SET data = excluded.data, plan = excluded.plan, updated_at = excluded.updated_at')
+    .run(sid, JSON.stringify(card), plan ? JSON.stringify(plan) : null, now, now);
+};
+const nafisView = (sid) => { const n = nafisOf(sid); return { ...n, analysis: n.card ? nafis.analyze(n.card) : null }; };
 const publicSchool = (s) => ({ ...s, license: license(s), logo_url: s.logo ? `/school-logo/${s.id}?v=${s.logo.slice(-6)}` : null });
 
 const logoUpload = multer({
@@ -73,6 +82,8 @@ function mountSchool(app, { auth, currentUser }) {
       report: latestReport(s.id),
       plan: withPeople(latestPlan(s.id), s.id),
       members: members(s.id),
+      nafis: nafisView(s.id),
+      nafisMeta: { grades: nafis.GRADES, subjects: nafis.SUBJECTS, domains: nafis.DOMAINS, cls: nafis.CLS },
       reader: readerEnabled(),
       packages: SCHOOL_PACKAGES,
       catalog: { basic: catalog('basic'), secondary: catalog('secondary') },
@@ -249,6 +260,80 @@ function mountSchool(app, { auth, currentUser }) {
     const { id, report_id, updated_at, ...data } = p;
     db.prepare('UPDATE school_plans SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), Date.now(), id);
     res.json({ plan: withPeople(latestPlan(s.id), s.id) });
+  });
+
+  // ---------- الخطة العلاجية لنافس ----------
+  app.get('/api/school/nafis/sample', auth, (req, res) => res.json({ card: nafis.normalize({ ...require(path.join(__dirname, 'samples', 'nafis-intermediate.json')), sample: true }) }));
+  // حفظ أرقام البطاقة (الخطة القديمة تبقى حتى يعيد البناء)
+  app.put('/api/school/nafis', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    const card = nafis.normalize(req.body || {});
+    if (!card.grades.length) return res.status(400).json({ error: 'اختر صفاً واحداً على الأقل' });
+    if (!nafis.analyze(card).subjects.length) return res.status(400).json({ error: 'أدخل نسبة إتقان المدرسة ومتوسط المملكة لمادة واحدة على الأقل' });
+    saveNafis(s.id, { card, plan: nafisOf(s.id).plan });
+    res.json({ nafis: nafisView(s.id) });
+  });
+  app.post('/api/school/nafis/plan', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    const { card } = nafisOf(s.id);
+    if (!card) return res.status(400).json({ error: 'أدخل أرقام بطاقة نافس أولاً' });
+    let trial = false;
+    if (!card.sample) {
+      const full = canPlan(s, 'nafis');
+      if (full && used(s.id, 'nafis') >= YEAR_PLAN_LIMIT) return res.status(429).json({ error: 'وصلت للحد السنوي لبناء الخطط. عدّل على خطتك الحالية أو تواصل معنا.' });
+      if (!full && used(s.id, 'nafis_trial') >= 3) return res.status(402).json({ error: 'انتهت محاولات التجربة. فعّل باقة نافس لتحصل على الخطة كاملة.', code: 'license' });
+      trial = !full;
+      bump(s.id, full ? 'nafis' : 'nafis_trial');
+    }
+    const plan = nafis.buildNafisPlan(card, { limit: trial ? TRIAL_ROWS : 0 });
+    plan.trial = trial || card.sample;
+    plan.sample = card.sample;
+    saveNafis(s.id, { card, plan });
+    res.json({ nafis: nafisView(s.id) });
+  });
+  // تعديل صف من الخطة العلاجية
+  app.put('/api/school/nafis/plan/rows/:i', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    if (!canPlan(s, 'nafis')) return res.status(402).json({ error: 'التعديل متاح بعد تفعيل باقة نافس', code: 'license' });
+    const n = nafisOf(s.id);
+    const row = n.plan && !n.plan.trial && n.plan.rows[Number(req.params.i)];
+    if (!row) return res.status(404).json({ error: 'الصف غير موجود' });
+    const b = req.body || {};
+    if (b.actions !== undefined) row.actions = String(b.actions).split('\n').map((l) => clip(l, 300).trim()).filter(Boolean).slice(0, 8).map((l) => { const [text, when] = l.split('|').map((x) => x.trim()); return { text, when: when || '' }; });
+    if (b.owner !== undefined) row.owner = clip(b.owner, 200).trim();
+    if (b.measure !== undefined) row.measure = clip(b.measure, 300).trim();
+    if (b.target !== undefined) { const t = Number(b.target); if (Number.isFinite(t) && t >= 0 && t <= 100) row.target = Math.round(t * 10) / 10; }
+    saveNafis(s.id, n);
+    res.json({ nafis: nafisView(s.id) });
+  });
+  app.put('/api/school/nafis/plan/recommendations', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    if (!canPlan(s, 'nafis')) return res.status(402).json({ error: 'التعديل متاح بعد تفعيل باقة نافس', code: 'license' });
+    const n = nafisOf(s.id);
+    if (!n.plan || n.plan.trial) return res.status(404).json({ error: 'ابنِ الخطة أولاً' });
+    n.plan.recommendations = clip((req.body || {}).recommendations, 3000).trim();
+    saveNafis(s.id, n);
+    res.json({ nafis: nafisView(s.id) });
+  });
+  function nafisGuard(req, res) {
+    const u = currentUser(req);
+    if (!u) { res.redirect('/school'); return null; }
+    const s = schoolOf(u.id);
+    const n = nafisOf(s.id);
+    if (!n.card || !n.plan) { res.redirect('/school#/nafis'); return null; }
+    return { s, ...n };
+  }
+  app.get('/school/print/nafis', (req, res) => {
+    const g = nafisGuard(req, res); if (!g) return;
+    res.send(nafisHtml({ school: g.s, card: g.card, plan: g.plan, trial: g.plan.trial || !canPlan(g.s, 'nafis'), uploadsDir: UPLOADS }));
+  });
+  app.get('/school/export/nafis.docx', async (req, res) => {
+    const g = nafisGuard(req, res); if (!g) return;
+    if (g.plan.trial || !canPlan(g.s, 'nafis')) return res.redirect('/school#/license');
+    const buf = await nafisDocx({ school: g.s, card: g.card, plan: g.plan, uploadsDir: UPLOADS });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`الخطة-العلاجية-لنافس-${g.s.name || 'المدرسة'}.docx`)}`);
+    res.send(buf);
   });
 
   // فريق المدرسة

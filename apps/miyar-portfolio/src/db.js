@@ -123,6 +123,15 @@ CREATE TABLE IF NOT EXISTS school_usage (
 try { db.exec("ALTER TABLE codes ADD COLUMN product TEXT NOT NULL DEFAULT 'portfolio'"); } catch {}
 // ترقية: حقول البيانات الأساسية في استمارات الوزارة (نوع المبنى والفترة)
 // فريق المدرسة: المعلمون اللي تتوزع عليهم إجراءات الخطة (يرتبطون بحساباتهم في معياري للمعلم بالبريد)
+// «الخطة العلاجية لنافس»: بطاقة نافس الأخيرة للمدرسة وخطتها
+db.exec(`CREATE TABLE IF NOT EXISTS school_nafis (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  school_id INTEGER NOT NULL UNIQUE REFERENCES schools(id) ON DELETE CASCADE,
+  data TEXT NOT NULL,
+  plan TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+)`);
 db.exec(`CREATE TABLE IF NOT EXISTS school_members (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,

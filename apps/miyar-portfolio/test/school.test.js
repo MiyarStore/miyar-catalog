@@ -99,3 +99,39 @@ test('ترويسة الوزارة والمنفذ والشاهد في تقرير 
   const buf = await followupDocx({ school, report, plan, uploadsDir: '/nonexistent' });
   assert.ok(buf.length > 20000);
 });
+
+test('نافس: التصنيف والمستهدف والخطة على بطاقة حقيقية مخفية', () => {
+  const n = require('../src/school/nafis');
+  assert.strictEqual(n.classify(36, 32), 'strength');
+  assert.strictEqual(n.classify(33, 32), 'improve');
+  assert.strictEqual(n.classify(20, 26), 'urgent');
+  assert.strictEqual(n.targetOf(0, 39), 15);
+  assert.strictEqual(n.targetOf(20, 26), 26);
+  assert.strictEqual(n.targetOf(40, 30), 45);
+  const card = n.normalize(require('../src/school/samples/nafis-intermediate.json'));
+  const a = n.analyze(card);
+  assert.ok(a.complete);
+  assert.deepStrictEqual(a.counts, { urgent: 9, improve: 0, strength: 0, total: 9 });
+  const p = n.buildNafisPlan(card);
+  assert.strictEqual(p.rows.length, 9);
+  assert.strictEqual(p.priorities[0].domain, 'الأعداد والعمليات عليها');
+  assert.match(p.summary.decision, /مكثفة/);
+  assert.ok(p.rows.every((r) => r.actions.length >= 3));
+  assert.strictEqual(n.buildNafisPlan(card, { limit: 3 }).rows.length, 3);
+  assert.strictEqual(n.normalize({ grades: [{ grade: 'xx' }] }).grades.length, 0);
+});
+
+test('نافس: الطباعة وWord بترويسة الوزارة', async () => {
+  const n = require('../src/school/nafis');
+  const { nafisHtml, nafisDocx } = require('../src/school/nafis-export');
+  const card = n.normalize(require('../src/school/samples/nafis-intermediate.json'));
+  const plan = n.buildNafisPlan(card);
+  const school = { name: 'مدرسة تجريبية', office: 'مكتب', year: '1448', principal: 'القائد', ministry_number: 'S-12345' };
+  const html = nafisHtml({ school, card, plan, trial: false, uploadsDir: '/nonexistent' });
+  assert.match(html, /class="lh"/);
+  assert.match(html, /الملخص التنفيذي/);
+  assert.match(html, /القرار المقترح/);
+  assert.doesNotMatch(nafisHtml({ school: { ...school, ministry_logo: 0 }, card, plan, trial: true, uploadsDir: '/x' }), /class="lh"/);
+  const buf = await nafisDocx({ school, card, plan, uploadsDir: '/x' });
+  assert.ok(buf.length > 20000);
+});
