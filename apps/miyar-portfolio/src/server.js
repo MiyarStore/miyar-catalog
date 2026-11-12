@@ -7,6 +7,8 @@ const { db, DATA_DIR } = require('./db');
 const { STANDARDS, byId } = require('./standards');
 const { draftEvidence, aiEnabled } = require('./ai');
 const views = require('./views');
+const { mountSchool } = require('./school/routes');
+const { SCHOOL_PACKAGES } = require('./plans');
 
 const PORT = Number(process.env.PORT || 3000);
 const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 7);
@@ -156,6 +158,7 @@ app.post('/api/redeem', auth, (req, res) => {
   const code = clip(req.body.code, 40).trim().toUpperCase().replace(/\s/g, '');
   const row = db.prepare('SELECT * FROM codes WHERE code = ?').get(code);
   if (!row) return res.status(404).json({ error: 'الكود غير صحيح' });
+  if (row.product && row.product !== 'portfolio') return res.status(400).json({ error: 'هذا كود باقة مدرسة، فعّله من صفحة خطط معيار' });
   if (row.redeemed_by) return res.status(409).json({ error: 'هذا الكود مستخدم مسبقاً' });
   const startFrom = Math.max(Date.now(), req.user.plan_ends);
   const ends = startFrom + row.days * DAY;
@@ -276,16 +279,18 @@ app.post('/api/admin/codes', auth, admin, (req, res) => {
   const count = Math.min(500, Math.max(1, Number(req.body.count) || 10));
   const days = Math.min(1100, Math.max(1, Number(req.body.days) || 365));
   const note = clip(req.body.note, 60);
-  const ins = db.prepare('INSERT INTO codes (code, days, note, created_at) VALUES (?, ?, ?, ?)');
+  const product = SCHOOL_PACKAGES.some((p) => p.id === req.body.product) ? req.body.product : 'portfolio';
+  const prefix = product === 'portfolio' ? 'MYR' : 'SCH';
+  const ins = db.prepare('INSERT INTO codes (code, days, note, product, created_at) VALUES (?, ?, ?, ?, ?)');
   const out = [];
-  for (let i = 0; i < count; i++) { const c = `MYR-${rand(4)}-${rand(4)}`; ins.run(c, days, note, Date.now()); out.push(c); }
+  for (let i = 0; i < count; i++) { const c = `${prefix}-${rand(4)}-${rand(4)}`; ins.run(c, days, note, product, Date.now()); out.push(c); }
   res.json({ codes: out });
 });
 app.get('/api/admin/codes.csv', auth, admin, (req, res) => {
   const rows = db.prepare('SELECT c.*, u.email FROM codes c LEFT JOIN users u ON u.id = c.redeemed_by ORDER BY c.created_at DESC').all();
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="miyar-codes.csv"');
-  res.send('﻿code,days,note,status,redeemed_by\n' + rows.map((r) => [r.code, r.days, r.note, r.redeemed_by ? 'used' : 'free', r.email || ''].join(',')).join('\n'));
+  res.send('﻿code,product,days,note,status,redeemed_by\n' + rows.map((r) => [r.code, r.product, r.days, r.note, r.redeemed_by ? 'used' : 'free', r.email || ''].join(',')).join('\n'));
 });
 
 // ---------- الصفحات العامة والتقارير ----------
@@ -328,6 +333,8 @@ app.get('/print/evidence/:id', async (req, res) => {
   if (!e) return res.status(404).send(views.notFound());
   res.send(await views.printReport({ u, evs: [e], template: req.query.t === 'modern' ? 'modern' : 'classic', base: baseUrl(req), scope: 'evidence' }));
 });
+
+mountSchool(app, { auth, currentUser });
 
 app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS, PLANS)));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));

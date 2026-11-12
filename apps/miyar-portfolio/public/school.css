@@ -1,0 +1,28 @@
+.steps { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 18px; }
+.step { display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: inherit; }
+.step .n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand-text); font-weight: 800; }
+.step.done .n { background: var(--brand); color: #fff; }
+.step h3 { margin: 0; font-size: 16px; }
+.lv { display: inline-block; border-radius: 99px; padding: 0 9px; font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; }
+.std-h { margin: 18px 0 6px; font-size: 15px; color: var(--brand-text); }
+.dom-h { margin: 22px 0 4px; font-size: 18px; }
+.ind { display: grid; grid-template-columns: 76px 1fr 110px 80px; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.ind code { font-weight: 700; font-size: 13px; }
+.ind input { padding: 6px 8px; text-align: center; direction: ltr; }
+.ind.miss input { border-color: var(--danger); }
+@media (max-width: 640px) { .ind { grid-template-columns: 64px 1fr 90px; } .ind .lvc { grid-column: 2 / 4; } }
+.hdr-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.row-card { margin-bottom: 14px; }
+.row-card .top { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.row-card .pct { font-size: 22px; font-weight: 800; color: var(--brand-text); }
+.row-card h3 { font-size: 15.5px; margin: 0; }
+.row-card dl { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; margin: 12px 0 0; font-size: 14px; }
+.row-card dt { font-weight: 700; color: var(--muted); }
+.row-card dd { margin: 0; }
+.row-card ol, .row-card ul { margin: 0; padding-inline-start: 18px; }
+@media (max-width: 640px) { .row-card dl { grid-template-columns: 1fr; } .row-card dt { margin-top: 6px; } }
+.need { font-size: 13px; color: var(--muted); }
+.pkg { display: flex; flex-direction: column; gap: 6px; }
+.pkg .price { font-size: 26px; font-weight: 800; color: var(--brand-text); }
+.pkg.best { border-color: var(--brand-2); box-shadow: 0 0 0 2px var(--brand-2); }
+.dist { display: flex; gap: 6px; flex-wrap: wrap; }

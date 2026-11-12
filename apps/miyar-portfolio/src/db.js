@@ -77,6 +77,49 @@ CREATE TABLE IF NOT EXISTS ai_usage (
   PRIMARY KEY (user_id, day)
 );
 CREATE INDEX IF NOT EXISTS idx_ev_user ON evidences(user_id, standard_id);
+-- «خطط معيار»: ملف المدرسة وتقاريرها وخططها
+CREATE TABLE IF NOT EXISTS schools (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  ministry_number TEXT UNIQUE,
+  name TEXT NOT NULL DEFAULT '',
+  stage TEXT NOT NULL DEFAULT 'basic',
+  gender TEXT NOT NULL DEFAULT '',
+  office TEXT NOT NULL DEFAULT '',
+  principal TEXT NOT NULL DEFAULT '',
+  year TEXT NOT NULL DEFAULT '1448 هـ',
+  logo TEXT,
+  package TEXT NOT NULL DEFAULT '',
+  plan_ends INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS school_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  data TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'manual',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS school_plans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  report_id INTEGER NOT NULL REFERENCES school_reports(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL DEFAULT 'improvement',
+  data TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS school_usage (
+  school_id INTEGER NOT NULL,
+  year TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (school_id, year, kind)
+);
 `);
+
+// ترقية: نوع المنتج لكل كود (ملف المعلم أو باقات المدرسة)
+try { db.exec("ALTER TABLE codes ADD COLUMN product TEXT NOT NULL DEFAULT 'portfolio'"); } catch {}
 
 module.exports = { db, DATA_DIR };

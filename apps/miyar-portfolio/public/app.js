@@ -69,7 +69,7 @@ function authView(mode) {
     e.preventDefault();
     const b = Object.fromEntries(new FormData(e.target));
     const btn = $('button', e.target); btn.disabled = true;
-    try { await api(mode === 'login' ? '/api/login' : '/api/register', { method: 'POST', body: b }); await load(); location.hash = '#/'; }
+    try { await api(mode === 'login' ? '/api/login' : '/api/register', { method: 'POST', body: b }); await load(); const nx = sessionStorage.getItem('miyar-next'); if (nx) { sessionStorage.removeItem('miyar-next'); location.href = nx; return; } location.hash = '#/'; }
     catch (err) { toast(err.message); btn.disabled = false; }
   };
 }

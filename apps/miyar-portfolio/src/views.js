@@ -57,6 +57,12 @@ function landing(storeUrl, trialDays, plans = []) {
     <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px">${STANDARDS.map((s) => `<span class="pill">${s.icon} ${s.name}</span>`).join('')}</div>
   </div>
 </section>
+<section class="wrap" style="padding-bottom:40px">
+  <div class="card" style="display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-color:var(--brand-2)">
+    <div><span class="pill">جديد للمدارس</span><h2 style="margin:8px 0 4px">خطط معيار: خطة التحسين من تقرير التقويم المدرسي</h2><p class="muted" style="margin:0">ارفع تقرير التقويم الذاتي من منصة تميز، وتطلع لك خطة التحسين مرتبة من المؤشر الأضعف، جاهزة بصيغة Word وPDF.</p></div>
+    <a class="btn" href="/school">جرّبها لمدرستك</a>
+  </div>
+</section>
 <section class="wrap" style="padding-bottom:50px" id="pricing">
   <h2 style="text-align:center">الباقات</h2>
   <p class="muted" style="text-align:center;margin-top:0">ابدأ بتجربة مجانية ${trialDays} أيام، وبعدها اختر الباقة اللي تناسبك.</p>
