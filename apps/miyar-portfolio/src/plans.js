@@ -12,7 +12,7 @@ const month = PLANS.find((p) => p.id === 'month');
 year.saving = Math.max(0, Math.round((1 - year.price / (month.price * 12)) * 100));
 module.exports = { PLANS };
 
-// باقات «خطط معيار» للمدارس: ترخيص سنوي مربوط بالرقم الوزاري.
+// باقات «معياري للمدرسة» للمدارس: ترخيص سنوي مربوط بالرقم الوزاري.
 // grants: أنواع الخطط التي تفتحها الباقة.
 const SCHOOL_PACKAGES = [
   { id: 'school_improve', name: 'خطة التحسين', price: n(process.env.PRICE_SCHOOL_IMPROVE, 99), days: 365, grants: ['improvement'] },

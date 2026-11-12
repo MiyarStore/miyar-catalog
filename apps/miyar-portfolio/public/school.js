@@ -1,4 +1,4 @@
-/* خطط معيار - واجهة المدرسة */
+/* معياري للمدرسة - واجهة المدرسة */
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const view = $('#view');
@@ -54,8 +54,8 @@ function toggleDark() {
 
 function topbar(route) {
   const l = (h, ic, t) => `<a href="#/${h}" class="${route === h ? 'on' : ''}">${ic} <span class="lbl">${t}</span></a>`;
-  $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>خ</b><span class="lbl">خطط معيار</span></a>
-  <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('profile', '🏫', 'المدرسة')}${l('report', '📊', 'التقرير')}${l('plan', '📋', 'الخطة')}${l('license', '⭐', 'الباقة')}<button onclick="toggleDark()" title="الوضع الليلي">🌙</button></nav></div></div>`;
+  $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">معياري للمدرسة</span></a>
+  <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('profile', '🏫', 'المدرسة')}${l('report', '📊', 'التقرير')}${l('plan', '📋', 'الخطة')}${l('team', '👥', 'الفريق')}${l('license', '⭐', 'الباقة')}<button onclick="toggleDark()" title="الوضع الليلي">🌙</button></nav></div></div>`;
 }
 const lic = () => S.data.school.license;
 
@@ -71,7 +71,7 @@ function home() {
   const step = (n, done, href, t, d) => `<a class="card step ${done ? 'done' : ''}" href="#/${href}"><span class="n">${done ? '✓' : n}</span><h3>${t}</h3><p class="muted" style="margin:0">${d}</p></a>`;
   const dist = report ? LEVELS.map((l) => `<span class="lv" style="background:${l.color}">${l.name}: ${report.indicators.filter((i) => i.pct != null && levelOf(i.pct).key === l.key).length}</span>`).join('') : '';
   view.innerHTML = `${banner()}
-  <div class="head"><div><h1 style="margin:0">${esc(school.name || 'مرحباً بك في خطط معيار')}</h1><p class="muted" style="margin:0">ارفع تقرير التقويم المدرسي، ونطلع لك خطة التحسين جاهزة للطباعة وWord.</p></div></div>
+  <div class="head"><div><h1 style="margin:0">${esc(school.name || 'مرحباً بك في معياري للمدرسة')}</h1><p class="muted" style="margin:0">ارفع تقرير التقويم المدرسي، ونطلع لك خطة التحسين جاهزة للطباعة وWord.</p></div></div>
   <div class="steps">
     ${step(1, s1, 'profile', 'بيانات المدرسة', 'الاسم والرقم الوزاري والشعار واسم القائد')}
     ${step(2, s2, 'report', 'تقرير التقويم', 'ارفع ملف التقرير أو أدخل النسب، وراجعها')}
@@ -107,13 +107,18 @@ function profile() {
     <button class="btn">حفظ</button>
   </form>
   <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
-  <h3>شعار المدرسة</h3><p class="muted" style="margin-top:0">شعار مدرستك فقط (PNG أو JPG). لا نضع شعارات رسمية للوزارة أو الهيئة.</p>
+  <h3>الشعارات في الملفات</h3>
+  <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><input type="checkbox" id="mlogo" ${s.ministry_logo !== 0 ? 'checked' : ''} style="width:18px;height:18px"> أضف شعار وزارة التعليم في رأس ملفات PDF وWord</label>
+  <p class="muted" style="margin-top:0">وشعار مدرستك (PNG أو JPG) يطلع جنبه.</p>
   <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">${s.logo_url ? `<img src="${s.logo_url}" alt="" style="width:80px;height:80px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff">` : ''}
   <label class="btn ghost" style="margin:0">رفع الشعار<input type="file" id="logo" accept="image/png,image/jpeg" hidden></label></div></div>`;
   $('#f').onsubmit = async (e) => {
     e.preventDefault();
     const b = Object.fromEntries(new FormData(e.target));
     try { const r = await api('/api/school', { method: 'PUT', body: b }); S.data.school = r.school; toast('تم الحفظ'); location.hash = '#/'; } catch (err) { toast(err.message); }
+  };
+  $('#mlogo').onchange = async (e) => {
+    try { const r = await api('/api/school', { method: 'PUT', body: { ministry_logo: e.target.checked } }); S.data.school = r.school; toast(e.target.checked ? 'بيطلع شعار الوزارة في الملفات' : 'تم إخفاء شعار الوزارة من الملفات'); } catch (err) { toast(err.message); }
   };
   $('#logo').onchange = async (e) => {
     const fd = new FormData(); fd.append('logo', e.target.files[0]);
@@ -212,7 +217,7 @@ function rowCard(r, i, editable) {
     <details class="need"><summary>توصية التقرير لهذا المؤشر</summary>${esc(r.rec || r.need)}</details>
     <dl>
       <dt>الهدف</dt><dd>${esc(r.goal)}</dd>
-      <dt>الإجراءات</dt><dd><ul class="procs">${procs(r).map((p, j) => `<li class="${p.done ? 'done' : ''}">${editable ? `<input type="checkbox" ${p.done ? 'checked' : ''} onchange="toggleProc(${i}, ${j}, this)" aria-label="تم التنفيذ">` : '<span class="dot">•</span>'}<span>${esc(p.text)}${p.when ? ` <span class="when">${esc(p.when)}</span>` : ''}</span></li>`).join('')}</ul></dd>
+      <dt>الإجراءات</dt><dd><ul class="procs">${procs(r).map((p, j) => `<li class="${p.done ? 'done' : ''}">${editable ? `<input type="checkbox" ${p.done ? 'checked' : ''} onchange="toggleProc(${i}, ${j}, this)" aria-label="تم التنفيذ">` : '<span class="dot">•</span>'}<div class="pbody"><span class="ptext">${esc(p.text)}${p.when ? ` <span class="when">${esc(p.when)}</span>` : ''}</span>${editable ? procMeta(p, i, j) : ''}</div></li>`).join('')}</ul></dd>
       <dt>أساليب التحسين</dt><dd>${esc(r.methods || '')}</dd>
       <dt>المسؤول</dt><dd>${esc(r.responsible)}</dd>
       <dt>الزمن</dt><dd>${esc(r.from)} إلى ${esc(r.to)}</dd>
@@ -223,6 +228,17 @@ function rowCard(r, i, editable) {
     ${editable ? `<button class="btn ghost sm" style="margin-top:10px" onclick="editRow(${i})">✏️ تعديل</button>` : ''}
   </div>`;
 }
+// المنفذ والشاهد لكل إجراء
+function procMeta(p, i, j) {
+  const ms = S.data.members || [];
+  const sel = ms.length ? `<select class="assign" onchange="assignProc(${i}, ${j}, this)" aria-label="المنفذ"><option value="">بدون معلم محدد</option>${ms.map((m) => `<option value="${esc(m.email)}" ${p.assignee === m.email ? 'selected' : ''}>${esc(m.name || m.email)}</option>`).join('')}</select>` : '';
+  const ev = p.evidence ? `<a class="evlink" href="/v/${esc(p.evidence.code)}" target="_blank" rel="noopener">📎 ${esc(p.evidence.title)}</a>` : (p.assignee && !p.done ? '<span class="muted">بانتظار شاهد المعلم</span>' : '');
+  return sel || ev ? `<div class="pmeta">${sel}${ev}</div>` : '';
+}
+window.assignProc = async (i, j, el) => {
+  try { const res = await api(`/api/school/plan/rows/${i}/procs/${j}`, { method: 'PUT', body: { assignee: el.value } }); S.data.plan = res.plan; toast(el.value ? 'تم إسناد الإجراء، ويظهر في «مهامي» عند المعلم' : 'تم إلغاء الإسناد'); }
+  catch (e) { toast(e.message); }
+};
 function plan() {
   const { report, plan: p, usage } = S.data;
   if (!report || !report.complete) { view.innerHTML = `${banner()}<div class="card" style="text-align:center"><h2>ارفع تقرير التقويم أولاً</h2><p class="muted">الخطة تنبني على نسب المؤشرات.</p><a class="btn" href="#/report">التقرير</a></div>`; return; }
@@ -236,6 +252,7 @@ function plan() {
   ${p && p.sample ? `<div class="banner trial"><span>هذا نموذج على تقرير مدرسة حقيقية (مخفية البيانات). جاهز تسويها لمدرستك؟</span><a class="btn sm" href="#/report" onclick="S.data.report=null;S.draft=null">ارفع تقرير مدرستك</a></div>` : ''}
   ${p && full && !p.trial ? (() => { const g = progress(p.rows); return `<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><b>متابعة التنفيذ: ${g.d} من ${g.t} إجراء منجز</b><b style="color:var(--brand-text)">${g.pct}%</b></div><div class="bar" style="margin-top:8px"><i style="width:${g.pct}%"></i></div></div>`; })() : ''}
   ${full ? `<p class="muted" style="font-size:13px">المستخدم هذا العام: ${usage.plans} من ${usage.planLimit} عملية بناء.</p>` : ''}
+  ${p && full && !p.trial && !(S.data.members || []).length ? '<div class="banner trial"><span>وزّع الإجراءات على المعلمين: أضفهم في «الفريق»، وكل معلم يشوف مهامه في ملف إنجازه ويرفع الشاهد، ويطلع في تقرير المتابعة.</span><a class="btn sm" href="#/team">أضف الفريق</a></div>' : ''}
   <div id="rows">${p ? p.rows.map((r, i) => rowCard(r, i, full && !p.trial)).join('') : ''}</div>
   ${p && full && !p.trial ? `<div class="card"><h3 style="margin-top:0">التوصيات والمقترحات</h3><p class="muted" style="margin-top:0;font-size:13px">تظهر في القسم الثالث من الخطة وتقرير المتابعة. كل توصية في سطر، ولو تركتها فاضية نقترح لك توصيات من حالة التنفيذ.</p>
   <form id="recf"><textarea name="recommendations" style="min-height:90px">${esc(p.recommendations || '')}</textarea><button class="btn sm" style="margin-top:8px">حفظ التوصيات</button></form></div>` : ''}
@@ -281,6 +298,32 @@ window.editRow = (i) => {
   };
 };
 
+// ---------- فريق المدرسة ----------
+function team() {
+  const ms = S.data.members || [];
+  const p = S.data.plan;
+  const all = p ? p.rows.flatMap(procs) : [];
+  const stat = (em) => { const a = all.filter((x) => x.assignee === em); const d = a.filter((x) => x.done).length; return { t: a.length, d, ev: a.filter((x) => x.evidence).length }; };
+  const free = all.filter((x) => !x.assignee).length;
+  const invite = `السلام عليكم، أضفتك في فريق تنفيذ خطة تحسين ${S.data.school.name || 'المدرسة'}. سجّل في «معياري للمعلم» بنفس بريدك: ${location.origin}/app#/register ، وتلقى مهامك في الرئيسية، ووثّق كل إجراء تنفذه بشاهد.`;
+  view.innerHTML = `<div class="head"><div><h1 style="margin:0">فريق تنفيذ الخطة</h1><p class="muted" style="margin:0">أضف المعلمين بإيميلاتهم، ووزّع عليهم الإجراءات من صفحة الخطة. كل معلم يشوف مهامه في ملف إنجازه ويرفع الشاهد.</p></div></div>
+  <div class="card" style="margin-bottom:14px"><h3 style="margin-top:0">إضافة معلم</h3>
+  <form id="mf" class="grid g3"><div class="field"><label>الاسم</label><input name="name" required></div><div class="field"><label>البريد (نفس بريد حسابه في ملف الإنجاز)</label><input name="email" type="email" dir="ltr" required></div><div class="field"><label>الدور أو اللجنة</label><input name="role" placeholder="مثال: معلم رياضيات، لجنة التحصيل"></div><div><button class="btn">إضافة</button></div></form></div>
+  <div class="card" style="margin-bottom:14px">
+    ${ms.length ? `<table class="tbl"><thead><tr><th>المعلم</th><th>الدور</th><th>الحساب</th><th>الإجراءات</th><th>المنجز</th><th>بشاهد</th><th></th></tr></thead><tbody>${ms.map((m) => { const st = stat(m.email); return `<tr><td><b>${esc(m.name || '-')}</b><br><span class="muted" dir="ltr" style="font-size:12px">${esc(m.email)}</span></td><td>${esc(m.role || '-')}</td><td>${m.joined ? '<span class="pill">مسجّل</span>' : '<span class="muted">لم يسجّل بعد</span>'}</td><td>${st.t}</td><td>${st.d}</td><td>${st.ev}</td><td><button class="btn ghost sm" onclick="delMember(${m.id})">حذف</button></td></tr>`; }).join('')}</tbody></table>
+    <p class="muted" style="font-size:13px;margin-bottom:0">${p ? `${free} إجراء بدون معلم محدد. وزّعها من <a href="#/plan">صفحة الخطة</a>.` : 'ابنِ الخطة أولاً عشان توزع إجراءاتها.'}</p>` : '<p class="muted" style="margin:0">ما أضفت أحد للحين.</p>'}
+  </div>
+  <div class="card"><h3 style="margin-top:0">رسالة الدعوة</h3><p class="muted" style="margin-top:0;font-size:13px">انسخها وأرسلها للمعلمين في قروب المدرسة.</p><textarea id="inv" readonly style="min-height:80px">${esc(invite)}</textarea><button class="btn ghost sm" style="margin-top:8px" onclick="navigator.clipboard.writeText($('#inv').value).then(()=>toast('تم النسخ'))">نسخ الرسالة</button></div>`;
+  $('#mf').onsubmit = async (e) => {
+    e.preventDefault();
+    try { const r = await api('/api/school/members', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); S.data.members = r.members; toast('تمت الإضافة'); team(); } catch (err) { toast(err.message); }
+  };
+}
+window.delMember = async (id) => {
+  if (!confirm('نحذفه من الفريق؟ إجراءاته تبقى بدون معلم محدد.')) return;
+  try { const r = await api(`/api/school/members/${id}`, { method: 'DELETE' }); S.data.members = r.members; S.data.plan = r.plan; team(); } catch (err) { toast(err.message); }
+};
+
 // ---------- الباقة ----------
 function license() {
   const L = lic();
@@ -308,7 +351,7 @@ async function route() {
   if (!S.data) { try { await load(); } catch { return; } }
   topbar(p);
   window.scrollTo(0, 0);
-  ({ '': home, profile, report, plan, license }[p] || home)();
+  ({ '': home, profile, report, plan, team, license }[p] || home)();
 }
 window.addEventListener('hashchange', route);
 route();

@@ -158,7 +158,7 @@ app.post('/api/redeem', auth, (req, res) => {
   const code = clip(req.body.code, 40).trim().toUpperCase().replace(/\s/g, '');
   const row = db.prepare('SELECT * FROM codes WHERE code = ?').get(code);
   if (!row) return res.status(404).json({ error: 'الكود غير صحيح' });
-  if (row.product && row.product !== 'portfolio') return res.status(400).json({ error: 'هذا كود باقة مدرسة، فعّله من صفحة خطط معيار' });
+  if (row.product && row.product !== 'portfolio') return res.status(400).json({ error: 'هذا كود باقة مدرسة، فعّله من صفحة معياري للمدرسة' });
   if (row.redeemed_by) return res.status(409).json({ error: 'هذا الكود مستخدم مسبقاً' });
   const startFrom = Math.max(Date.now(), req.user.plan_ends);
   const ends = startFrom + row.days * DAY;
@@ -341,4 +341,4 @@ app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { maxAge
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'app.html')));
 app.use((req, res) => res.status(404).send(views.notFound()));
 
-app.listen(PORT, () => console.log(`ملف معيار يعمل على http://localhost:${PORT} (AI: ${aiEnabled() ? 'Claude' : 'قوالب'})`));
+app.listen(PORT, () => console.log(`معياري للمعلم يعمل على http://localhost:${PORT} (AI: ${aiEnabled() ? 'Claude' : 'قوالب'})`));

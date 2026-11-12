@@ -1,4 +1,4 @@
-// مسارات «خطط معيار»: ملف المدرسة، التقرير، خطة التحسين، الترخيص، التصدير.
+// مسارات «معياري للمدرسة»: ملف المدرسة، التقرير، خطة التحسين، الترخيص، التصدير.
 const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
@@ -8,6 +8,7 @@ const { catalog } = require('./indicators');
 const { readPdf, normalize, readerEnabled } = require('./report');
 const { buildPlan } = require('./plan');
 const { printHtml, planDocx, followupHtml, followupDocx } = require('./export');
+const { guessStandard } = require('../standards');
 
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
@@ -39,6 +40,22 @@ function bump(sid, kind) {
   db.prepare('INSERT INTO school_usage (school_id, year, kind, count) VALUES (?, ?, ?, 1) ON CONFLICT(school_id, year, kind) DO UPDATE SET count = count + 1').run(sid, yearKey(), kind);
 }
 const used = (sid, kind) => db.prepare('SELECT count FROM school_usage WHERE school_id = ? AND year = ? AND kind = ?').get(sid, yearKey(), kind)?.count || 0;
+const members = (sid) => db.prepare('SELECT id, email, name, role FROM school_members WHERE school_id = ? ORDER BY id').all(sid).map((m) => ({ ...m, joined: !!db.prepare('SELECT 1 FROM users WHERE lower(email) = ?').get(m.email) }));
+const savePlan = (p) => { const { id, report_id, updated_at, ...data } = p; db.prepare('UPDATE school_plans SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), Date.now(), id); };
+// نضيف اسم المنفذ ورمز التحقق من الشاهد وقت العرض (الشاهد ممكن ينحذف من ملف المعلم)
+function withPeople(plan, sid) {
+  if (!plan) return plan;
+  const names = new Map(members(sid).map((m) => [m.email, m.name || m.email]));
+  for (const r of plan.rows) for (const p of r.procedures || []) {
+    if (typeof p !== 'object') continue;
+    if (p.assignee) p.assignee_name = names.get(p.assignee) || p.assignee;
+    if (p.evidence_id) {
+      const e = db.prepare('SELECT id, title, verify_code FROM evidences WHERE id = ?').get(p.evidence_id);
+      p.evidence = e ? { title: e.title, code: e.verify_code } : null;
+    }
+  }
+  return plan;
+}
 const publicSchool = (s) => ({ ...s, license: license(s), logo_url: s.logo ? `/school-logo/${s.id}?v=${s.logo.slice(-6)}` : null });
 
 const logoUpload = multer({
@@ -54,7 +71,8 @@ function mountSchool(app, { auth, currentUser }) {
     res.json({
       school: publicSchool(s),
       report: latestReport(s.id),
-      plan: latestPlan(s.id),
+      plan: withPeople(latestPlan(s.id), s.id),
+      members: members(s.id),
       reader: readerEnabled(),
       packages: SCHOOL_PACKAGES,
       catalog: { basic: catalog('basic'), secondary: catalog('secondary') },
@@ -64,6 +82,7 @@ function mountSchool(app, { auth, currentUser }) {
   });
 
   const FIELDS = { name: 120, stage: 10, gender: 10, office: 120, principal: 80, year: 20, building: 10, period: 10 };
+  const FLAGS = ['ministry_logo'];
   app.put('/api/school', auth, (req, res) => {
     const s = schoolOf(req.user.id);
     const b = req.body || {};
@@ -78,6 +97,7 @@ function mountSchool(app, { auth, currentUser }) {
       if (other) return res.status(409).json({ error: 'هذا الرقم الوزاري مسجل بحساب آخر. تواصل معنا لنقله.' });
       set.ministry_number = mn || null;
     }
+    for (const k of FLAGS) if (b[k] !== undefined) set[k] = b[k] ? 1 : 0;
     const keys = Object.keys(set);
     if (keys.length) db.prepare(`UPDATE schools SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`).run(...keys.map((k) => set[k]), s.id);
     res.json({ school: publicSchool(db.prepare('SELECT * FROM schools WHERE id = ?').get(s.id)) });
@@ -155,7 +175,7 @@ function mountSchool(app, { auth, currentUser }) {
       plan.trial = true; plan.sample = true;
       const { usage, ...data } = plan;
       db.prepare('INSERT INTO school_plans (school_id, report_id, kind, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)').run(s.id, report.id, 'improvement', JSON.stringify(data), Date.now(), Date.now());
-      return res.json({ plan: latestPlan(s.id) });
+      return res.json({ plan: withPeople(latestPlan(s.id), s.id) });
     }
     const full = canPlan(s);
     if (full && used(s.id, 'plan') >= YEAR_PLAN_LIMIT) return res.status(429).json({ error: 'وصلت للحد السنوي لتوليد الخطط. عدّل على خطتك الحالية أو تواصل معنا.' });
@@ -165,7 +185,7 @@ function mountSchool(app, { auth, currentUser }) {
     bump(s.id, full ? 'plan' : 'trial');
     const { usage, ...data } = plan;
     db.prepare('INSERT INTO school_plans (school_id, report_id, kind, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)').run(s.id, report.id, 'improvement', JSON.stringify(data), Date.now(), Date.now());
-    res.json({ plan: latestPlan(s.id) });
+    res.json({ plan: withPeople(latestPlan(s.id), s.id) });
   });
 
   // تعديل صف من الخطة
@@ -192,7 +212,7 @@ function mountSchool(app, { auth, currentUser }) {
     for (const [k, n] of [['methods', 300], ['committee', 200], ['supervisor', 300], ['note', 400]]) if (b[k] !== undefined) row[k] = clip(b[k], n).trim();
     const { id, report_id, updated_at, ...data } = p;
     db.prepare('UPDATE school_plans SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), Date.now(), id);
-    res.json({ plan: latestPlan(s.id) });
+    res.json({ plan: withPeople(latestPlan(s.id), s.id) });
   });
 
   // التوصيات والمقترحات (قسم ثالث في استمارتي البناء والتنفيذ)
@@ -204,7 +224,7 @@ function mountSchool(app, { auth, currentUser }) {
     p.recommendations = clip((req.body || {}).recommendations, 3000).trim();
     const { id, report_id, updated_at, ...data } = p;
     db.prepare('UPDATE school_plans SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), Date.now(), id);
-    res.json({ plan: latestPlan(s.id) });
+    res.json({ plan: withPeople(latestPlan(s.id), s.id) });
   });
 
   // متابعة التنفيذ: تأشير إنجاز إجراء
@@ -215,11 +235,82 @@ function mountSchool(app, { auth, currentUser }) {
     const row = p && p.rows[Number(req.params.i)];
     const pr = row && row.procedures[Number(req.params.j)];
     if (!pr || typeof pr !== 'object') return res.status(404).json({ error: 'الإجراء غير موجود' });
-    pr.done = !!req.body.done;
-    pr.done_at = pr.done ? Date.now() : null;
+    const b = req.body || {};
+    if (b.assignee !== undefined) {
+      const em = clip(b.assignee, 120).trim().toLowerCase();
+      if (em && !members(s.id).some((m) => m.email === em)) return res.status(400).json({ error: 'أضف المعلم لفريق المدرسة أولاً' });
+      pr.assignee = em || null;
+    }
+    if (b.done !== undefined) {
+      pr.done = !!b.done;
+      pr.done_at = pr.done ? Date.now() : null;
+      if (pr.done) pr.done_by = 'principal';
+    }
     const { id, report_id, updated_at, ...data } = p;
     db.prepare('UPDATE school_plans SET data = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(data), Date.now(), id);
-    res.json({ plan: latestPlan(s.id) });
+    res.json({ plan: withPeople(latestPlan(s.id), s.id) });
+  });
+
+  // فريق المدرسة
+  const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  app.get('/api/school/members', auth, (req, res) => res.json({ members: members(schoolOf(req.user.id).id) }));
+  app.post('/api/school/members', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    const b = req.body || {};
+    const email = clip(b.email, 120).trim().toLowerCase();
+    if (!EMAIL.test(email)) return res.status(400).json({ error: 'اكتب بريد المعلم صحيح' });
+    if (members(s.id).length >= 150) return res.status(400).json({ error: 'وصلت للحد الأعلى لأعضاء الفريق' });
+    db.prepare('INSERT INTO school_members (school_id, email, name, role, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(school_id, email) DO UPDATE SET name = excluded.name, role = excluded.role')
+      .run(s.id, email, clip(b.name, 80).trim(), clip(b.role, 80).trim(), Date.now());
+    res.json({ members: members(s.id) });
+  });
+  app.delete('/api/school/members/:id', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    const m = db.prepare('SELECT * FROM school_members WHERE id = ? AND school_id = ?').get(Number(req.params.id), s.id);
+    if (!m) return res.status(404).json({ error: 'العضو غير موجود' });
+    db.prepare('DELETE FROM school_members WHERE id = ?').run(m.id);
+    // نفك إسناد إجراءاته (حالة الإنجاز والشاهد تبقى)
+    const p = latestPlan(s.id);
+    if (p) { for (const r of p.rows) for (const x of r.procedures || []) if (x && x.assignee === m.email) x.assignee = null; savePlan(p); }
+    res.json({ members: members(s.id), plan: withPeople(latestPlan(s.id), s.id) });
+  });
+
+  // «مهامي» عند المعلم: الإجراءات المسندة له في خطط المدارس اللي هو عضو فيها
+  function myTasks(user) {
+    const email = String(user.email).toLowerCase();
+    const out = [];
+    for (const m of db.prepare('SELECT * FROM school_members WHERE email = ?').all(email)) {
+      const s = db.prepare('SELECT * FROM schools WHERE id = ?').get(m.school_id);
+      const p = s && latestPlan(s.id);
+      if (!p || p.trial) continue;
+      p.rows.forEach((r, i) => (r.procedures || []).forEach((x, j) => {
+        if (!x || typeof x !== 'object' || x.assignee !== email) return;
+        const ev = x.evidence_id && db.prepare('SELECT id, title, verify_code FROM evidences WHERE id = ? AND user_id = ?').get(x.evidence_id, user.id);
+        out.push({ school_id: s.id, school: s.name || 'المدرسة', i, j, text: x.text, when: x.when, done: !!x.done, indicator: r.code, indicator_text: r.indicator, evidence: ev ? { id: ev.id, title: ev.title, code: ev.verify_code } : null, suggest: guessStandard(`${x.text} ${r.indicator || ''}`) || null });
+      }));
+    }
+    return out;
+  }
+  app.get('/api/my-tasks', auth, (req, res) => res.json({ tasks: myTasks(req.user) }));
+  app.put('/api/my-tasks/:sid/:i/:j', auth, (req, res) => {
+    const email = String(req.user.email).toLowerCase();
+    const sid = Number(req.params.sid);
+    if (!db.prepare('SELECT 1 FROM school_members WHERE school_id = ? AND email = ?').get(sid, email)) return res.status(403).json({ error: 'ما أنت ضمن فريق هذه المدرسة' });
+    const p = latestPlan(sid);
+    const x = p && p.rows[Number(req.params.i)] && p.rows[Number(req.params.i)].procedures[Number(req.params.j)];
+    if (!x || typeof x !== 'object' || x.assignee !== email) return res.status(404).json({ error: 'الإجراء غير مسند لك' });
+    const b = req.body || {};
+    if (b.evidence_id !== undefined) {
+      if (b.evidence_id === null) x.evidence_id = null;
+      else {
+        const ev = db.prepare('SELECT id FROM evidences WHERE id = ? AND user_id = ?').get(Number(b.evidence_id), req.user.id);
+        if (!ev) return res.status(400).json({ error: 'الشاهد غير موجود في ملفك' });
+        x.evidence_id = ev.id;
+      }
+    }
+    if (b.done !== undefined) { x.done = !!b.done; x.done_at = x.done ? Date.now() : null; if (x.done) x.done_by = 'teacher'; }
+    savePlan(p);
+    res.json({ tasks: myTasks(req.user) });
   });
 
   // تفعيل باقة بكود من المتجر
@@ -245,7 +336,7 @@ function mountSchool(app, { auth, currentUser }) {
     if (!u) { res.redirect('/school'); return null; }
     const s = schoolOf(u.id);
     const report = latestReport(s.id);
-    const plan = latestPlan(s.id);
+    const plan = withPeople(latestPlan(s.id), s.id);
     if (!report || !plan) { res.redirect('/school#/plan'); return null; }
     return { s, report, plan };
   }
@@ -256,7 +347,7 @@ function mountSchool(app, { auth, currentUser }) {
   app.get('/school/print/followup', (req, res) => {
     const g = exportGuard(req, res); if (!g) return;
     if (!canPlan(g.s) || g.plan.trial) return res.redirect('/school#/license');
-    res.send(followupHtml({ school: g.s, report: g.report, plan: g.plan, uploadsDir: UPLOADS }));
+    res.send(followupHtml({ school: g.s, report: g.report, plan: g.plan, uploadsDir: UPLOADS, base: `${req.protocol}://${req.get('host')}` }));
   });
   app.get('/school/export/plan.docx', async (req, res) => {
     const g = exportGuard(req, res); if (!g) return;

@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS ai_usage (
   PRIMARY KEY (user_id, day)
 );
 CREATE INDEX IF NOT EXISTS idx_ev_user ON evidences(user_id, standard_id);
--- «خطط معيار»: ملف المدرسة وتقاريرها وخططها
+-- «معياري للمدرسة»: ملف المدرسة وتقاريرها وخططها
 CREATE TABLE IF NOT EXISTS schools (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   owner_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
@@ -122,6 +122,17 @@ CREATE TABLE IF NOT EXISTS school_usage (
 // ترقية: نوع المنتج لكل كود (ملف المعلم أو باقات المدرسة)
 try { db.exec("ALTER TABLE codes ADD COLUMN product TEXT NOT NULL DEFAULT 'portfolio'"); } catch {}
 // ترقية: حقول البيانات الأساسية في استمارات الوزارة (نوع المبنى والفترة)
+// فريق المدرسة: المعلمون اللي تتوزع عليهم إجراءات الخطة (يرتبطون بحساباتهم في معياري للمعلم بالبريد)
+db.exec(`CREATE TABLE IF NOT EXISTS school_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  role TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  UNIQUE (school_id, email)
+)`);
+try { db.exec('ALTER TABLE schools ADD COLUMN ministry_logo INTEGER NOT NULL DEFAULT 1'); } catch {}
 for (const col of ['building', 'period']) { try { db.exec(`ALTER TABLE schools ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`); } catch {} }
 
 module.exports = { db, DATA_DIR };

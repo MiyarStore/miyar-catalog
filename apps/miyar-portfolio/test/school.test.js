@@ -1,4 +1,4 @@
-// اختبارات «خطط معيار» على بيانات التقريرين الحقيقيين (بعد إخفاء الاسم والرقم الوزاري)
+// اختبارات «معياري للمدرسة» على بيانات التقريرين الحقيقيين (بعد إخفاء الاسم والرقم الوزاري)
 const test = require('node:test');
 const assert = require('node:assert');
 const { normalize } = require('../src/school/report');
@@ -78,4 +78,24 @@ test('تقرير المتابعة يتبع حقول استمارة تنفيذ خ
   for (const t of ['وصف الاحتياج', 'إجراءات التحسين', 'أساليب وطرق التحسين', 'مدة الإنجاز', 'التنفيذ والمسؤولية', 'خطة تحسين من المدرسة']) assert.ok(plan.includes(t), t);
   const buf = await followupDocx({ school, report: r, plan: p, uploadsDir: '/tmp' });
   assert.ok(buf.length > 5000);
+});
+
+test('ترويسة الوزارة والمنفذ والشاهد في تقرير المتابعة', async () => {
+  const { followupHtml, printHtml, followupDocx } = require('../src/school/export');
+  const report = normalize(require('../src/school/samples/report-intermediate.json'));
+  const plan = await buildPlan(report, { ai: false });
+  Object.assign(plan.rows[0].procedures[0], { done: true, done_at: Date.now(), assignee: 't@x.sa', assignee_name: 'أ. سارة', evidence: { title: 'ورشة القراءة', code: 'ABC123' } });
+  Object.assign(plan.rows[0].procedures[1], { assignee: 't@x.sa', assignee_name: 'أ. سارة' });
+  const school = { name: 'مدرسة تجريبية', ministry_number: 'S-12345', year: '1448 هـ', office: 'إدارة تعليم تجريبية', principal: 'القائد', ministry_logo: 1 };
+  const html = followupHtml({ school, report, plan, uploadsDir: '/nonexistent', base: 'https://x.test' });
+  assert.match(html, /وزارة التعليم/);
+  assert.match(html, /class="lh"/);
+  assert.match(html, /المنفذ: أ\. سارة/);
+  assert.match(html, /المسند إلى: أ\. سارة/);
+  assert.match(html, /https:\/\/x\.test\/v\/ABC123/);
+  assert.match(printHtml({ school, report, plan, uploadsDir: '/nonexistent' }), /المنفذون: أ\. سارة/);
+  const off = followupHtml({ school: { ...school, ministry_logo: 0 }, report, plan, uploadsDir: '/nonexistent' });
+  assert.doesNotMatch(off, /class="lh"/);
+  const buf = await followupDocx({ school, report, plan, uploadsDir: '/nonexistent' });
+  assert.ok(buf.length > 20000);
 });

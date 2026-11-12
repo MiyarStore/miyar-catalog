@@ -1,7 +1,7 @@
 {
   "name": "miyar-portfolio",
   "version": "1.0.0",
-  "description": "ملف معيار: ملف الإنجاز والشواهد الإلكتروني للمعلمين",
+  "description": "معياري للمعلم: ملف الإنجاز والشواهد الإلكتروني للمعلمين",
   "main": "src/server.js",
   "scripts": {
     "start": "node --no-warnings src/server.js",

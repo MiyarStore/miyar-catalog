@@ -29,14 +29,14 @@ function landing(storeUrl, trialDays, plans = []) {
     ['🗂️', 'مرتّب على العناصر الـ11', 'كل شاهد في مكانه الصحيح حسب عناصر تقييم الأداء الوظيفي، مع نسبة إنجاز لكل عنصر.'],
     ['🔗', 'صفحة باسمك ورابط مشاركة', 'صفحة أنيقة فيها كل شواهدك، ترسل رابطها للمدير أو المشرف أو تحطها QR على باب الفصل.'],
     ['🖨️', 'تقرير PDF بقالبين', 'ملف إنجاز كامل بغلاف وفهرس، أو تقرير لعنصر واحد، أو لشاهد واحد، جاهز للطباعة.'],
-    ['✅', 'رمز تحقق على كل تقرير', 'كل تقرير وكل عنصر وكل شاهد عليه رمز QR يثبت أنه موثّق في ملف معيار.'],
+    ['✅', 'رمز تحقق على كل تقرير', 'كل تقرير وكل عنصر وكل شاهد عليه رمز QR يثبت أنه موثّق في معياري.'],
     ['🌙', 'ثيمات ووضع ليلي', 'ست ألوان تختار منها، ووضع ليلي مريح، ويشتغل من الجوال بدون تحميل.'],
   ];
   return shell({
-    title: 'ملف معيار | ملف الإنجاز والشواهد الإلكتروني',
+    title: 'معياري للمعلم | ملف الإنجاز والشواهد الإلكتروني',
     body: `
 <header class="wrap" style="display:flex;justify-content:space-between;align-items:center;padding-top:18px;padding-bottom:18px">
-  <a class="logo" href="/"><b>م</b>ملف معيار</a>
+  <a class="logo" href="/"><b>م</b>معياري</a>
   <a class="btn ghost" href="/app">تسجيل الدخول</a>
 </header>
 <section class="wrap" style="padding:40px 16px 30px;text-align:center">
@@ -59,7 +59,7 @@ function landing(storeUrl, trialDays, plans = []) {
 </section>
 <section class="wrap" style="padding-bottom:40px">
   <div class="card" style="display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-color:var(--brand-2)">
-    <div><span class="pill">جديد للمدارس</span><h2 style="margin:8px 0 4px">خطط معيار: خطة التحسين من تقرير التقويم المدرسي</h2><p class="muted" style="margin:0">ارفع تقرير التقويم الذاتي من منصة تميز، وتطلع لك خطة التحسين مرتبة من المؤشر الأضعف، جاهزة بصيغة Word وPDF.</p></div>
+    <div><span class="pill">جديد للمدارس</span><h2 style="margin:8px 0 4px">معياري للمدرسة: خطة التحسين من تقرير التقويم المدرسي</h2><p class="muted" style="margin:0">ارفع تقرير التقويم الذاتي من منصة تميز، وتطلع لك خطة التحسين مرتبة من المؤشر الأضعف، جاهزة بصيغة Word وPDF.</p></div>
     <a class="btn" href="/school">جرّبها لمدرستك</a>
   </div>
 </section>
@@ -74,7 +74,7 @@ function landing(storeUrl, trialDays, plans = []) {
     <a class="btn ${p.best ? '' : 'ghost'}" href="${esc(storeUrl)}">اشترِ الكود</a></div>`).join('')}</div>
   <p class="muted" style="text-align:center;font-size:13px;margin-top:12px">إذا انتهى اشتراكك، تبقى شواهدك محفوظة وصفحتك ظاهرة، وتتوقف الإضافة والطباعة فقط إلى أن تجدد.</p>
 </section>
-<footer class="wrap muted" style="padding:20px 16px 40px;text-align:center;font-size:13px">ملف معيار من متجر معيار للمنتجات التعليمية الرقمية</footer>`,
+<footer class="wrap muted" style="padding:20px 16px 40px;text-align:center;font-size:13px">معياري من متجر معيار للمنتجات التعليمية الرقمية</footer>`,
   });
 }
 
@@ -136,7 +136,7 @@ async function publicPage(u, evs, base, isOwner) {
   ${byStd.filter((x) => x.items.length).map(({ s, items }) => `
     <div class="std"><span style="font-size:24px">${s.icon}</span><h2>${s.id}. ${s.name}</h2><span class="pill">${items.length} شاهد</span></div>
     <div class="evs">${items.map(card).join('')}</div>`).join('') || '<div class="card" style="margin-top:20px;text-align:center" class="muted">لا توجد شواهد منشورة بعد.</div>'}
-  <p class="muted" style="text-align:center;margin-top:40px;font-size:13px">موثّق عبر <a href="/">ملف معيار</a></p>
+  <p class="muted" style="text-align:center;margin-top:40px;font-size:13px">موثّق عبر <a href="/">معياري</a></p>
 </main>`,
   });
 }
@@ -144,7 +144,7 @@ async function publicPage(u, evs, base, isOwner) {
 // ---------- صفحة التحقق ----------
 function verifyPage({ kind, ev, std, u, count, stdCount, base }) {
   if (kind === 'invalid') {
-    return shell({ title: 'رمز غير صحيح', body: `<div class="wrap" style="padding:70px 16px;max-width:520px"><div class="card" style="text-align:center"><div style="font-size:50px">⚠️</div><h1>رمز التحقق غير صحيح</h1><p class="muted">هذا الرمز غير مسجّل في ملف معيار.</p></div></div>` });
+    return shell({ title: 'رمز غير صحيح', body: `<div class="wrap" style="padding:70px 16px;max-width:520px"><div class="card" style="text-align:center"><div style="font-size:50px">⚠️</div><h1>رمز التحقق غير صحيح</h1><p class="muted">هذا الرمز غير مسجّل في معياري.</p></div></div>` });
   }
   const owner = kind === 'evidence' ? ev : u;
   const rows = kind === 'evidence'
@@ -156,7 +156,7 @@ function verifyPage({ kind, ev, std, u, count, stdCount, base }) {
     body: `<div class="wrap" style="padding:50px 16px;max-width:560px"><div class="card">
       <div style="text-align:center"><div style="width:64px;height:64px;margin:0 auto 8px;border-radius:50%;background:#e7f6ee;color:var(--ok);display:grid;place-items:center;font-size:32px">✓</div>
       <h1 style="font-size:22px">${kind === 'evidence' ? 'شاهد موثّق' : kind === 'standard' ? 'تقرير عنصر موثّق' : 'ملف إنجاز موثّق'}</h1>
-      <p class="muted" style="margin-top:0">هذا التقرير صادر من منصة ملف معيار وبياناته مطابقة لما هو مسجّل.</p></div>
+      <p class="muted" style="margin-top:0">هذا التقرير صادر من منصة معياري وبياناته مطابقة لما هو مسجّل.</p></div>
       <table style="width:100%;border-collapse:collapse;margin:10px 0 16px">${rows.map(([k, v]) => `<tr><td class="muted" style="padding:8px 0;border-bottom:1px solid var(--line);width:120px">${k}</td><td style="padding:8px 0;border-bottom:1px solid var(--line);font-weight:600">${esc(v)}</td></tr>`).join('')}</table>
       <div style="text-align:center">${link}</div>
     </div></div>`,

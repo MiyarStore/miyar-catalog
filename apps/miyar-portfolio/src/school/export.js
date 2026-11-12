@@ -22,6 +22,24 @@ function domainSummary(plan) {
 const SUB = 'مبنية على نتائج تقرير التقويم المدرسي الذاتي';
 const STAGE = { basic: 'متوسطة / ابتدائية', secondary: 'الثانوية' };
 // الخطط القديمة ما فيها الحقول الجديدة، نكملها وقت التصدير
+// أسماء المعلمين المسند لهم إجراءات المؤشر (تنضاف للتنفيذ والمسؤولية)
+const people = (r) => [...new Set(procs(r).map((p) => p.assignee_name).filter(Boolean))];
+const respOf = (r) => { const n = people(r); return n.length ? `${r.responsible}\nالمنفذون: ${n.join('، ')}` : r.responsible; };
+const evText = (p) => (p.evidence ? `شاهد: ${p.evidence.title} (رمز التحقق ${p.evidence.code})` : '');
+
+// ترويسة وزارة التعليم (خيار في بيانات المدرسة، مفعّل افتراضياً)
+const MOE = (() => { try { return fs.readFileSync(path.join(__dirname, 'assets', 'moe-logo.png')); } catch { return null; } })();
+const useMoe = (school) => !!MOE && school.ministry_logo !== 0;
+const LH_CSS = `.lh { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; font-size: 11.5px; line-height: 1.8; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1.5px solid #4a8c86; }
+.lh-c img { height: 74px; display: block; } .lh-l { display: flex; gap: 10px; align-items: center; justify-content: flex-end; text-align: left; } .lh-l img { width: 60px; height: 60px; object-fit: contain; }
+.head.t { justify-content: center; text-align: center; border-bottom: 0; margin-bottom: 4px; }`;
+function letterheadHtml(school, logo) {
+  if (!useMoe(school)) return '';
+  return `<div class="lh"><div class="lh-r"><b>المملكة العربية السعودية</b><br><b>وزارة التعليم</b>${school.office ? `<br>${esc(school.office)}` : ''}${school.name ? `<br>${esc(school.name)}` : ''}</div>
+  <div class="lh-c"><img src="data:image/png;base64,${MOE.toString('base64')}" alt="وزارة التعليم"></div>
+  <div class="lh-l"><div>${school.ministry_number ? `الرقم الوزاري: <bdi dir="ltr">${esc(school.ministry_number)}</bdi><br>` : ''}العام الدراسي: ${esc(school.year)}</div>${logo ? `<img src="data:image/${logo.type};base64,${logo.buf.toString('base64')}" alt="">` : ''}</div></div>`;
+}
+
 const full = (r) => ({ ...r, supervisory: r.supervisory ?? supervisoryOf(r.code), methods: r.methods ?? methodsFor(r.code.split('-').slice(0, 2).join('-')), committee: r.committee ?? r.responsible, supervisor: r.supervisor || '', note: r.note || '' });
 const dateAr = (t) => new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' }).format(t ? new Date(t) : new Date());
 // البيانات الأساسية بنفس ترتيب استمارات الوزارة
@@ -70,7 +88,7 @@ function printHtml({ school, report, plan, trial, uploadsDir }) {
   <td><ol>${procs(r).map((p) => `<li>${esc(p.text)}${p.when ? ` <span class="when">(${esc(p.when)})</span>` : ''}</li>`).join('')}</ol></td>
   <td>${esc(r.methods)}</td>
   <td class="c">${esc(r.from)}<br>إلى<br>${esc(r.to)}</td>
-  <td>${esc(r.responsible)}</td>
+  <td>${esc(respOf(r)).replace(/\n/g, '<br>')}</td>
   <td>${esc(r.measure)}<ul class="std">${r.evidence.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></td>
 </tr>`).join('');
   const ptype = planTypeOf(report.overall);
@@ -84,6 +102,7 @@ body { font-family: 'IBM Plex Sans Arabic', Tahoma, sans-serif; color: #10201e; 
 .page { background: #fff; max-width: 297mm; margin: 12px auto; padding: 12mm; position: relative; }
 .head { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #0f766e; padding-bottom: 10px; margin-bottom: 12px; }
 .head .logo { width: 70px; height: 70px; object-fit: contain; }
+${LH_CSS}
 .head h1 { margin: 0; font-size: 22px; color: #0f766e; }
 .head .meta { margin-inline-start: auto; text-align: left; font-size: 12px; color: #444; }
 .sum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
@@ -119,8 +138,8 @@ thead { display: table-header-group; } tr { page-break-inside: avoid; }
 <div class="tools"><button onclick="print()">طباعة / حفظ PDF</button></div>
 ${trial ? `<div class="wm">${plan.sample ? 'نموذج للعرض' : 'نسخة تجريبية'}</div>` : ''}
 <div class="page">
-  <div class="head">${logoTag}<div><h1>${TITLE}</h1><div>${SUB}${report.cycle ? ` (${esc(report.cycle)})` : ''}</div></div>
-    <div class="meta"><b>${esc(school.name)}</b><br>${school.ministry_number ? `الرقم الوزاري: ${esc(school.ministry_number)}<br>` : ''}${esc(school.office)}<br>العام الدراسي ${esc(school.year)}</div></div>
+  ${letterheadHtml(school, logo)}<div class="head${useMoe(school) ? ' t' : ''}">${useMoe(school) ? '' : logoTag}<div><h1>${TITLE}</h1><div>${SUB}${report.cycle ? ` (${esc(report.cycle)})` : ''}</div></div>
+    ${useMoe(school) ? '' : `<div class="meta"><b>${esc(school.name)}</b><br>${school.ministry_number ? `الرقم الوزاري: ${esc(school.ministry_number)}<br>` : ''}${esc(school.office)}<br>العام الدراسي ${esc(school.year)}</div>`}</div>
   ${plan.sample ? `<div class="trial">هذا نموذج مبني على تقرير مدرسة حقيقية بعد إخفاء بياناتها، للعرض فقط. ارفع تقرير مدرستك لتحصل على خطتها.</div>` : trial ? `<div class="trial">هذه نسخة تجريبية تعرض أول ${plan.rows.length} مؤشرات من أصل ${plan.total}. فعّل باقة المدرسة لتحصل على الخطة كاملة بدون علامة مائية وبصيغة Word.</div>` : ''}
   <h2 class="sec">أولاً: البيانات الأساسية</h2>
   ${basicsHtml(school, report)}
@@ -169,6 +188,22 @@ const logoKids = (school, uploadsDir) => {
   const logo = logoData(school, uploadsDir);
   return logo && ['png', 'jpeg', 'gif'].includes(logo.type) ? [new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.ImageRun({ type: logo.type === 'jpeg' ? 'jpg' : logo.type, data: logo.buf, transformation: { width: 80, height: 80 } })] })] : [];
 };
+function letterheadDocx(school, uploadsDir) {
+  if (!useMoe(school)) return logoKids(school, uploadsDir);
+  const logo = logoData(school, uploadsDir);
+  const none = { top: { style: docx.BorderStyle.NONE, size: 0, color: 'FFFFFF' }, bottom: { style: docx.BorderStyle.NONE, size: 0, color: 'FFFFFF' }, left: { style: docx.BorderStyle.NONE, size: 0, color: 'FFFFFF' }, right: { style: docx.BorderStyle.NONE, size: 0, color: 'FFFFFF' } };
+  const c = (children, w) => new docx.TableCell({ borders: none, width: { size: w, type: docx.WidthType.PERCENTAGE }, verticalAlign: docx.VerticalAlign.CENTER, children });
+  const R = [run('المملكة العربية السعودية', { bold: true, size: 22 }), run('وزارة التعليم', { bold: true, size: 22 }), ...(school.office ? [run(school.office, { size: 20 })] : []), ...(school.name ? [run(school.name, { size: 20 })] : [])].map((r) => para(r, { after: 0 }));
+  const L = [];
+  if (logo && ['png', 'jpeg', 'gif'].includes(logo.type)) L.push(new docx.Paragraph({ alignment: docx.AlignmentType.LEFT, children: [new docx.ImageRun({ type: logo.type === 'jpeg' ? 'jpg' : logo.type, data: logo.buf, transformation: { width: 62, height: 62 } })] }));
+  if (school.ministry_number) L.push(para(run(`الرقم الوزاري: ⁦${school.ministry_number}⁩`, { size: 20 }), { align: docx.AlignmentType.LEFT, after: 0 }));
+  L.push(para(run(`العام الدراسي: ${school.year || ''}`, { size: 20 }), { align: docx.AlignmentType.LEFT, after: 0 }));
+  const M = [new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.ImageRun({ type: 'png', data: MOE, transformation: { width: 104, height: 80 } })] })];
+  return [
+    new docx.Table({ visuallyRightToLeft: true, width: { size: 100, type: docx.WidthType.PERCENTAGE }, borders: docx.TableBorders.NONE, rows: [new docx.TableRow({ children: [c(R, 38), c(M, 24), c(L, 38)] })] }),
+    new docx.Paragraph({ border: { bottom: { style: docx.BorderStyle.SINGLE, size: 8, color: '4A8C86', space: 1 } }, spacing: { after: 120 }, children: [] }),
+  ];
+}
 const landscape = { page: { size: { orientation: docx.PageOrientation.LANDSCAPE }, margin: { top: 600, bottom: 600, left: 600, right: 600 } } };
 
 async function planDocx({ school, report, plan, uploadsDir }) {
@@ -183,23 +218,23 @@ async function planDocx({ school, report, plan, uploadsDir }) {
     cell(lines(procs(r).map((p) => (p.when ? `${p.text} (${p.when})` : p.text)), true), { w: W[4] }),
     cell(r.methods, { w: W[5], size: 18 }),
     cell(`${r.from} - ${r.to}`, { w: W[6], align: docx.AlignmentType.CENTER, size: 18 }),
-    cell(r.responsible, { w: W[7], size: 18 }),
+    cell(respOf(r).split('\n').map((l) => para(run(l, { size: 18 }))), { w: W[7] }),
     cell([para(run(r.measure, { size: 18 })), ...lines(r.evidence, false)], { w: W[8] }),
   ] }));
   const logo = logoData(school, uploadsDir);
   const headKids = [];
   if (logo && ['png', 'jpeg', 'gif'].includes(logo.type)) headKids.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.ImageRun({ type: logo.type === 'jpeg' ? 'jpg' : logo.type, data: logo.buf, transformation: { width: 80, height: 80 } })] }));
   const doc = new docx.Document({
-    creator: 'خطط معيار',
+    creator: 'معياري للمدرسة',
     title: `${TITLE} - ${school.name}`,
     styles: { default: { document: { run: { font: FONT, rightToLeft: true } } } },
     sections: [{
       properties: { page: { size: { orientation: docx.PageOrientation.LANDSCAPE }, margin: { top: 600, bottom: 600, left: 600, right: 600 } } },
       children: [
-        ...headKids,
+        ...letterheadDocx(school, uploadsDir),
         para(run(TITLE, { size: 36, bold: true, color: '0F766E' }), { align: docx.AlignmentType.CENTER }),
         para(run(`${SUB}${report.cycle ? ` (${report.cycle})` : ''}`, { size: 24 }), { align: docx.AlignmentType.CENTER }),
-        para([run(`${school.name}`, { bold: true, size: 24 }), run(`${school.ministry_number ? `  |  الرقم الوزاري: ${school.ministry_number}` : ''}  |  العام الدراسي ${school.year}`, { size: 22 })], { align: docx.AlignmentType.CENTER, after: 120 }),
+        ...(useMoe(school) ? [] : [para([run(`${school.name}`, { bold: true, size: 24 }), run(`${school.ministry_number ? `  |  الرقم الوزاري: ${school.ministry_number}` : ''}  |  العام الدراسي ${school.year}`, { size: 22 })], { align: docx.AlignmentType.CENTER, after: 120 })]),
         heading('أولاً: البيانات الأساسية'),
         basicsDocx(school, report),
         ...(planTypeOf(report.overall) ? [para(run(`مستوى المدرسة العام: ${levelOf(report.overall).name}، والمطلوب حسب النموذج الإشرافي: ${planTypeOf(report.overall)}.`, { size: 22 }), { after: 80 })] : []),
@@ -227,7 +262,7 @@ function followRows(plan) {
   const order = [...new Set(rows.map((r) => r.supervisory || r.domain))];
   return order.flatMap((d) => rows.filter((r) => (r.supervisory || r.domain) === d));
 }
-function followupHtml({ school, report, plan, uploadsDir }) {
+function followupHtml({ school, report, plan, uploadsDir, base = '' }) {
   const logo = logoData(school, uploadsDir);
   const all = progress(plan.rows);
   const rows = followRows(plan);
@@ -240,8 +275,8 @@ function followupHtml({ school, report, plan, uploadsDir }) {
     const done = ps.filter((p) => p.done); const left = ps.filter((p) => !p.done);
     return `<tr><td class="dom${first ? '' : ' rep'}">${esc(d)}</td>
     <td><b><bdi dir="ltr">${esc(r.code)}</bdi></b> ${esc(r.indicator)}<div class="std">${fmt(r.pct)} ← المستهدف ${r.target}%</div></td>
-    <td>${done.length ? `<ul class="chk">${done.map((p) => `<li class="ok">✔ ${esc(p.text)}${p.done_at ? ` <span class="when">(${esc(dateAr(p.done_at))})</span>` : ''}</li>`).join('')}</ul>` : '<span class="std">لم يُنفذ شيء بعد</span>'}</td>
-    <td>${left.length ? `<ul class="chk">${left.map((p) => `<li>○ ${esc(p.text)}${p.when ? ` <span class="when">(${esc(p.when)})</span>` : ''}</li>`).join('')}</ul>` : '<span class="ok">اكتملت الإجراءات</span>'}${r.note ? `<div class="std"><b>ملاحظة:</b> ${esc(r.note)}</div>` : ''}</td>
+    <td>${done.length ? `<ul class="chk">${done.map((p) => `<li class="ok">✔ ${esc(p.text)}${p.done_at ? ` <span class="when">(${esc(dateAr(p.done_at))})</span>` : ''}${p.assignee_name ? `<div class="std">المنفذ: ${esc(p.assignee_name)}</div>` : ''}${p.evidence ? `<div class="std">📎 ${base ? `<a href="${esc(base)}/v/${esc(p.evidence.code)}">${esc(evText(p))}</a>` : esc(evText(p))}</div>` : ''}</li>`).join('')}</ul>` : '<span class="std">لم يُنفذ شيء بعد</span>'}</td>
+    <td>${left.length ? `<ul class="chk">${left.map((p) => `<li>○ ${esc(p.text)}${p.when ? ` <span class="when">(${esc(p.when)})</span>` : ''}${p.assignee_name ? `<div class="std">المسند إلى: ${esc(p.assignee_name)}</div>` : ''}</li>`).join('')}</ul>` : '<span class="ok">اكتملت الإجراءات</span>'}${r.note ? `<div class="std"><b>ملاحظة:</b> ${esc(r.note)}</div>` : ''}</td>
     <td class="c"><b>${pctOf(pr)}%</b><div class="bar"><i style="width:${pctOf(pr)}%"></i></div></td>
     <td>${esc(r.committee)}</td><td>${esc(r.supervisor) || '&nbsp;'}</td></tr>`;
   }).join('');
@@ -252,7 +287,8 @@ function followupHtml({ school, report, plan, uploadsDir }) {
 body { font-family: 'IBM Plex Sans Arabic', Tahoma, sans-serif; color: #10201e; margin: 0; background: #eef2f1; font-size: 11px; line-height: 1.55; }
 .page { background: #fff; max-width: 297mm; margin: 12px auto; padding: 12mm; }
 .head { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #0f766e; padding-bottom: 10px; margin-bottom: 10px; }
-.head img { width: 64px; height: 64px; object-fit: contain; } .head h1 { margin: 0; font-size: 20px; color: #0f766e; } .head .meta { margin-inline-start: auto; text-align: left; font-size: 12px; }
+.head img { width: 64px; height: 64px; object-fit: contain; }
+${LH_CSS} .head h1 { margin: 0; font-size: 20px; color: #0f766e; } .head .meta { margin-inline-start: auto; text-align: left; font-size: 12px; }
 .sec { font-size: 14px; color: #0f766e; margin: 12px 0 6px; }
 .big { display: flex; gap: 16px; align-items: center; border: 1px solid #dde5e4; border-radius: 8px; padding: 8px 14px; margin: 10px 0; }
 .big b { font-size: 22px; color: #0f766e; } .big .bar { flex: 1; height: 12px; }
@@ -260,7 +296,7 @@ table { width: 100%; border-collapse: collapse; } th { background: #0f766e; colo
 td.dom { background: #eef6f5; font-weight: 700; color: #0f4f4a; text-align: center; vertical-align: middle; } td.dom.rep { color: #8aa5a1; font-weight: 400; }
 .sec { break-after: avoid; }
 .basic th { background: #eef6f5; color: #0f4f4a; width: 13%; text-align: right; } .basic td { width: 20%; }
-.chk { list-style: none; margin: 0; padding: 0; } .ok { color: #0b8f55; } .when { color: #667; font-size: 10px; } .std { color: #667; font-size: 10px; margin-top: 3px; }
+.chk a { color: inherit; } .chk { list-style: none; margin: 0; padding: 0; } .ok { color: #0b8f55; } .when { color: #667; font-size: 10px; } .std { color: #667; font-size: 10px; margin-top: 3px; }
 .bar { height: 8px; background: #e2e8e7; border-radius: 99px; overflow: hidden; margin-top: 4px; } .bar i { display: block; height: 100%; background: #0f766e; }
 .recs { font-size: 12px; }
 .sign { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 22px; text-align: center; font-size: 12px; } .sign div { border-top: 1px dashed #999; padding-top: 6px; }
@@ -268,8 +304,8 @@ td.dom { background: #eef6f5; font-weight: 700; color: #0f4f4a; text-align: cent
 thead { display: table-header-group; } tr { page-break-inside: avoid; }
 @media print { body { background: #fff; } .page { margin: 0; padding: 0; } .tools { display: none; } }
 </style></head><body><div class="tools"><button onclick="print()">طباعة / حفظ PDF</button></div><div class="page">
-<div class="head">${logo ? `<img src="data:image/${logo.type};base64,${logo.buf.toString('base64')}" alt="">` : ''}<div><h1>${FOLLOW_TITLE}</h1><div>بتاريخ ${esc(dateAr())}</div></div>
-<div class="meta"><b>${esc(school.name)}</b><br>${school.ministry_number ? `الرقم الوزاري: ${esc(school.ministry_number)}<br>` : ''}العام الدراسي ${esc(school.year)}</div></div>
+${letterheadHtml(school, logo)}<div class="head${useMoe(school) ? ' t' : ''}">${logo && !useMoe(school) ? `<img src="data:image/${logo.type};base64,${logo.buf.toString('base64')}" alt="">` : ''}<div><h1>${FOLLOW_TITLE}</h1><div>بتاريخ ${esc(dateAr())}</div></div>
+${useMoe(school) ? '' : `<div class="meta"><b>${esc(school.name)}</b><br>${school.ministry_number ? `الرقم الوزاري: ${esc(school.ministry_number)}<br>` : ''}العام الدراسي ${esc(school.year)}</div>`}</div>
 <h2 class="sec">أولاً: البيانات الأساسية</h2>
 ${basicsHtml(school, report)}
 <div class="big"><span>نسبة الإنجاز الكلية</span><b>${pctOf(all)}%</b><span>(${all.done} من ${all.total} إجراء)</span><div class="bar"><i style="width:${pctOf(all)}%"></i></div></div>
@@ -292,18 +328,18 @@ async function followupDocx({ school, report, plan, uploadsDir }) {
     return new docx.TableRow({ cantSplit: true, children: [
       cell(r.supervisory || r.domain, { w: W[0], bold: true, fill: 'EEF6F5', align: docx.AlignmentType.CENTER }),
       cell([para(run(`‪${r.code}‬`, { bold: true, size: 20 })), para(run(r.indicator, { size: 20 })), para(run(`${fmt(r.pct)} ← المستهدف ${r.target}%`, { size: 16, color: '666666' }))], { w: W[1] }),
-      cell(done.length ? done.map((p) => para(run(`✔ ${p.text}${p.done_at ? ` (${dateAr(p.done_at)})` : ''}`, { size: 18, color: '0B8F55' }), { after: 20 })) : 'لم يُنفذ شيء بعد', { w: W[2], size: 18 }),
-      cell([...(left.length ? left.map((p) => para(run(`○ ${p.text}${p.when ? ` (${p.when})` : ''}`, { size: 18 }), { after: 20 })) : [para(run('اكتملت الإجراءات', { size: 18, color: '0B8F55' }))]), ...(r.note ? [para(run(`ملاحظة: ${r.note}`, { size: 16, color: '666666' }))] : [])], { w: W[3] }),
+      cell(done.length ? done.flatMap((p) => [para(run(`✔ ${p.text}${p.done_at ? ` (${dateAr(p.done_at)})` : ''}`, { size: 18, color: '0B8F55' }), { after: 0 }), ...[p.assignee_name && `المنفذ: ${p.assignee_name}`, evText(p)].filter(Boolean).map((t) => para(run(t, { size: 16, color: '666666' }), { after: 0 })), para(run('', { size: 8 }), { after: 20 })]) : 'لم يُنفذ شيء بعد', { w: W[2], size: 18 }),
+      cell([...(left.length ? left.flatMap((p) => [para(run(`○ ${p.text}${p.when ? ` (${p.when})` : ''}`, { size: 18 }), { after: 20 }), ...(p.assignee_name ? [para(run(`المسند إلى: ${p.assignee_name}`, { size: 16, color: '666666' }), { after: 20 })] : [])]) : [para(run('اكتملت الإجراءات', { size: 18, color: '0B8F55' }))]), ...(r.note ? [para(run(`ملاحظة: ${r.note}`, { size: 16, color: '666666' }))] : [])], { w: W[3] }),
       cell(`${pctOf(progress([r]))}%`, { w: W[4], bold: true, align: docx.AlignmentType.CENTER }),
       cell(r.committee, { w: W[5], size: 18 }),
       cell(r.supervisor || ' ', { w: W[6], size: 18 }),
     ] });
   });
   const doc = new docx.Document({
-    creator: 'خطط معيار', title: `${FOLLOW_TITLE} - ${school.name}`,
+    creator: 'معياري للمدرسة', title: `${FOLLOW_TITLE} - ${school.name}`,
     styles: { default: { document: { run: { font: FONT, rightToLeft: true } } } },
     sections: [{ properties: landscape, children: [
-      ...logoKids(school, uploadsDir),
+      ...letterheadDocx(school, uploadsDir),
       para(run(FOLLOW_TITLE, { size: 36, bold: true, color: '0F766E' }), { align: docx.AlignmentType.CENTER }),
       para(run(`بتاريخ ${dateAr()}`, { size: 22 }), { align: docx.AlignmentType.CENTER, after: 120 }),
       heading('أولاً: البيانات الأساسية'),

@@ -1,4 +1,4 @@
-/* ملف معيار - واجهة التطبيق */
+/* معياري للمعلم - واجهة التطبيق */
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const view = $('#view');
@@ -40,9 +40,9 @@ function toggleDark() {
 }
 
 function topbar(route) {
-  if (!S.me) { $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="/"><b>م</b>ملف معيار</a><div class="nav"><button onclick="toggleDark()" title="الوضع الليلي">🌙</button></div></div></div>`; return; }
+  if (!S.me) { $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="/"><b>م</b>معياري للمعلم</a><div class="nav"><button onclick="toggleDark()" title="الوضع الليلي">🌙</button></div></div></div>`; return; }
   const l = (h, ic, t) => `<a href="#/${h}" class="${route === h ? 'on' : ''}">${ic} <span class="lbl">${t}</span></a>`;
-  $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">ملف معيار</span></a>
+  $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">معياري للمعلم</span></a>
     <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('new', '➕', 'شاهد جديد')}${l('profile', '👤', 'ملفي')}${l('subscription', '⭐', 'الاشتراك')}${S.me.is_admin ? l('admin', '🛠️', 'الإدارة') : ''}<button onclick="toggleDark()" title="الوضع الليلي">🌙</button></nav></div></div>`;
 }
 
@@ -56,7 +56,7 @@ function banner() {
 // ---------- الدخول والتسجيل ----------
 function authView(mode) {
   view.innerHTML = `<div class="auth card">
-    <div style="text-align:center;margin-bottom:12px"><a class="logo" href="/" style="font-size:22px"><b>م</b>ملف معيار</a><p class="muted" style="margin:6px 0 0">ملف الإنجاز والشواهد الإلكتروني</p></div>
+    <div style="text-align:center;margin-bottom:12px"><a class="logo" href="/" style="font-size:22px"><b>م</b>معياري للمعلم</a><p class="muted" style="margin:6px 0 0">ملف الإنجاز والشواهد الإلكتروني</p></div>
     <div class="tabs"><a href="#/login" class="${mode === 'login' ? 'on' : ''}">تسجيل الدخول</a><a href="#/register" class="${mode === 'register' ? 'on' : ''}">حساب جديد</a></div>
     <form id="f">
       ${mode === 'register' ? `<div class="field"><label>الاسم الكامل</label><input name="full_name" required placeholder="مثال: أحمد محمد العتيبي"></div>
@@ -86,6 +86,7 @@ function dashboard() {
     <p style="margin:0 0 10px;opacity:.9">اكتب فكرة الشاهد بكلمتين، والمساعد يجهّز لك العنوان والأهداف والوصف ويربطه بالعنصر المناسب.</p>
     <form class="row" id="aiq"><input name="idea" placeholder="مثال: درس عن الكسور باستخدام لعبة البطاقات" required><button class="btn">صِغها لي</button></form>
   </div>
+  ${tasksCard()}
   <div class="stats">
     <div class="card stat"><b>${S.evs.length}</b>شاهد موثّق</div>
     <div class="card stat"><b>${covered}/11</b>عنصر مغطّى</div>
@@ -122,25 +123,51 @@ function evItem(e) {
 }
 
 // ---------- محرر الشاهد ----------
+// مهام المعلم في خطة تحسين المدرسة (يسندها قائد المدرسة من «معياري للمدرسة»)
+const taskKey = (t) => `${t.school_id}:${t.i}:${t.j}`;
+function tasksCard() {
+  const ts = S.tasks || [];
+  if (!ts.length) return '';
+  const d = ts.filter((t) => t.done).length;
+  const sorted = [...ts].sort((a, b) => a.done - b.done);
+  return `<div class="card tasks" style="margin-bottom:18px">
+    <div class="head" style="margin-bottom:6px"><h3 style="margin:0">📌 مهامي في خطة تحسين المدرسة</h3><span class="pill">${d} من ${ts.length} منجزة</span></div>
+    <p class="muted" style="margin:0 0 10px;font-size:13px">أسندها لك قائد المدرسة. نفّذ الإجراء ووثّقه بشاهد، ويظهر تلقائياً في تقرير متابعة الخطة وفي ملف إنجازك.</p>
+    <ul class="task-list">${sorted.map((t) => `<li class="${t.done ? 'done' : ''}">
+      <div><b>${t.done ? '✅' : '○'} ${esc(t.text)}</b>${t.when ? ` <span class="pill">${esc(t.when)}</span>` : ''}
+      <div class="muted" style="font-size:12.5px">${esc(t.school)}، المؤشر <bdi dir="ltr">${esc(t.indicator)}</bdi> ${esc(t.indicator_text || '')}</div>
+      ${t.evidence ? `<div style="font-size:13px">📎 <a href="#/edit/${t.evidence.id}">${esc(t.evidence.title)}</a></div>` : ''}</div>
+      <div class="task-act">${t.evidence ? (t.done ? '' : `<button class="btn soft sm" onclick="taskDone('${taskKey(t)}', true)">تم التنفيذ</button>`) : `<a class="btn sm" href="#/new?task=${taskKey(t)}">وثّق التنفيذ</a>${S.evs.length ? `<select class="sm" onchange="linkTask('${taskKey(t)}', this.value)" aria-label="ربط شاهد موجود"><option value="">أو اربط شاهد موجود</option>${S.evs.map((e) => `<option value="${e.id}">${esc(e.title)}</option>`).join('')}</select>` : ''}`}</div>
+    </li>`).join('')}</ul></div>`;
+}
+async function putTask(key, body) {
+  const [sid, i, j] = key.split(':');
+  S.tasks = (await api(`/api/my-tasks/${sid}/${i}/${j}`, { method: 'PUT', body })).tasks;
+}
+window.linkTask = async (key, id) => { if (!id) return; try { await putTask(key, { evidence_id: Number(id), done: true }); toast('تم ربط الشاهد بالمهمة ✅'); dashboard(); } catch (e) { toast(e.message); } };
+window.taskDone = async (key, done) => { try { await putTask(key, { done }); toast('تم ✅'); dashboard(); } catch (e) { toast(e.message); } };
+
 function editor(id, query) {
   const e = id ? S.evs.find((x) => x.id === Number(id)) : null;
   if (id && !e) return (location.hash = '#/');
-  const stdQ = Number(query.get('std')) || (e && e.standard_id) || '';
+  const task = !e && query.get('task') ? (S.tasks || []).find((t) => taskKey(t) === query.get('task')) : null;
+  const stdQ = Number(query.get('std')) || (e && e.standard_id) || (task && task.suggest) || '';
   const pending = [];
-  view.innerHTML = `${banner()}<div class="head"><h1 style="margin:0">${e ? 'تعديل الشاهد' : 'شاهد جديد'}</h1>${e ? `<a class="btn ghost sm" target="_blank" href="/print/evidence/${e.id}">🖨️ طباعة الشاهد</a>` : ''}</div>
+  view.innerHTML = `${banner()}<div class="head"><h1 style="margin:0">${e ? 'تعديل الشاهد' : task ? 'توثيق مهمة من خطة المدرسة' : 'شاهد جديد'}</h1>${e ? `<a class="btn ghost sm" target="_blank" href="/print/evidence/${e.id}">🖨️ طباعة الشاهد</a>` : ''}</div>
   <div class="ai-box">
     <h2 style="margin-bottom:6px">✨ المساعد الذكي</h2>
     <form class="row" id="aif"><input name="idea" placeholder="اكتب فكرة الشاهد بكلمتين، مثال: تواصلت مع أولياء أمور الطلاب المتأخرين" required><button class="btn" id="aib">صِغها لي</button></form>
     <div class="ai-note">${S.ai ? 'يكتب لك صياغة رسمية ويمكنك تعديلها قبل الحفظ.' : 'يعمل الآن بالقوالب الجاهزة. الصياغة بالذكاء الاصطناعي تتفعل بعد ربط مفتاح الخدمة.'}</div>
   </div>
+  ${task ? `<div class="banner trial"><span>📌 ${esc(task.text)} (${esc(task.school)}، المؤشر <bdi dir="ltr">${esc(task.indicator)}</bdi>). بعد الحفظ تنحسب المهمة منجزة ويظهر الشاهد في متابعة الخطة.</span></div>` : ''}
   <form id="ef" class="card">
     <div class="grid g2">
       <div class="field"><label>عنصر التقييم</label><select name="standard_id" required><option value="">اختر العنصر</option>${S.standards.map((s) => `<option value="${s.id}" ${Number(stdQ) === s.id ? 'selected' : ''}>${s.id}. ${esc(s.name)}</option>`).join('')}</select></div>
       <div class="field"><label>تاريخ التنفيذ</label><input type="date" name="ev_date" value="${esc(e ? e.ev_date : today())}"></div>
     </div>
-    <div class="field"><label>عنوان الشاهد</label><input name="title" required value="${esc(e && e.title)}" placeholder="عنوان رسمي مختصر"></div>
+    <div class="field"><label>عنوان الشاهد</label><input name="title" required value="${esc(e ? e.title : task ? task.text : '')}" placeholder="عنوان رسمي مختصر"></div>
     <div class="field"><label>الأهداف التربوية <span class="muted">(كل هدف في سطر)</span></label><textarea name="goals">${esc(e ? e.goals.join('\n') : '')}</textarea></div>
-    <div class="field"><label>الوصف</label><textarea name="description">${esc(e && e.description)}</textarea></div>
+    <div class="field"><label>الوصف</label><textarea name="description">${esc(e ? e.description : task ? `تنفيذ إجراء من خطة تحسين ${task.school} للمؤشر ${task.indicator}: ${task.indicator_text || ''}` : '')}</textarea></div>
     <div class="field"><label>آلية التنفيذ</label><textarea name="steps">${esc(e && e.steps)}</textarea></div>
     <div class="field"><label>الأثر والنتائج</label><textarea name="impact" style="min-height:70px">${esc(e && e.impact)}</textarea></div>
     <div class="field"><label>روابط <span class="muted">(اختياري، كل رابط في سطر)</span></label><textarea name="links" dir="ltr" style="min-height:60px">${esc(e ? e.links.join('\n') : '')}</textarea></div>
@@ -192,6 +219,11 @@ function editor(id, query) {
         ({ evidence } = await api(`/api/evidences/${evidence.id}/files`, { method: 'POST', body: fd }));
       }
       await loadEvs();
+      if (task) {
+        try { await putTask(taskKey(task), { evidence_id: evidence.id, done: true }); toast('تم حفظ الشاهد وتسجيل المهمة منجزة ✅'); }
+        catch (err) { toast(`تم حفظ الشاهد، بس ما انربط بالمهمة: ${err.message}`); }
+        location.hash = '#/'; return;
+      }
       toast('تم حفظ الشاهد ✅');
       location.hash = `#/std/${evidence.standard_id}`;
     } catch (err) { toast(err.message); btn.disabled = false; }
@@ -284,7 +316,9 @@ async function load() {
   Object.assign(S, { me: d.user, standards: d.standards, ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
   applyColor();
   await loadEvs();
+  await loadTasks();
 }
+async function loadTasks() { try { S.tasks = (await api('/api/my-tasks')).tasks; } catch { S.tasks = []; } }
 async function route() {
   const [p, qs] = (location.hash.slice(2) || '').split('?');
   const parts = p.split('/');
