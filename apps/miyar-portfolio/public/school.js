@@ -55,7 +55,7 @@ function toggleDark() {
 function topbar(route) {
   const l = (h, ic, t) => `<a href="#/${h}" class="${route === h ? 'on' : ''}">${ic} <span class="lbl">${t}</span></a>`;
   $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">معياري للمدرسة</span></a>
-  <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('profile', '🏫', 'المدرسة')}${l('report', '📊', 'التقرير')}${l('plan', '📋', 'خطة التحسين')}${l('nafis', '🎯', 'نافس')}${l('team', '👥', 'الفريق')}${l('license', '⭐', 'الباقة')}<button onclick="toggleDark()" title="الوضع الليلي">🌙</button></nav></div></div>`;
+  <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('profile', '🏫', 'المدرسة')}${l('report', '📊', 'التقرير')}${l('plan', '📋', 'خطة التحسين')}${l('nafis', '🎯', 'نافس')}${l('evidence', '🗂️', 'الشواهد')}${l('team', '👥', 'الفريق')}${l('license', '⭐', 'الباقة')}<button onclick="toggleDark()" title="الوضع الليلي">🌙</button></nav></div></div>`;
 }
 const lic = () => S.data.school.license;
 
@@ -82,6 +82,7 @@ function home() {
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn soft" onclick="trySample('basic', this)">نموذج متوسطة</button><button class="btn soft" onclick="trySample('secondary', this)">نموذج ثانوية</button></div></div>` : ''}
   ${plan && !plan.trial ? (() => { const g = progress(plan.rows); return `<a class="card" href="#/plan" style="display:block;text-decoration:none;color:inherit;margin-bottom:14px"><div style="display:flex;justify-content:space-between"><b>متابعة تنفيذ الخطة</b><b style="color:var(--brand-text)">${g.pct}%</b></div><div class="bar" style="margin-top:8px"><i style="width:${g.pct}%"></i></div><p class="muted" style="margin:6px 0 0;font-size:13px">${g.d} من ${g.t} إجراء منجز. أشّر على الإجراء أول ما يتنفذ، ويطلع لك تقرير متابعة جاهز.</p></a>`; })() : ''}
   <a class="card" href="#/nafis" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;margin-bottom:14px"><span style="font-size:28px">🎯</span><div><b>الخطة العلاجية لنافس</b><p class="muted" style="margin:0;font-size:14px">${S.data.nafis && S.data.nafis.plan ? `خطتك جاهزة: ${S.data.nafis.plan.total} مجال في الخطة` : 'أدخل أرقام بطاقة نافس، وتطلع لك خطة علاجية لكل مادة ومجال'}</p></div></a>
+  <a class="card" href="#/evidence" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;margin-bottom:14px"><span style="font-size:28px">🗂️</span><div><b>ملف شواهد التقويم</b><p class="muted" style="margin:0;font-size:14px">رتّب شواهد مدرستك تحت كل مؤشر، واعرف النواقص قبل زيارة التقويم، وسلّم المقيّم الملف كامل بباركود واحد.</p></div></a>
   ${report ? `<div class="card"><h2 style="font-size:18px">ملخص التقرير ${report.sample ? '<span class="pill">نموذج</span>' : ''}</h2>
     <div class="stats"><div class="card stat">الأداء العام<b>${fmt(report.overall)}</b></div><div class="card stat">المؤشرات<b>${report.indicators.length}</b></div><div class="card stat">تحت التميز<b>${report.indicators.filter((i) => i.pct != null && i.pct < 90).length}</b></div></div>
     <div class="dist">${dist}</div></div>` : ''}`;
@@ -330,7 +331,7 @@ function license() {
   const L = lic();
   const pk = S.data.packages.map((p) => `<div class="card pkg ${p.best ? 'best' : ''}">
     ${p.best ? '<span class="pill">الأوفر</span>' : ''}<h3 style="margin:0">${esc(p.name)}</h3><div class="price">${p.price} <small style="font-size:14px">ريال / سنة</small></div>
-    <p class="muted" style="margin:0">${p.id === 'school_improve' ? 'خطة التحسين كاملة من تقرير التقويم، Word وPDF، وتعديل وإعادة بناء طوال السنة.' : p.id === 'school_nafis' ? 'خطة علاجية لنافس من بطاقة الأداء ونواتج التعلم.' : p.id === 'school_bundle' ? 'خطة التحسين + خطة نافس + الخطة التشغيلية لمدرسة واحدة.' : 'نجهز لك الخطط ونراجعها معك، وتستلمها جاهزة.'}</p>
+    <p class="muted" style="margin:0">${p.id === 'school_improve' ? 'خطة التحسين كاملة من تقرير التقويم، Word وPDF، وتعديل وإعادة بناء طوال السنة.' : p.id === 'school_nafis' ? 'خطة علاجية لنافس من بطاقة الأداء ونواتج التعلم.' : p.id === 'school_evidence' ? 'ملف شواهد التقويم لكل المؤشرات، بدون حد للشواهد، ورابط المقيّم بباركود، وفهرس PDF وWord.' : p.id === 'school_bundle' ? 'خطة التحسين + خطة نافس + ملف الشواهد + الخطة التشغيلية لمدرسة واحدة.' : 'نجهز لك الخطط ونراجعها معك، وتستلمها جاهزة.'}</p>
     ${p.soon ? '<span class="muted" style="font-size:13px">قريباً</span>' : ''}</div>`).join('');
   view.innerHTML = `<div class="card" style="margin-bottom:16px">
     <h2>باقة المدرسة</h2>
@@ -485,12 +486,92 @@ function nafis() {
   };
 }
 
+// ---------- ملف شواهد التقويم ----------
+const EV = { data: null, open: new Set(), filter: 'all', form: null, teachers: null };
+const evSize = (b) => (b > 1048576 ? `${(b / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round(b / 1024))}KB`);
+function evItem(x) {
+  const links = [];
+  if (x.file) links.push(`<a class="evlink" href="/school/evidence/file/${x.id}" target="_blank">📄 ${esc(x.file.name)} <span class="muted">(${evSize(x.file.size)})</span></a>`);
+  if (x.url) links.push(`<a class="evlink" href="${esc(x.url)}" target="_blank" rel="noopener">🔗 الرابط</a>`);
+  if (x.teacher && x.teacher.verify) links.push(`<a class="evlink" href="/v/${esc(x.teacher.verify)}" target="_blank">✔ ${esc(x.teacher.name)} · <bdi dir="ltr">${esc(x.teacher.verify)}</bdi></a>`);
+  return `<li class="ev-it"><div><b>${esc(x.title)}</b> <span class="pill">${esc(x.kind_name)}</span>${x.note ? `<div class="muted" style="font-size:13px">${esc(x.note)}</div>` : ''}<div class="pmeta">${links.join('')}</div></div><button class="btn ghost sm" onclick="evDel(${x.id})" title="حذف">🗑️</button></li>`;
+}
+function evForm(code, item) {
+  const ind = EV.data.file.indicators.find((i) => i.code === code);
+  const sg = item >= 0 ? ind.suggestions[item] : null;
+  const kinds = Object.entries(EV.data.kinds).map(([k, v]) => `<option value="${k}" ${(sg ? sg.kind : 'doc') === k ? 'selected' : ''}>${v}</option>`).join('');
+  const tl = EV.teachers;
+  return `<form class="ev-form card" id="evf" onsubmit="evSubmit(event, '${code}', ${item})">
+    <div class="grid g2"><div class="field"><label>عنوان الشاهد</label><input name="title" value="${esc(sg ? sg.title : '')}" required maxlength="200"></div><div class="field"><label>النوع</label><select name="kind">${kinds}</select></div></div>
+    <div class="grid g2"><div class="field"><label>الملف (PDF أو صورة أو Word أو Excel أو عرض، حتى 10MB)</label><input type="file" name="file" accept=".pdf,image/*,.docx,.xlsx,.pptx"></div><div class="field"><label>أو رابط (Drive، يوتيوب، موقع المدرسة)</label><input name="url" dir="ltr" placeholder="https://"></div></div>
+    <div class="field"><label>أو اربطه بشاهد من ملف معلم في الفريق</label>${tl ? (tl.length ? `<select name="evidence_id"><option value="">بدون</option>${tl.map((e) => `<option value="${e.id}">${esc(e.full_name)}: ${esc(e.title)}</option>`).join('')}</select>` : '<p class="muted" style="margin:0;font-size:13px">ما فيه شواهد لمعلمين مسجلين في <a href="#/team">الفريق</a> للحين.</p>') : '<button type="button" class="btn ghost sm" onclick="evTeachers()">اعرض شواهد المعلمين</button>'}</div>
+    <div class="field"><label>وصف مختصر (اختياري)</label><textarea name="note" maxlength="1000" style="min-height:60px"></textarea></div>
+    <button class="btn">حفظ الشاهد</button> <button type="button" class="btn ghost" onclick="evCancel()">إلغاء</button></form>`;
+}
+function evInd(i) {
+  const open = EV.open.has(i.code) || (EV.form && EV.form.code === i.code);
+  const f = EV.form && EV.form.code === i.code ? evForm(i.code, EV.form.item) : '';
+  return `<details class="card ev-ind ${i.covered ? 'ok' : 'miss'}" data-code="${i.code}" ${open ? 'open' : ''} ontoggle="evToggle(this)">
+  <summary><bdi dir="ltr" class="ev-code">${esc(i.code)}</bdi><span class="ev-t">${esc(i.text)}</span><span class="ev-n">${i.count}</span></summary>
+  <div class="ev-body">
+    <h4>الشواهد المقترحة <span class="muted" style="font-weight:400;font-size:13px">(${i.sugg_done} من ${i.suggestions.length})</span></h4>
+    <ul class="ev-sugg">${i.suggestions.map((s) => `<li class="${s.done ? 'done' : ''}"><span>${s.done ? '✅' : '⬜'}</span><span class="st">${esc(s.title)} <span class="muted" style="font-size:12px">(${esc(s.kind_name)})</span></span>${s.done ? '' : `<button class="btn soft sm" onclick="evAdd('${i.code}', ${s.i})">+ أضف</button>`}</li>`).join('')}</ul>
+    ${i.items.length || i.auto.length ? `<h4>المرفوع (${i.count})</h4><ul class="ev-list">${i.items.map(evItem).join('')}${i.auto.map((a) => `<li class="ev-it"><div><b>${esc(a.title)}</b> <span class="pill">من خطة التحسين</span><div class="muted" style="font-size:13px">${esc(a.teacher || '')} · ${esc(a.proc)}</div><div class="pmeta"><a class="evlink" href="/v/${esc(a.verify)}" target="_blank">✔ <bdi dir="ltr">${esc(a.verify)}</bdi></a></div></div></li>`).join('')}</ul>` : ''}
+    ${f || `<button class="btn ghost sm" onclick="evAdd('${i.code}', -1)">+ شاهد آخر</button>`}
+  </div></details>`;
+}
+function evidenceView() {
+  const { file: F, licensed, trial_limit: lim, link } = EV.data;
+  const q = EV.filter;
+  const doms = F.domains.map((d) => `<button class="card ev-dom ${q === d.code ? 'on' : ''}" onclick="evFilter('${d.code}')"><b>${esc(d.name)}</b><span class="muted" style="font-size:13px">${d.covered} من ${d.total} مؤشر · ${d.evidence} شاهد</span><div class="bar"><i style="width:${d.pct}%"></i></div></button>`).join('');
+  const show = F.indicators.filter((i) => q === 'all' || (q === 'miss' ? !i.covered : i.domain === q));
+  const body = F.standards.map((s) => { const xs = show.filter((i) => i.standard === s.code); return xs.length ? `<h3 class="std-h">معيار ${esc(s.name)} <span class="muted" style="font-weight:400;font-size:13px">${s.covered} من ${s.total}</span></h3>${xs.map(evInd).join('')}` : ''; }).join('') || '<div class="card" style="text-align:center">🎉 كل المؤشرات تحتها شواهد.</div>';
+  const full = link ? location.origin + link : '';
+  view.innerHTML = `${licensed ? '' : `<div class="banner trial"><span>وضع التجربة: تقدر تضيف ${lim} شواهد وتشوف الفهرس بعلامة مائية. فعّل باقة ملف الشواهد لعدد مفتوح ورابط المقيّم وWord.</span><a class="btn sm" href="#/license">فعّل الباقة</a></div>`}
+  <div class="head"><div><h1 style="margin:0">ملف شواهد التقويم</h1><p class="muted" style="margin:0">كل مؤشر من مؤشرات التقويم المدرسي (${F.total} مؤشر) وتحته شواهده. الشواهد المقترحة اجتهاد منا يساعدك ترتب، وأضف أي شاهد عندك.</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost" href="/school/print/evidence" target="_blank">🖨️ فهرس PDF</a>${licensed ? '<a class="btn ghost" href="/school/export/evidence.docx">📝 Word</a>' : ''}</div></div>
+  <div class="stats"><div class="card stat">نسبة التغطية<b>${F.pct}%</b></div><div class="card stat">المؤشرات المغطاة<b>${F.covered} / ${F.total}</b></div><div class="card stat">الشواهد<b>${F.evidence}</b></div><div class="card stat">بدون شاهد<b style="color:${F.missing.length ? 'var(--danger)' : 'inherit'}">${F.missing.length}</b></div></div>
+  <div class="card ev-link" style="margin-bottom:14px"><h3 style="margin:0 0 4px">🔗 رابط المقيّم</h3>
+    ${licensed ? (link ? `<p class="muted" style="margin:0 0 8px;font-size:13px">رابط واحد يفتح الملف كامل للقراءة فقط. الباركود مطبوع في أول صفحة من الفهرس.</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input readonly value="${esc(full)}" dir="ltr" style="flex:1;min-width:220px" id="evurl"><button class="btn ghost sm" onclick="navigator.clipboard.writeText($('#evurl').value).then(()=>toast('تم النسخ'))">نسخ</button><a class="btn ghost sm" href="${esc(link)}" target="_blank">فتح</a><button class="btn ghost sm" onclick="evLink('reset')">رابط جديد</button><button class="btn ghost sm" onclick="evLink('off')">إيقاف</button></div>`
+      : '<p class="muted" style="margin:0 0 8px;font-size:13px">فعّل الرابط عشان يطلع الباركود في الفهرس ويقدر المقيّم يفتح الشواهد من جواله.</p><button class="btn sm" onclick="evLink(\'on\')">فعّل رابط المقيّم</button>')
+      : '<p class="muted" style="margin:0;font-size:13px">الرابط والباركود يتفعلون مع باقة ملف الشواهد.</p>'}</div>
+  <div class="ev-doms">${doms}</div>
+  <div class="ev-tabs"><button class="btn sm ${q === 'all' ? '' : 'ghost'}" onclick="evFilter('all')">كل المؤشرات</button><button class="btn sm ${q === 'miss' ? '' : 'ghost'}" onclick="evFilter('miss')">النواقص فقط (${F.missing.length})</button></div>
+  ${body}`;
+}
+async function evidence() {
+  view.innerHTML = '<div class="card" style="text-align:center"><span class="spin"></span> نجهز الملف...</div>';
+  try { EV.data = await api('/api/school/evidence'); evidenceView(); } catch (e) { toast(e.message); }
+}
+window.evToggle = (el) => { if (el.open) EV.open.add(el.dataset.code); else EV.open.delete(el.dataset.code); };
+window.evFilter = (q) => { EV.filter = EV.filter === q && q !== 'all' ? 'all' : q; evidenceView(); };
+window.evAdd = (code, item) => { EV.form = { code, item }; EV.open.add(code); evidenceView(); const f = $('#evf'); if (f) f.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
+window.evCancel = () => { EV.form = null; evidenceView(); };
+window.evTeachers = async () => { try { EV.teachers = (await api('/api/school/evidence/teachers')).evidences; evidenceView(); } catch (e) { toast(e.message); } };
+window.evSubmit = async (e, code, item) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  fd.append('code', code); fd.append('item', item);
+  if (fd.get('file') && !fd.get('file').size) fd.delete('file');
+  const btn = e.target.querySelector('button'); busy(btn, true, 'نحفظ...');
+  try { EV.data = await api('/api/school/evidence', { method: 'POST', body: fd }); EV.form = null; toast('تمت إضافة الشاهد'); evidenceView(); }
+  catch (err) { toast(err.message); busy(btn, false); if (err.code === 'license') location.hash = '#/license'; }
+};
+window.evDel = async (id) => {
+  if (!confirm('نحذف الشاهد؟ الملف المرفق ينحذف معه.')) return;
+  try { EV.data = await api(`/api/school/evidence/${id}`, { method: 'DELETE' }); evidenceView(); } catch (e) { toast(e.message); }
+};
+window.evLink = async (action) => {
+  if (action === 'reset' && !confirm('الرابط القديم والباركود المطبوع يتوقفون. نكمل؟')) return;
+  try { EV.data = await api('/api/school/evidence/link', { method: 'POST', body: { action } }); evidenceView(); toast(action === 'off' ? 'تم إيقاف الرابط' : 'الرابط جاهز'); } catch (e) { toast(e.message); }
+};
+
 async function route() {
   const p = (location.hash.slice(2) || '').split('?')[0];
   if (!S.data) { try { await load(); } catch { return; } }
   topbar(p);
   window.scrollTo(0, 0);
-  ({ '': home, profile, report, plan, nafis, team, license }[p] || home)();
+  ({ '': home, profile, report, plan, nafis, evidence, team, license }[p] || home)();
 }
 window.addEventListener('hashchange', route);
 route();

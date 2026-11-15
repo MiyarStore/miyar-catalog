@@ -135,3 +135,9 @@ test('نافس: الطباعة وWord بترويسة الوزارة', async () =
   const buf = await nafisDocx({ school, card, plan, uploadsDir: '/x' });
   assert.ok(buf.length > 20000);
 });
+
+test('ملف الشواهد: شواهد مقترحة لكل مؤشر في المرحلتين', () => {
+  const { suggestionsFor } = require('../src/school/evidence-bank');
+  for (const s of ['basic', 'secondary']) for (const i of catalog(s)) assert.ok(suggestionsFor(i.code, s).length >= 3, i.code);
+  assert.match(suggestionsFor('3-1-1-2', 'secondary')[0].title, /القدرات/);
+});

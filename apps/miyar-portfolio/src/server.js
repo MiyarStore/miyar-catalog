@@ -227,7 +227,7 @@ app.post('/api/evidences/:id/files', auth, active, (req, res, next) => {
   next();
 }, upload.array('files', 8), (req, res) => {
   const ins = db.prepare('INSERT INTO attachments (evidence_id, user_id, stored, original, mime, size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
-  for (const f of req.files || []) ins.run(req.evidenceId, req.user.id, f.filename, Buffer.from(f.originalname, 'latin1').toString('utf8').slice(0, 120), f.mimetype, f.size, Date.now());
+  for (const f of req.files || []) ins.run(req.evidenceId, req.user.id, f.filename, (/[^\u0000-\u00ff]/.test(f.originalname) ? f.originalname : Buffer.from(f.originalname, 'latin1').toString('utf8')).slice(0, 120), f.mimetype, f.size, Date.now());
   res.json({ evidence: evidenceRow(db.prepare('SELECT * FROM evidences WHERE id = ?').get(req.evidenceId)) });
 });
 

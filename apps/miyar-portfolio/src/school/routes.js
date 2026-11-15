@@ -11,6 +11,8 @@ const { printHtml, planDocx, followupHtml, followupDocx } = require('./export');
 const { guessStandard } = require('../standards');
 const nafis = require('./nafis');
 const { nafisHtml, nafisDocx } = require('./nafis-export');
+const { mountEvidence } = require('./evidence');
+const { publicHtml, evidenceHtml, evidenceDocx } = require('./evidence-export');
 
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
@@ -449,6 +451,35 @@ function mountSchool(app, { auth, currentUser }) {
     const buf = await followupDocx({ school: g.s, report: g.report, plan: g.plan, uploadsDir: UPLOADS });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`متابعة-تنفيذ-خطة-التحسين-${g.s.name || 'المدرسة'}.docx`)}`);
+    res.send(buf);
+  });
+
+  // ملف شواهد التقويم
+  const ev = mountEvidence(app, { auth, currentUser, schoolOf, canPlan, members, latestPlan, uploads: UPLOADS });
+  const base = (req) => process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+  app.get('/e/:token', (req, res) => {
+    const s = ev.byToken(req.params.token);
+    if (!s) return res.status(404).send('<!doctype html><meta charset="utf-8"><p dir="rtl" style="font-family:Tahoma;text-align:center;margin-top:20vh">الرابط غير صالح أو أوقفته المدرسة.</p>');
+    res.setHeader('X-Robots-Tag', 'noindex');
+    res.send(publicHtml({ school: s, file: ev.build(s, latestPlan(s.id)), token: s.ev_token, base: base(req), uploadsDir: UPLOADS }));
+  });
+  function evGuard(req, res) {
+    const u = currentUser(req);
+    if (!u) { res.redirect('/school'); return null; }
+    const s = schoolOf(u.id);
+    const v = ev.view(s);
+    return { s, file: v.file, link: v.link ? base(req) + v.link : null };
+  }
+  app.get('/school/print/evidence', async (req, res) => {
+    const g = evGuard(req, res); if (!g) return;
+    res.send(await evidenceHtml({ school: g.s, file: g.file, link: g.link, trial: !canPlan(g.s, 'evidence'), uploadsDir: UPLOADS }));
+  });
+  app.get('/school/export/evidence.docx', async (req, res) => {
+    const g = evGuard(req, res); if (!g) return;
+    if (!canPlan(g.s, 'evidence')) return res.redirect('/school#/license');
+    const buf = await evidenceDocx({ school: g.s, file: g.file, link: g.link, uploadsDir: UPLOADS });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`ملف-شواهد-التقويم-${g.s.name || 'المدرسة'}.docx`)}`);
     res.send(buf);
   });
 
