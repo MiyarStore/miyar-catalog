@@ -40,7 +40,7 @@ function toggleDark() {
 }
 
 function topbar(route) {
-  if (!S.me) { $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="/"><b>م</b>معياري للمعلم</a><div class="nav" style="flex:0"><button onclick="toggleDark()" title="الوضع الليلي">🌙</button></div></div></div>`; return; }
+  if (!S.me) { $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="${forSchool() ? '/school' : '/'}"><b>م</b>${forSchool() ? 'معياري للمدرسة' : 'معياري للمعلم'}</a><div class="nav" style="flex:none"><button onclick="toggleDark()" title="الوضع الليلي">🌙</button></div></div></div>`; return; }
   const l = (h, ic, t) => `<a href="#/${h}" class="${route === h ? 'on' : ''}">${ic} <span class="lbl">${t}</span></a>`;
   $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">معياري للمعلم</span></a>
     <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('new', '➕', 'شاهد جديد')}${l('profile', '👤', 'ملفي')}${l('subscription', '⭐', 'الاشتراك')}${S.me.is_admin ? l('admin', '🛠️', 'الإدارة') : ''}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
@@ -55,9 +55,13 @@ function banner() {
 }
 
 // ---------- الدخول والتسجيل ----------
+// هل جاء المستخدم من «معياري للمدرسة»؟ (نعرض هوية المدرسة في شاشة الدخول)
+const forSchool = () => { try { return (sessionStorage.getItem('miyar-next') || '').startsWith('/school'); } catch { return false; } };
+
 function authView(mode) {
+  const sch = forSchool();
   view.innerHTML = `<div class="auth card">
-    <div style="text-align:center;margin-bottom:12px"><a class="logo" href="/" style="font-size:22px"><b>م</b>معياري للمعلم</a><p class="muted" style="margin:6px 0 0">ملف الإنجاز والشواهد الإلكتروني</p></div>
+    <div style="text-align:center;margin-bottom:12px"><a class="logo" href="${sch ? '/school' : '/'}" style="font-size:22px"><b>م</b>${sch ? 'معياري للمدرسة' : 'معياري للمعلم'}</a><p class="muted" style="margin:6px 0 0">${sch ? 'خطة التحسين وخطة نافس وملف شواهد التقويم' : 'ملف الإنجاز والشواهد الإلكتروني'}</p>${sch ? '<p class="muted" style="margin:8px 0 0;font-size:13px">سجّل دخولك أو أنشئ حساباً جديداً للمدرسة. الحساب نفسه يشتغل في معياري للمعلم.</p>' : ''}</div>
     <div class="tabs"><a href="#/login" class="${mode === 'login' ? 'on' : ''}">تسجيل الدخول</a><a href="#/register" class="${mode === 'register' ? 'on' : ''}">حساب جديد</a></div>
     <form id="f">
       ${mode === 'register' ? `<div class="field"><label>الاسم الكامل</label><input name="full_name" required placeholder="مثال: أحمد محمد العتيبي"></div>
