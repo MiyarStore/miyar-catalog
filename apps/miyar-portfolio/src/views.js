@@ -22,8 +22,17 @@ function shell({ title, body, color = 'miyar', extraHead = '', bodyClass = '' })
 const notFound = () => shell({ title: 'غير موجود', body: `<div class="wrap" style="padding:80px 16px;text-align:center"><h1>الصفحة غير موجودة</h1><p class="muted">تأكد من الرابط.</p><a class="btn" href="/">الرئيسية</a></div>` });
 const message = (t, m, href) => shell({ title: t, body: `<div class="wrap" style="padding:80px 16px;text-align:center"><h1>${esc(t)}</h1><p class="muted">${esc(m)}</p><a class="btn" href="${esc(href)}">متابعة</a></div>` });
 
+// وسوم المشاركة (واتساب وتويتر) ووصف محركات البحث
+function shareMeta({ title, desc, url, base }) {
+  const img = `${base}/assets/og.png`;
+  return `<meta name="description" content="${esc(desc)}"><meta property="og:type" content="website"><meta property="og:locale" content="ar_SA">
+<meta property="og:site_name" content="معياري"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}">
+<meta property="og:url" content="${esc(url)}"><meta property="og:image" content="${esc(img)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image"><meta name="theme-color" content="#0f766e">`;
+}
+
 // ---------- الصفحة التعريفية ----------
-function landing(storeUrl, trialDays, plans = []) {
+function landing(storeUrl, trialDays, plans = [], base = '') {
   const feats = [
     ['🤖', 'مساعد ذكي يصيغ الشاهد', 'اكتب فكرة الشاهد بكلمتين، ويجهّز لك العنوان الرسمي والأهداف والوصف وآلية التنفيذ ويربطه بالعنصر المناسب.'],
     ['🗂️', 'مرتّب على العناصر الـ11', 'كل شاهد في مكانه الصحيح حسب عناصر تقييم الأداء الوظيفي، مع نسبة إنجاز لكل عنصر.'],
@@ -34,6 +43,7 @@ function landing(storeUrl, trialDays, plans = []) {
   ];
   return shell({
     title: 'معياري للمعلم | ملف الإنجاز والشواهد الإلكتروني',
+    extraHead: shareMeta({ base, url: `${base}/`, title: 'معياري | ملف الإنجاز الوظيفي للمعلم والمعلمة', desc: 'وثّق شواهدك على عناصر تقييم الأداء الوظيفي الـ11 من جوالك، والمساعد الذكي يصيغها بلغة رسمية، وملفك الكامل يتجهّز تلقائياً. جرّبه 7 أيام مجاناً.' }),
     body: `
 <header class="wrap" style="display:flex;justify-content:space-between;align-items:center;padding-top:18px;padding-bottom:18px">
   <a class="logo" href="/"><b>م</b>معياري</a>
@@ -99,7 +109,7 @@ async function publicPage(u, evs, base, isOwner) {
   return shell({
     title: `ملف إنجاز ${u.full_name}`,
     color: u.theme,
-    extraHead: `<meta property="og:title" content="ملف إنجاز ${esc(u.full_name)}"><style>
+    extraHead: `${shareMeta({ base, url: `${base}/p/${u.slug}`, title: `ملف إنجاز ${u.full_name}`, desc: `ملف الإنجاز الوظيفي لـ${u.full_name}: ${evs.length} شاهد موثّق على عناصر تقييم الأداء الوظيفي.` })}<style>
       .hero{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;padding:36px 0 70px}
       .hero h1{font-size:clamp(24px,5vw,36px)} .hero .muted{color:rgba(255,255,255,.85)}
       .prof{margin-top:-50px;display:grid;gap:16px} @media(min-width:760px){.prof{grid-template-columns:1fr 240px}}

@@ -336,7 +336,7 @@ app.get('/print/evidence/:id', async (req, res) => {
 
 mountSchool(app, { auth, currentUser });
 
-app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS, PLANS)));
+app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS, PLANS, baseUrl(req))));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'app.html')));
 app.use((req, res) => res.status(404).send(views.notFound()));
