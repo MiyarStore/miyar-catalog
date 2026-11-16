@@ -73,7 +73,7 @@ test('تقرير المتابعة يتبع حقول استمارة تنفيذ خ
   delete p.rows[1].methods; delete p.rows[1].committee; delete p.rows[1].supervisory;
   const school = { name: 'مدرسة تجريبية', stage: 'basic', ministry_number: 'S-12345', gender: 'بنين', building: 'حكومي', period: 'صباحي', office: 'مكتب', year: '1448 هـ', principal: 'القائد' };
   const html = followupHtml({ school, report: r, plan: p, uploadsDir: '/tmp' });
-  for (const t of ['البيانات الأساسية', 'العنصر / المؤشر المراد تحسينه', 'الإجراءات المنفذة', 'مقدم خدمات دعم التميز المدرسي', 'لجان المدرسة', 'المشرف التربوي', 'التوصيات والمقترحات', 'ختم المدرسة', 'نوع المبنى', 'نواتج التعلم']) assert.ok(html.includes(t), t);
+  for (const t of ['البيانات الأساسية', 'العنصر / المؤشر المراد تحسينه', 'الإجراءات المنفذة', 'مقدم خدمات دعم التميز المدرسي', 'لجان المدرسة', 'جهة الدعم الخارجية', 'التوصيات والمقترحات', 'ختم المدرسة', 'نوع المبنى', 'نواتج التعلم']) assert.ok(html.includes(t), t);
   const plan = printHtml({ school, report: r, plan: p, trial: false, uploadsDir: '/tmp' });
   for (const t of ['وصف الاحتياج', 'إجراءات التحسين', 'أساليب وطرق التحسين', 'مدة الإنجاز', 'التنفيذ والمسؤولية', 'خطة تحسين من المدرسة']) assert.ok(plan.includes(t), t);
   const buf = await followupDocx({ school, report: r, plan: p, uploadsDir: '/tmp' });
