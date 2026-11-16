@@ -225,7 +225,7 @@ function rowCard(r, i, editable) {
       <dt>الزمن</dt><dd>${esc(r.from)} إلى ${esc(r.to)}</dd>
       <dt>مؤشر التحقق</dt><dd>${esc(r.measure)}</dd>
       <dt>الشواهد</dt><dd><ul>${r.evidence.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></dd>
-      ${editable ? `<dt>دعم التميز</dt><dd>لجان المدرسة: ${esc(r.committee || r.responsible)}${r.supervisor ? `<br>جهة الدعم الخارجية: ${esc(r.supervisor)}` : ''}${r.note ? `<br><span class="muted">ملاحظة: ${esc(r.note)}</span>` : ''}</dd>` : ''}
+      ${editable ? `<dt>دعم التميز</dt><dd>لجان المدرسة: ${esc(r.committee || r.responsible)}${r.supervisor ? `<br>المشرف التربوي: ${esc(r.supervisor)}` : ''}${r.note ? `<br><span class="muted">ملاحظة: ${esc(r.note)}</span>` : ''}</dd>` : ''}
     </dl>
     ${editable ? `<button class="btn ghost sm" style="margin-top:10px" onclick="editRow(${i})">✏️ تعديل</button>` : ''}
   </div>`;
@@ -289,7 +289,7 @@ window.editRow = (i) => {
     <div class="field"><label>الشواهد (كل شاهد في سطر)</label><textarea name="evidence">${esc(r.evidence.join('\n'))}</textarea></div>
     <div class="field"><label>أساليب وطرق التحسين</label><input name="methods" value="${esc(r.methods || '')}"></div>
     <div class="grid g2"><div class="field"><label>لجان المدرسة المنفذة (لتقرير المتابعة)</label><input name="committee" value="${esc(r.committee || r.responsible)}"></div>
-    <div class="field"><label>دعم من جهة خارجية (إن وجد)</label><input name="supervisor" value="${esc(r.supervisor || '')}" placeholder="مثال: ورشة من مكتب التعليم أو مدرسة شريكة"></div></div>
+    <div class="field"><label>عمود «المشرف التربوي» في الاستمارة (2) (إن وجد)</label><input name="supervisor" value="${esc(r.supervisor || '')}" placeholder="مثال: ورشة من مكتب التعليم أو مدرسة شريكة"></div></div>
     <div class="field"><label>ملاحظة المتابعة أو سبب التأخر</label><input name="note" value="${esc(r.note || '')}"></div>
     <button class="btn">حفظ</button> <button type="button" class="btn ghost" onclick="plan()">إلغاء</button>
   </form>`;

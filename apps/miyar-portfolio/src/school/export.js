@@ -253,7 +253,7 @@ async function planDocx({ school, report, plan, uploadsDir }) {
 
 // ---------- تقرير متابعة التنفيذ ----------
 // مبني على حقول «استمارة المدرسة (2): تنفيذ خطة التحسين» في النموذج الإشرافي:
-// المجال، العنصر المراد تحسينه، الإجراءات المنفذة، مقدم خدمات دعم التميز (لجان المدرسة / جهة الدعم الخارجية)،
+// المجال، العنصر المراد تحسينه، الإجراءات المنفذة، مقدم خدمات دعم التميز (لجان المدرسة / المشرف التربوي)،
 // ثم التوصيات والمقترحات وتوقيع مدير المدرسة والختم. ونضيف عليها نسبة الإنجاز وتاريخ التنفيذ والمتبقي.
 const FOLLOW_TITLE = 'تقرير متابعة تنفيذ خطة التحسين';
 function followRows(plan) {
@@ -311,7 +311,7 @@ ${basicsHtml(school, report)}
 <div class="big"><span>نسبة الإنجاز الكلية</span><b>${pctOf(all)}%</b><span>(${all.done} من ${all.total} إجراء)</span><div class="bar"><i style="width:${pctOf(all)}%"></i></div></div>
 <h2 class="sec">ثانياً: إجراءات تنفيذ خطة التحسين</h2>
 <table><thead><tr><th rowspan="2" style="width:9%">المجال</th><th rowspan="2" style="width:19%">العنصر / المؤشر المراد تحسينه</th><th rowspan="2" style="width:22%">الإجراءات المنفذة</th><th rowspan="2" style="width:20%">إجراءات لم تُنفذ بعد</th><th rowspan="2" style="width:7%">نسبة الإنجاز</th><th colspan="2">مقدم خدمات دعم التميز المدرسي</th></tr>
-<tr><th style="width:12%">لجان المدرسة</th><th style="width:11%">جهة الدعم الخارجية</th></tr></thead><tbody>${trs}</tbody></table>
+<tr><th style="width:12%">لجان المدرسة</th><th style="width:11%">المشرف التربوي</th></tr></thead><tbody>${trs}</tbody></table>
 ${recsHtml(recsOf(plan, 'followup'))}
 <div class="sign"><div>رئيس لجنة التميز</div><div>مدير/ة المدرسة<br>${esc(school.principal)}<br>التوقيع</div><div>ختم المدرسة</div></div>
 </div></body></html>`;
@@ -321,7 +321,7 @@ async function followupDocx({ school, report, plan, uploadsDir }) {
   const all = progress(plan.rows);
   const rows = followRows(plan);
   const W = [10, 19, 22, 20, 7, 12, 10];
-  const h1 = new docx.TableRow({ tableHeader: true, children: ['المجال', 'العنصر / المؤشر المراد تحسينه', 'الإجراءات المنفذة', 'إجراءات لم تُنفذ بعد', 'نسبة الإنجاز', 'لجان المدرسة', 'جهة الدعم الخارجية'].map((t, i) => cell(t, { bold: true, color: 'FFFFFF', fill: '0F766E', w: W[i], align: docx.AlignmentType.CENTER })) });
+  const h1 = new docx.TableRow({ tableHeader: true, children: ['المجال', 'العنصر / المؤشر المراد تحسينه', 'الإجراءات المنفذة', 'إجراءات لم تُنفذ بعد', 'نسبة الإنجاز', 'لجان المدرسة', 'المشرف التربوي'].map((t, i) => cell(t, { bold: true, color: 'FFFFFF', fill: '0F766E', w: W[i], align: docx.AlignmentType.CENTER })) });
   const body = rows.map((r) => {
     const ps = procs(r);
     const done = ps.filter((p) => p.done); const left = ps.filter((p) => !p.done);
@@ -346,7 +346,7 @@ async function followupDocx({ school, report, plan, uploadsDir }) {
       basicsDocx(school, report),
       para(run(`نسبة الإنجاز الكلية: ${pctOf(all)}% (${all.done} من ${all.total} إجراء)`, { size: 24, bold: true }), { after: 120 }),
       heading('ثانياً: إجراءات تنفيذ خطة التحسين'),
-      para(run('مقدم خدمات دعم التميز المدرسي: لجان المدرسة وجهة الدعم الخارجية (العمودان الأخيران).', { size: 18, color: '666666' })),
+      para(run('مقدم خدمات دعم التميز المدرسي: لجان المدرسة والمشرف التربوي (العمودان الأخيران).', { size: 18, color: '666666' })),
       new docx.Table({ visuallyRightToLeft: true, width: { size: 100, type: docx.WidthType.PERCENTAGE }, rows: [h1, ...body] }),
       heading('ثالثاً: التوصيات والمقترحات'),
       ...lines(recsOf(plan, 'followup'), true),
