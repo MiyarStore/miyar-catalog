@@ -14,6 +14,8 @@ const nafis = require('./nafis');
 const { nafisHtml, nafisDocx } = require('./nafis-export');
 const { mountEvidence } = require('./evidence');
 const { publicHtml, evidenceHtml, evidenceDocx } = require('./evidence-export');
+const operational = require('./operational');
+const { opsHtml, opsDocx, deckHtml } = require('./ops-export');
 
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
@@ -68,6 +70,12 @@ const saveNafis = (sid, { card, plan }) => {
     .run(sid, JSON.stringify(card), plan ? JSON.stringify(plan) : null, now, now);
 };
 const nafisView = (sid) => { const n = nafisOf(sid); return { ...n, analysis: n.card ? nafis.analyze(n.card) : null }; };
+const opsOver = (sid) => { const r = db.prepare('SELECT data FROM school_ops WHERE school_id = ?').get(sid); return r ? JSON.parse(r.data) : {}; };
+function opsOf(s, plan) {
+  const report = latestReport(s.id);
+  const n = nafisOf(s.id);
+  return operational.build({ report, plan: plan === undefined ? withPeople(latestPlan(s.id), s.id) : plan, nafis: n.plan, nafisA: n.card ? nafis.analyze(n.card) : null, over: opsOver(s.id) });
+}
 const publicSchool = (s) => ({ ...s, license: license(s), logo_url: s.logo ? `/school-logo/${s.id}?v=${s.logo.slice(-6)}` : null });
 
 const logoUpload = multer({
@@ -80,10 +88,13 @@ const pdfUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 
 function mountSchool(app, { auth, currentUser }) {
   app.get('/api/school', auth, (req, res) => {
     const s = schoolOf(req.user.id);
+    const plan = withPeople(latestPlan(s.id), s.id);
     res.json({
       school: publicSchool(s),
       report: latestReport(s.id),
-      plan: withPeople(latestPlan(s.id), s.id),
+      plan,
+      ops: opsOf(s, plan),
+      opTypes: operational.TYPES,
       members: members(s.id),
       nafis: nafisView(s.id),
       nafisMeta: { grades: nafis.GRADES, subjects: nafis.SUBJECTS, domains: nafis.DOMAINS, cls: nafis.CLS },
@@ -339,6 +350,29 @@ function mountSchool(app, { auth, currentUser }) {
     res.send(buf);
   });
 
+  // ---------- الخطة التشغيلية ----------
+  app.put('/api/school/ops', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    if (!canPlan(s, 'operational')) return res.status(402).json({ error: 'تعديل الخطة التشغيلية متاح في باقة المدرسة الشاملة', code: 'license' });
+    const b = req.body || {};
+    const o = opsOver(s.id);
+    for (const k of ['vision', 'mission', 'values']) if (b[k] !== undefined) o[k] = clip(b[k], 600).trim();
+    if (b.swot !== undefined) {
+      if (b.swot === null) delete o.swot;
+      else o.swot = Object.fromEntries(['s', 'w', 'o', 't'].map((k) => [k, (Array.isArray(b.swot[k]) ? b.swot[k] : String(b.swot[k] || '').split('\n')).map((x) => clip(x, 240).trim()).filter(Boolean).slice(0, 10)]));
+    }
+    if (b.program && typeof b.program === 'object') {
+      const key = clip(b.program.key, 40);
+      if (!/^(p\d+|n[a-z0-9_]+|keep)$/.test(key)) return res.status(400).json({ error: 'برنامج غير معروف' });
+      const cur = (o.programs = o.programs || {})[key] || {};
+      for (const [k, n] of [['name', 160], ['kpi', 400], ['budget', 80]]) if (b.program[k] !== undefined) cur[k] = clip(b.program[k], n).trim();
+      if (b.program.type !== undefined) cur.type = operational.TYPES[b.program.type] ? b.program.type : undefined;
+      o.programs[key] = cur;
+    }
+    db.prepare('INSERT INTO school_ops (school_id, data, updated_at) VALUES (?, ?, ?) ON CONFLICT(school_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at').run(s.id, JSON.stringify(o), Date.now());
+    res.json({ ops: opsOf(s) });
+  });
+
   // فريق المدرسة
   const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   app.get('/api/school/members', auth, (req, res) => res.json({ members: members(schoolOf(req.user.id).id) }));
@@ -374,13 +408,13 @@ function mountSchool(app, { auth, currentUser }) {
       p.rows.forEach((r, i) => (r.procedures || []).forEach((x, j) => {
         if (!x || typeof x !== 'object' || x.assignee !== email) return;
         const ev = x.evidence_id && db.prepare('SELECT id, title, verify_code FROM evidences WHERE id = ? AND user_id = ?').get(x.evidence_id, user.id);
-        out.push({ school_id: s.id, school: s.name || 'المدرسة', i, j, text: x.text, when: x.when, done: !!x.done, indicator: r.code, indicator_text: r.indicator, evidence: ev ? { id: ev.id, title: ev.title, code: ev.verify_code } : null, suggest: guessStandard(`${x.text} ${r.indicator || ''}`) || null });
+        out.push({ school_id: s.id, school: s.name || 'المدرسة', i, j, text: x.text, when: x.when, done: !!x.done, indicator: r.code, indicator_text: r.indicator, evidence: ev ? { id: ev.id, title: ev.title, code: ev.verify_code } : null, suggest: guessStandard(`${x.text} ${r.indicator || ''}`) || null, opinion: (r.opinions || {})[email] || null });
       }));
     }
     return out;
   }
   app.get('/api/my-tasks', auth, (req, res) => res.json({ tasks: myTasks(req.user) }));
-  app.put('/api/my-tasks/:sid/:i/:j', auth, (req, res) => {
+  app.put('/api/my-tasks/:sid/:i/:j(\\d+)', auth, (req, res) => {
     const email = String(req.user.email).toLowerCase();
     const sid = Number(req.params.sid);
     if (!db.prepare('SELECT 1 FROM school_members WHERE school_id = ? AND email = ?').get(sid, email)) return res.status(403).json({ error: 'ما أنت ضمن فريق هذه المدرسة' });
@@ -397,6 +431,22 @@ function mountSchool(app, { auth, currentUser }) {
       }
     }
     if (b.done !== undefined) { x.done = !!b.done; x.done_at = x.done ? Date.now() : null; if (x.done) x.done_by = 'teacher'; }
+    savePlan(p);
+    res.json({ tasks: myTasks(req.user) });
+  });
+
+  // رأي المعلم في البرنامج (صف خطة التحسين) اللي هو مسند له فيه إجراء
+  app.put('/api/my-tasks/:sid/:i/opinion', auth, (req, res) => {
+    const email = String(req.user.email).toLowerCase();
+    const sid = Number(req.params.sid);
+    const p = latestPlan(sid);
+    const row = p && p.rows[Number(req.params.i)];
+    if (!row || !(row.procedures || []).some((x) => x && x.assignee === email)) return res.status(404).json({ error: 'ما عندك مهام في هذا البرنامج' });
+    const b = req.body || {};
+    const rating = Math.round(Number(b.rating));
+    if (!(rating >= 1 && rating <= 5)) return res.status(400).json({ error: 'اختر تقييم من 1 إلى 5' });
+    row.opinions = row.opinions || {};
+    row.opinions[email] = { rating, comment: clip(b.comment, 400).trim(), name: req.user.full_name || email, at: Date.now() };
     savePlan(p);
     res.json({ tasks: myTasks(req.user) });
   });
@@ -482,6 +532,34 @@ function mountSchool(app, { auth, currentUser }) {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`ملف-شواهد-التقويم-${g.s.name || 'المدرسة'}.docx`)}`);
     res.send(buf);
+  });
+
+  // الخطة التشغيلية والعرض التقديمي
+  function opsGuard(req, res) {
+    const u = currentUser(req);
+    if (!u) { res.redirect('/school'); return null; }
+    const s = schoolOf(u.id);
+    const report = latestReport(s.id);
+    if (!report || !report.complete) { res.redirect('/school#/report'); return null; }
+    return { s, report, ops: opsOf(s), full: canPlan(s, 'operational') };
+  }
+  app.get('/school/print/ops', (req, res) => {
+    const g = opsGuard(req, res); if (!g) return;
+    res.send(opsHtml({ school: g.s, report: g.report, ops: g.ops, trial: !g.full || g.ops.trial, uploadsDir: UPLOADS }));
+  });
+  app.get('/school/export/ops.docx', async (req, res) => {
+    const g = opsGuard(req, res); if (!g) return;
+    if (!g.full || g.ops.trial) return res.redirect('/school#/license');
+    const buf = await opsDocx({ school: g.s, report: g.report, ops: g.ops, uploadsDir: UPLOADS });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`الخطة-التشغيلية-${g.s.name || 'المدرسة'}.docx`)}`);
+    res.send(buf);
+  });
+  app.get('/school/print/deck', (req, res) => {
+    const g = opsGuard(req, res); if (!g) return;
+    const n = nafisOf(g.s.id);
+    const file = ev.build(g.s, latestPlan(g.s.id));
+    res.send(deckHtml({ school: g.s, report: g.report, ops: g.ops, nafisA: n.card ? nafis.analyze(n.card) : null, evidence: file.evidence ? file : null, trial: !g.full || g.ops.trial, uploadsDir: UPLOADS }));
   });
 
   // صفحة المدرسة مع وسوم المشاركة (رابط مطلق للصورة عشان واتساب)

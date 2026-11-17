@@ -141,7 +141,8 @@ function tasksCard() {
     <ul class="task-list">${sorted.map((t) => `<li class="${t.done ? 'done' : ''}">
       <div><b>${t.done ? '✅' : '○'} ${esc(t.text)}</b>${t.when ? ` <span class="pill">${esc(t.when)}</span>` : ''}
       <div class="muted" style="font-size:12.5px">${esc(t.school)}، المؤشر <bdi dir="ltr">${esc(t.indicator)}</bdi> ${esc(t.indicator_text || '')}</div>
-      ${t.evidence ? `<div style="font-size:13px">📎 <a href="#/edit/${t.evidence.id}">${esc(t.evidence.title)}</a></div>` : ''}</div>
+      ${t.evidence ? `<div style="font-size:13px">📎 <a href="#/edit/${t.evidence.id}">${esc(t.evidence.title)}</a></div>` : ''}
+      ${t.done ? `<div class="rate" style="font-size:13px;margin-top:4px">${t.opinion ? 'تقييمك للبرنامج:' : 'وش رأيك في البرنامج؟'} ${[1, 2, 3, 4, 5].map((n) => `<button class="star${t.opinion && t.opinion.rating >= n ? ' on' : ''}" onclick="rateTask('${taskKey(t)}', ${n})" aria-label="${n} من 5">★</button>`).join('')}</div>` : ''}</div>
       <div class="task-act">${t.evidence ? (t.done ? '' : `<button class="btn soft sm" onclick="taskDone('${taskKey(t)}', true)">تم التنفيذ</button>`) : `<a class="btn sm" href="#/new?task=${taskKey(t)}">وثّق التنفيذ</a>${S.evs.length ? `<select class="sm" onchange="linkTask('${taskKey(t)}', this.value)" aria-label="ربط شاهد موجود"><option value="">أو اربط شاهد موجود</option>${S.evs.map((e) => `<option value="${e.id}">${esc(e.title)}</option>`).join('')}</select>` : ''}`}</div>
     </li>`).join('')}</ul></div>`;
 }
@@ -150,6 +151,11 @@ async function putTask(key, body) {
   S.tasks = (await api(`/api/my-tasks/${sid}/${i}/${j}`, { method: 'PUT', body })).tasks;
 }
 window.linkTask = async (key, id) => { if (!id) return; try { await putTask(key, { evidence_id: Number(id), done: true }); toast('تم ربط الشاهد بالمهمة ✅'); dashboard(); } catch (e) { toast(e.message); } };
+window.rateTask = async (key, rating) => {
+  const [sid, i] = key.split(':');
+  const comment = prompt('ملاحظتك على البرنامج لقائد المدرسة (اختياري):') || '';
+  try { S.tasks = (await api(`/api/my-tasks/${sid}/${i}/opinion`, { method: 'PUT', body: { rating, comment } })).tasks; toast('وصل رأيك لقائد المدرسة، شكراً'); dashboard(); } catch (e) { toast(e.message); }
+};
 window.taskDone = async (key, done) => { try { await putTask(key, { done }); toast('تم ✅'); dashboard(); } catch (e) { toast(e.message); } };
 
 function editor(id, query) {

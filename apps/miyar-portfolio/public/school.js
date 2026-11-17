@@ -55,7 +55,7 @@ function toggleDark() {
 function topbar(route) {
   const l = (h, ic, t) => `<a href="#/${h}" class="${route === h ? 'on' : ''}">${ic} <span class="lbl">${t}</span></a>`;
   $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">معياري للمدرسة</span></a>
-  <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('profile', '🏫', 'المدرسة')}${l('report', '📊', 'التقرير')}${l('plan', '📋', 'خطة التحسين')}${l('nafis', '🎯', 'نافس')}${l('evidence', '🗂️', 'الشواهد')}${l('team', '👥', 'الفريق')}${l('license', '⭐', 'الباقة')}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
+  <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('profile', '🏫', 'المدرسة')}${l('report', '📊', 'التقرير')}${l('plan', '📋', 'خطة التحسين')}${l('ops', '🗓️', 'التشغيلية')}${l('nafis', '🎯', 'نافس')}${l('evidence', '🗂️', 'الشواهد')}${l('team', '👥', 'الفريق')}${l('license', '⭐', 'الباقة')}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
   document.querySelector('.nav a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
 const lic = () => S.data.school.license;
@@ -82,6 +82,8 @@ function home() {
   ${!report ? `<div class="card" style="text-align:center;border-style:dashed"><h2 style="font-size:18px;margin-bottom:4px">تبغى تشوف النتيجة قبل ما تدخل بياناتك؟</h2><p class="muted" style="margin-top:0">جرّب الأداة على تقرير مدرسة حقيقية (مخفية البيانات) وشوف الخطة كاملة في ثواني.</p>
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn soft" onclick="trySample('basic', this)">نموذج متوسطة</button><button class="btn soft" onclick="trySample('secondary', this)">نموذج ثانوية</button></div></div>` : ''}
   ${plan && !plan.trial ? (() => { const g = progress(plan.rows); return `<a class="card" href="#/plan" style="display:block;text-decoration:none;color:inherit;margin-bottom:14px"><div style="display:flex;justify-content:space-between"><b>متابعة تنفيذ الخطة</b><b style="color:var(--brand-text)">${g.pct}%</b></div><div class="bar" style="margin-top:8px"><i style="width:${g.pct}%"></i></div><p class="muted" style="margin:6px 0 0;font-size:13px">${g.d} من ${g.t} إجراء منجز. أشّر على الإجراء أول ما يتنفذ، ويطلع لك تقرير متابعة جاهز.</p></a>`; })() : ''}
+  ${report && report.complete ? `<div class="grid g2" style="margin-bottom:14px"><a class="card" href="#/ops" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;margin:0"><span style="font-size:28px">🗓️</span><div><b>الخطة التشغيلية</b><p class="muted" style="margin:0;font-size:14px">${S.data.ops ? `${S.data.ops.programs.length} برنامج علاجي ووقائي وتطويري، مع تحليل SWOT وأهداف المجالات` : 'تنبني تلقائياً من تقريرك وخطة التحسين ونافس'}</p></div></a>
+  <a class="card" href="/school/print/deck" target="_blank" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;margin:0"><span style="font-size:28px">🎞️</span><div><b>عرض المدرسة بضغطة</b><p class="muted" style="margin:0;font-size:14px">شرائح جاهزة لاجتماع المعلمين: الأداء والأولويات والخطة ونافس والشواهد، وتطبعها PDF</p></div></a></div>` : ''}
   <a class="card" href="#/nafis" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;margin-bottom:14px"><span style="font-size:28px">🎯</span><div><b>الخطة العلاجية لنافس</b><p class="muted" style="margin:0;font-size:14px">${S.data.nafis && S.data.nafis.plan ? `خطتك جاهزة: ${S.data.nafis.plan.total} مجال في الخطة` : 'أدخل أرقام بطاقة نافس، وتطلع لك خطة علاجية لكل مادة ومجال'}</p></div></a>
   <a class="card" href="#/evidence" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;margin-bottom:14px"><span style="font-size:28px">🗂️</span><div><b>ملف شواهد التقويم</b><p class="muted" style="margin:0;font-size:14px">رتّب شواهد مدرستك تحت كل مؤشر، واعرف النواقص قبل زيارة التقويم، وسلّم المقيّم الملف كامل بباركود واحد.</p></div></a>
   ${report ? `<div class="card"><h2 style="font-size:18px">ملخص التقرير ${report.sample ? '<span class="pill">نموذج</span>' : ''}</h2>
@@ -299,6 +301,73 @@ window.editRow = (i) => {
     try { const res = await api(`/api/school/plan/rows/${i}`, { method: 'PUT', body: Object.fromEntries(new FormData(e.target)) }); S.data.plan = res.plan; toast('تم الحفظ'); box.outerHTML = rowCard(res.plan.rows[i], i, true); }
     catch (err) { toast(err.message); }
   };
+};
+
+// ---------- الخطة التشغيلية ----------
+const SWN = [['s', 'نقاط القوة', '#0b8f55'], ['w', 'نقاط الضعف', '#d33a2c'], ['o', 'الفرص', '#1a6fe0'], ['t', 'التحديات', '#d9690a']];
+const tpTag = (t) => { const x = S.data.opTypes[t]; return `<span class="lv" style="background:${x.color}">${x.name}</span>`; };
+async function ops() {
+  const { report } = S.data;
+  if (!report || !report.complete) { view.innerHTML = `${banner()}<div class="card" style="text-align:center"><h2>ارفع تقرير التقويم أولاً</h2><p class="muted">الخطة التشغيلية تنبني من نسب المؤشرات وخطة التحسين.</p><a class="btn" href="#/report">التقرير</a></div>`; return; }
+  try { await load(); } catch {}
+  const o = S.data.ops;
+  const full = lic().active && lic().grants.includes('operational');
+  const ed = full && !o.trial;
+  const tps = Object.entries(o.byType).filter(([, n]) => n).map(([t, n]) => `${tpTag(t)} ${n}`).join(' ');
+  view.innerHTML = `${banner()}
+  <div class="head"><div><h1 style="margin:0">الخطة التشغيلية</h1><p class="muted" style="margin:0">مبنية من تقرير التقويم وخطة التحسين${S.data.nafis && S.data.nafis.plan ? ' وخطة نافس' : ''}. المتابعة مشتركة مع خطة التحسين.</p></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost" href="/school/print/ops" target="_blank">🖨️ PDF للطباعة</a>${ed ? '<a class="btn ghost" href="/school/export/ops.docx">📝 Word</a>' : ''}<a class="btn" href="/school/print/deck" target="_blank">🎞️ عرض المدرسة</a></div></div>
+  ${!o.has_plan ? '<div class="banner trial"><span>ابنِ خطة التحسين أولاً، وتطلع برامجها هنا تلقائياً مع إجراءاتها ومسؤوليها.</span><a class="btn sm" href="#/plan">خطة التحسين</a></div>' : ''}
+  ${!full ? `<div class="banner trial"><span>تشوف الحين معاينة. التعديل وملف Word والطباعة بدون علامة مائية متاحة في باقة المدرسة الشاملة.</span><a class="btn sm" href="#/license">الباقة الشاملة</a></div>` : ''}
+  <div class="stats"><div class="card stat">البرامج<b>${o.programs.length}</b></div><div class="card stat">الأهداف العامة<b>${o.goals.length}</b></div><div class="card stat">الإنجاز<b>${o.progress.pct}%</b></div></div>
+  <p style="margin:6px 0 14px">${tps}</p>
+  <div class="card"><div class="head" style="margin-bottom:6px"><h2 style="font-size:18px;margin:0">التوجهات</h2>${ed ? '<button class="btn ghost sm" onclick="opsVM()">✏️ تعديل</button>' : ''}</div>
+  <div id="vm"><div class="grid g2" style="gap:6px"><div><b>الرؤية:</b> ${esc(o.vision) || '<span class="muted">اكتب رؤية المدرسة</span>'}</div><div><b>الرسالة:</b> ${esc(o.mission) || '<span class="muted">اكتب رسالة المدرسة</span>'}</div><div><b>القيم:</b> ${esc(o.values) || '<span class="muted">-</span>'}</div></div></div></div>
+  <div class="card"><div class="head" style="margin-bottom:6px"><div><h2 style="font-size:18px;margin:0">تحليل الواقع (SWOT)</h2><p class="muted" style="margin:0;font-size:13px">${o.swot_edited ? 'معدّل منك.' : 'مقترح من أرقام تقريرك ونافس، وتقدر تعدّله.'}</p></div>${ed ? '<button class="btn ghost sm" onclick="opsSwot()">✏️ تعديل</button>' : ''}</div>
+  <div id="swot" class="grid g2">${SWN.map(([k, t, c]) => `<div style="border:1.5px solid ${c};border-radius:10px;padding:8px 12px"><b style="color:${c}">${t}</b><ul style="margin:4px 0 0;padding-inline-start:18px;font-size:14px">${(o.swot[k] || []).map((x) => `<li>${esc(x)}</li>`).join('') || '<li class="muted">-</li>'}</ul></div>`).join('')}</div></div>
+  <div class="card"><h2 style="font-size:18px;margin-top:0">الأهداف العامة</h2><ul class="procs">${o.goals.map((g) => `<li><span class="dot">•</span><div class="pbody"><b>${esc(g.text)}</b> <span class="muted" style="font-size:13px">(${g.programs.length} برنامج)</span></div></li>`).join('')}</ul></div>
+  <h2 style="font-size:18px">البرامج والمبادرات</h2>
+  <div id="progs">${o.programs.map((p) => progCard(p, ed)).join('')}</div>`;
+}
+function progCard(p, ed) {
+  return `<div class="card row-card" id="pg-${p.key}">
+    <div class="top"><div>${tpTag(p.type)} <span class="muted" style="font-size:13px">${esc(p.domain)} / ${esc(p.standard)}</span><h3>${esc(p.name)}</h3></div>
+    <div style="text-align:left">${p.progress ? `<div class="pct">${p.progress.pct}%</div><div class="bar" style="margin-top:6px;width:120px"><i style="width:${p.progress.pct}%"></i></div>` : ''}${p.opinions.n ? `<div class="muted" style="font-size:13px;margin-top:6px">رأي المعلمين: ⭐ ${p.opinions.avg ?? '-'} (${p.opinions.n})</div>` : ''}</div></div>
+    <dl>
+      <dt>المؤشر</dt><dd>${p.code ? `<code><bdi dir="ltr">${esc(p.code)}</bdi></code> ` : ''}${esc(p.indicator)}${p.pct != null ? ` <span class="muted">(${fmt(p.pct)} ← ${p.target}%)</span>` : ''}</dd>
+      <dt>الهدف</dt><dd>${esc(p.goal)}</dd>
+      <dt>الإجراءات</dt><dd><ul class="procs">${p.procedures.map((x) => `<li class="${x.done ? 'done' : ''}"><span class="dot">${x.done ? '✓' : '•'}</span><div class="pbody"><span class="ptext">${esc(x.text)}${x.when ? ` <span class="when">${esc(x.when)}</span>` : ''}</span>${x.assignee_name ? `<div class="muted" style="font-size:12.5px">المنفذ: ${esc(x.assignee_name)}</div>` : ''}</div></li>`).join('')}</ul>${p.source === 'improvement' ? `<a class="muted" style="font-size:13px" href="#/plan">تأشير التنفيذ وإسناد المعلمين من خطة التحسين ←</a>` : ''}</dd>
+      <dt>المسؤول</dt><dd>${esc(p.responsible)}</dd>
+      <dt>الزمن</dt><dd>${esc(p.from)} إلى ${esc(p.to)}</dd>
+      <dt>مؤشر القياس</dt><dd>${esc(p.kpi)}</dd>
+      ${p.budget ? `<dt>الميزانية</dt><dd>${esc(p.budget)}</dd>` : ''}
+      ${p.opinions.comments.length ? `<dt>آراء المعلمين</dt><dd><ul>${p.opinions.comments.map((c) => `<li>⭐${c.rating} ${esc(c.comment)} <span class="muted">(${esc(c.name)})</span></li>`).join('')}</ul></dd>` : ''}
+    </dl>
+    ${ed ? `<button class="btn ghost sm" style="margin-top:10px" onclick="opsProg('${p.key}')">✏️ تعديل البرنامج</button>` : ''}
+  </div>`;
+}
+const opsPut = async (body) => { const r = await api('/api/school/ops', { method: 'PUT', body }); S.data.ops = r.ops; };
+window.opsVM = () => {
+  const o = S.data.ops;
+  $('#vm').innerHTML = `<form id="vmf"><div class="field"><label>الرؤية</label><input name="vision" value="${esc(o.vision)}" placeholder="مثال: متعلم متميز في بيئة محفزة"></div><div class="field"><label>الرسالة</label><textarea name="mission" style="min-height:60px">${esc(o.mission)}</textarea></div><div class="field"><label>القيم</label><input name="values" value="${esc(o.values)}" placeholder="مثال: الإتقان، الانتماء، المسؤولية"></div><button class="btn sm">حفظ</button> <button type="button" class="btn ghost sm" onclick="ops()">إلغاء</button></form>`;
+  $('#vmf').onsubmit = async (e) => { e.preventDefault(); try { await opsPut(Object.fromEntries(new FormData(e.target))); toast('تم الحفظ'); ops(); } catch (err) { toast(err.message); } };
+};
+window.opsSwot = () => {
+  const o = S.data.ops;
+  $('#swot').outerHTML = `<form id="swf">${SWN.map(([k, t]) => `<div class="field"><label>${t} (كل نقطة في سطر)</label><textarea name="${k}" style="min-height:90px">${esc((o.swot[k] || []).join('\n'))}</textarea></div>`).join('')}<button class="btn sm">حفظ</button> <button type="button" class="btn ghost sm" onclick="ops()">إلغاء</button>${o.swot_edited ? ' <button type="button" class="btn ghost sm" onclick="opsSwotReset()">↻ رجّع المقترح</button>' : ''}</form>`;
+  $('#swf').onsubmit = async (e) => { e.preventDefault(); try { await opsPut({ swot: Object.fromEntries(new FormData(e.target)) }); toast('تم الحفظ'); ops(); } catch (err) { toast(err.message); } };
+};
+window.opsSwotReset = async () => { try { await opsPut({ swot: null }); ops(); } catch (e) { toast(e.message); } };
+window.opsProg = (key) => {
+  const p = S.data.ops.programs.find((x) => x.key === key);
+  const T = S.data.opTypes;
+  $(`#pg-${key}`).innerHTML = `<form id="pgf"><div class="field"><label>اسم البرنامج</label><input name="name" value="${esc(p.name)}"></div>
+  <div class="grid g2"><div class="field"><label>نوع البرنامج</label><select name="type">${Object.entries(T).map(([k, v]) => `<option value="${k}" ${p.type === k ? 'selected' : ''}>${v.name}</option>`).join('')}</select></div>
+  <div class="field"><label>الميزانية التقديرية (اختياري)</label><input name="budget" value="${esc(p.budget)}" placeholder="مثال: 1500 ريال، أو بدون تكلفة"></div></div>
+  <div class="field"><label>مؤشر القياس</label><textarea name="kpi" style="min-height:60px">${esc(p.kpi)}</textarea></div>
+  <p class="muted" style="font-size:13px">الإجراءات والمسؤول والزمن تتعدّل من خطة التحسين، وتنعكس هنا تلقائياً.</p>
+  <button class="btn sm">حفظ</button> <button type="button" class="btn ghost sm" onclick="ops()">إلغاء</button></form>`;
+  $('#pgf').onsubmit = async (e) => { e.preventDefault(); try { await opsPut({ program: { key, ...Object.fromEntries(new FormData(e.target)) } }); toast('تم الحفظ'); ops(); } catch (err) { toast(err.message); } };
 };
 
 // ---------- فريق المدرسة ----------
@@ -572,7 +641,7 @@ async function route() {
   if (!S.data) { try { await load(); } catch { return; } }
   topbar(p);
   window.scrollTo(0, 0);
-  ({ '': home, profile, report, plan, nafis, evidence, team, license }[p] || home)();
+  ({ '': home, profile, report, plan, ops, nafis, evidence, team, license }[p] || home)();
 }
 window.addEventListener('hashchange', route);
 route();

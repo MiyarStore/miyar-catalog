@@ -68,3 +68,5 @@ table.t td, table.t th { padding: 8px; border-bottom: 1px solid var(--line); tex
 .task-list li.done { opacity: .75; }
 .task-act { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .task-act select { width: auto; max-width: 200px; padding: 5px 8px; font-size: 13px; }
+.rate .star { background: none; border: 0; padding: 0 1px; font-size: 18px; line-height: 1; color: #c8d2d0; cursor: pointer; }
+.rate .star.on, .rate .star:hover { color: #e0a100; }

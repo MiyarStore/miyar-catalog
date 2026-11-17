@@ -144,4 +144,10 @@ db.exec(`CREATE TABLE IF NOT EXISTS school_members (
 try { db.exec('ALTER TABLE schools ADD COLUMN ministry_logo INTEGER NOT NULL DEFAULT 1'); } catch {}
 for (const col of ['building', 'period']) { try { db.exec(`ALTER TABLE schools ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`); } catch {} }
 
+// الخطة التشغيلية: تعديلات المدير فقط (الرؤية، SWOT، أسماء البرامج وأنواعها). البرامج نفسها تُشتق من خطة التحسين ونافس.
+db.exec(`CREATE TABLE IF NOT EXISTS school_ops (
+  school_id INTEGER PRIMARY KEY REFERENCES schools(id) ON DELETE CASCADE,
+  data TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+)`);
 module.exports = { db, DATA_DIR };
