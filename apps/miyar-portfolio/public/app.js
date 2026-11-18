@@ -68,8 +68,9 @@ function authView(mode) {
       <div class="field"><label>أنا</label><select name="gender"><option value="m">معلم</option><option value="f">معلمة</option></select></div>` : ''}
       <div class="field"><label>البريد الإلكتروني</label><input name="email" type="email" required autocomplete="email" dir="ltr"></div>
       <div class="field"><label>كلمة المرور</label><input name="password" type="password" required minlength="6" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" dir="ltr"></div>
+      ${mode === 'register' ? '<label class="consent"><input type="checkbox" name="accept" value="1" required><span>قرأت وأوافق على <a href="/privacy" target="_blank">سياسة الخصوصية وشروط الاستخدام</a>، بما فيها حفظ البيانات على خوادم خارج المملكة.</span></label>' : ''}
       <button class="btn" style="width:100%;justify-content:center">${mode === 'login' ? 'دخول' : 'ابدأ التجربة المجانية'}</button>
-    </form></div>`;
+    </form><p class="muted" style="text-align:center;font-size:12.5px;margin:12px 0 0"><a href="/privacy" target="_blank">الخصوصية وشروط الاستخدام</a></p></div>`;
   $('#f').onsubmit = async (e) => {
     e.preventDefault();
     const b = Object.fromEntries(new FormData(e.target));
@@ -184,6 +185,7 @@ function editor(id, query) {
     <div class="field"><label>روابط <span class="muted">(اختياري، كل رابط في سطر)</span></label><textarea name="links" dir="ltr" style="min-height:60px">${esc(e ? e.links.join('\n') : '')}</textarea></div>
     <div class="field"><label>الصور والملفات <span class="muted">(صور أو PDF، حتى 10 ميجا للملف)</span></label>
       <div class="drop" id="drop">📎 اضغط لاختيار صور أو ملفات PDF<input type="file" id="fi" multiple accept="image/*,application/pdf" hidden></div>
+      <p class="privacy-note">🔒 لا ترفع أسماء الطلاب الكاملة أو صور وجوههم الواضحة أو درجاتهم بأسمائهم. غطّ الوجوه أو استخدم أرقاماً. <a href="/privacy#privacy" target="_blank">ليش؟</a></p>
       <div class="files" id="files"></div></div>
     <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
       <button class="btn" id="save">💾 حفظ الشاهد</button>
@@ -267,7 +269,11 @@ function profile() {
     <div style="margin-top:18px"><button class="btn">💾 حفظ</button></div>
   </form>
   <form id="pw" class="card"><h3>تغيير كلمة المرور</h3><div class="grid g2"><div class="field"><label>الحالية</label><input type="password" name="current" dir="ltr"></div><div class="field"><label>الجديدة</label><input type="password" name="next" minlength="6" dir="ltr"></div></div>
-  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><button class="btn ghost">تغيير</button><button type="button" class="btn danger" id="out">تسجيل الخروج</button></div></form>`;
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><button class="btn ghost">تغيير</button><button type="button" class="btn danger" id="out">تسجيل الخروج</button></div></form>
+  <details class="card" style="margin-top:16px"><summary style="cursor:pointer;font-weight:700">🔒 بياناتي وحذف الحساب</summary>
+    <p class="muted" style="font-size:14px">تقدر تعرف كيف نحفظ بياناتك في <a href="/privacy" target="_blank">سياسة الخصوصية</a>. حذف الحساب يمسح حسابك وكل شواهدك وملفاتك، وبيانات المدرسة إذا كنت قائدها، <b>نهائياً وبدون رجعة</b>. صدّر ملفك PDF قبل الحذف إذا تحتاجه.</p>
+    <form id="del"><div class="field"><label>اكتب كلمة المرور للتأكيد</label><input type="password" name="password" required dir="ltr"></div><button class="btn danger">حذف حسابي نهائياً</button></form>
+  </details>`;
   const f = $('#pf');
   $('#colors').onclick = (e) => { const c = e.target.dataset.c; if (!c) return; f.theme.value = c; document.documentElement.dataset.color = c; [...$('#colors').children].forEach((b) => b.classList.toggle('on', b.dataset.c === c)); };
   f.onsubmit = async (e) => {
@@ -277,6 +283,11 @@ function profile() {
   };
   $('#pw').onsubmit = async (e) => { e.preventDefault(); try { await api('/api/password', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); e.target.reset(); toast('تم تغيير كلمة المرور'); } catch (err) { toast(err.message); } };
   $('#out').onclick = async () => { await api('/api/logout', { method: 'POST' }); S.me = null; location.hash = '#/login'; };
+  $('#del').onsubmit = async (e) => {
+    e.preventDefault();
+    if (!confirm('متأكد؟ ما نقدر نرجع حسابك ولا شواهدك بعد الحذف.')) return;
+    try { await api('/api/me', { method: 'DELETE', body: Object.fromEntries(new FormData(e.target)) }); S.me = null; toast('تم حذف حسابك وبياناتك'); location.hash = '#/login'; } catch (err) { toast(err.message); }
+  };
 }
 
 // ---------- الاشتراك ----------

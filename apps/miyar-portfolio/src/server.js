@@ -95,12 +95,14 @@ app.post('/api/register', (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'البريد الإلكتروني غير صحيح' });
   if (password.length < 6) return res.status(400).json({ error: 'كلمة المرور لازم تكون 6 أحرف على الأقل' });
   if (!full_name) return res.status(400).json({ error: 'اكتب اسمك' });
+  if (!req.body.accept) return res.status(400).json({ error: 'وافق على سياسة الخصوصية وشروط الاستخدام عشان نكمل' });
   if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) return res.status(409).json({ error: 'هذا البريد مسجّل مسبقاً، سجّل دخولك' });
   const salt = crypto.randomBytes(16).toString('hex');
   const now = Date.now();
   const info = db.prepare(`INSERT INTO users (email, pass_hash, salt, full_name, gender, job_title, slug, verify_code, trial_ends, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(email, hash(password, salt), salt, full_name, gender, gender === 'f' ? 'معلمة' : 'معلم',
     'm' + rand(6).toLowerCase(), rand(10), now + TRIAL_DAYS * DAY, now);
+  db.prepare('UPDATE users SET privacy_accepted_at = ? WHERE id = ?').run(now, info.lastInsertRowid);
   startSession(res, info.lastInsertRowid);
   res.json({ ok: true });
 });
@@ -116,6 +118,24 @@ app.post('/api/login', (req, res) => {
 app.post('/api/logout', (req, res) => {
   const sid = cookies(req).sid;
   if (sid) db.prepare('DELETE FROM sessions WHERE token = ?').run(sid);
+  res.setHeader('Set-Cookie', 'sid=; Path=/; Max-Age=0');
+  res.json({ ok: true });
+});
+
+// حذف الحساب نهائياً مع كل الشواهد والملفات وبيانات المدرسة اللي يملكها (حق الحذف)
+app.delete('/api/me', auth, (req, res) => {
+  const u = req.user;
+  if (hash(String((req.body || {}).password || ''), u.salt) !== u.pass_hash) return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
+  const files = db.prepare('SELECT stored FROM attachments WHERE user_id = ?').all(u.id).map((f) => f.stored);
+  const sch = db.prepare('SELECT id, logo FROM schools WHERE owner_id = ?').get(u.id);
+  if (sch) {
+    if (sch.logo) files.push(sch.logo);
+    for (const f of db.prepare('SELECT stored FROM school_evidence WHERE school_id = ? AND stored IS NOT NULL').all(sch.id)) files.push(f.stored);
+  }
+  db.prepare('DELETE FROM school_members WHERE email = ?').run(String(u.email).toLowerCase());
+  db.prepare('DELETE FROM ai_usage WHERE user_id = ?').run(u.id);
+  db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
+  for (const f of files) fs.rm(path.join(UPLOADS, path.basename(f)), () => {});
   res.setHeader('Set-Cookie', 'sid=; Path=/; Max-Age=0');
   res.json({ ok: true });
 });
@@ -336,6 +356,8 @@ app.get('/print/evidence/:id', async (req, res) => {
 
 mountSchool(app, { auth, currentUser });
 
+app.get('/privacy', (req, res) => res.send(views.privacyPage(STORE_URL, baseUrl(req))));
+app.get('/terms', (req, res) => res.redirect('/privacy#terms'));
 app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS, PLANS, baseUrl(req))));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'app.html')));

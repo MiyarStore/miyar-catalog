@@ -70,3 +70,8 @@ table.t td, table.t th { padding: 8px; border-bottom: 1px solid var(--line); tex
 .task-act select { width: auto; max-width: 200px; padding: 5px 8px; font-size: 13px; }
 .rate .star { background: none; border: 0; padding: 0 1px; font-size: 18px; line-height: 1; color: #c8d2d0; cursor: pointer; }
 .rate .star.on, .rate .star:hover { color: #e0a100; }
+.consent { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; line-height: 1.7; margin: 4px 0 14px; color: var(--muted, #5b6b69); }
+.consent input { margin-top: 6px; flex: none; width: 18px !important; height: 18px; min-height: 0; padding: 0; }
+.consent > span { flex: 1; min-width: 0; font-weight: 400; }
+.privacy-note { font-size: 13px; line-height: 1.7; background: #fff8e6; color: #6b4e00; border-radius: 8px; padding: 8px 10px; margin: 8px 0; }
+[data-theme="dark"] .privacy-note { background: #3a3010; color: #f3dc9a; }

@@ -150,4 +150,5 @@ db.exec(`CREATE TABLE IF NOT EXISTS school_ops (
   data TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 )`);
+try { db.exec('ALTER TABLE users ADD COLUMN privacy_accepted_at INTEGER'); } catch {}
 module.exports = { db, DATA_DIR };

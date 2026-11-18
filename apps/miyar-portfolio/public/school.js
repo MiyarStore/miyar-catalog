@@ -576,6 +576,7 @@ function evForm(code, item) {
     <div class="grid g2"><div class="field"><label>الملف (PDF أو صورة أو Word أو Excel أو عرض، حتى 10MB)</label><input type="file" name="file" accept=".pdf,image/*,.docx,.xlsx,.pptx"></div><div class="field"><label>أو رابط (Drive، يوتيوب، موقع المدرسة)</label><input name="url" dir="ltr" placeholder="https://"></div></div>
     <div class="field"><label>أو اربطه بشاهد من ملف معلم في الفريق</label>${tl ? (tl.length ? `<select name="evidence_id"><option value="">بدون</option>${tl.map((e) => `<option value="${e.id}">${esc(e.full_name)}: ${esc(e.title)}</option>`).join('')}</select>` : '<p class="muted" style="margin:0;font-size:13px">ما فيه شواهد لمعلمين مسجلين في <a href="#/team">الفريق</a> للحين.</p>') : '<button type="button" class="btn ghost sm" onclick="evTeachers()">اعرض شواهد المعلمين</button>'}</div>
     <div class="field"><label>وصف مختصر (اختياري)</label><textarea name="note" maxlength="1000" style="min-height:60px"></textarea></div>
+    <p class="privacy-note">🔒 قبل الرفع: اخفِ أسماء الطلاب الكاملة وأرقام هوياتهم ودرجاتهم الفردية، وغطّ وجوه الطلاب في الصور. ملف الشواهد ممكن يوصل لفريق التقويم برابط. <a href="/privacy#privacy" target="_blank">التفاصيل</a></p>
     <button class="btn">حفظ الشاهد</button> <button type="button" class="btn ghost" onclick="evCancel()">إلغاء</button></form>`;
 }
 function evInd(i) {
