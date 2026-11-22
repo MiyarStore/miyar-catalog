@@ -151,4 +151,6 @@ db.exec(`CREATE TABLE IF NOT EXISTS school_ops (
   updated_at INTEGER NOT NULL
 )`);
 try { db.exec('ALTER TABLE users ADD COLUMN privacy_accepted_at INTEGER'); } catch {}
+// رابط فريق التنفيذ (بدون تسجيل دخول) لتأشير الإجراءات
+try { db.exec('ALTER TABLE schools ADD COLUMN team_token TEXT'); } catch {}
 module.exports = { db, DATA_DIR };

@@ -3,6 +3,8 @@
 // المدير يعدّل: الرؤية والرسالة، تحليل SWOT، واسم البرنامج ونوعه ومؤشر قياسه وميزانيته. التعديلات تُحفظ منفصلة (overrides).
 const { DOMAINS, STANDARDS, levelOf } = require('./indicators');
 const { procs, progress } = require('./export');
+const { lateDays, stateOf } = require('./track');
+const withTrack = (x) => ({ ...x, late: lateDays(x), state: stateOf(x) });
 
 const TYPES = {
   remedial: { name: 'علاجي', color: '#d33a2c' },
@@ -100,7 +102,7 @@ function build({ report, plan, nafis, nafisA, over = {} }) {
       key, source: 'improvement', row: i, code: r.code, domain: r.domain, standard: r.standard, indicator: r.indicator, pct: r.pct, target: r.target,
       name: o.name || nameOf(r),
       type: o.type && TYPES[o.type] ? o.type : typeOf(r),
-      goal: r.goal, procedures: procs(r), responsible: r.responsible, from: r.from, to: r.to,
+      goal: r.goal, procedures: procs(r).map((x, j) => withTrack({ ...x, refs: [{ k: 'plan', i, j }] })), responsible: r.responsible, from: r.from, to: r.to,
       kpi: o.kpi || r.measure, budget: o.budget || '', evidence: r.evidence || [],
       progress: { done: pr.done, total: pr.total, pct: pr.total ? Math.round((pr.done / pr.total) * 100) : 0 },
       opinions: { n: ops.length, avg: avg(ops.map((x) => x.rating).filter(Boolean)), comments: ops.filter((x) => x.comment).map((x) => ({ name: x.name, rating: x.rating, comment: x.comment })) },
@@ -113,15 +115,25 @@ function build({ report, plan, nafis, nafisA, over = {} }) {
     for (const [k, rs] of by) {
       const key = `n${k.replace('|', '_')}`; const o = pg[key] || {};
       const f = rs[0];
-      const acts = []; for (const r of rs) for (const a of r.actions) if (!acts.some((x) => x.text === a.text)) acts.push({ text: a.text, when: a.when, done: false });
+      // الإجراءات المتكررة بين مجالات نفس المادة تظهر مرة وحدة، وتأشيرها يشمل كل نسخها
+      const acts = [];
+      for (const r of rs) {
+        const i = nafis.rows.indexOf(r);
+        r.actions.forEach((a, j) => {
+          const ex = acts.find((x) => x.text === a.text);
+          if (ex) { ex.refs.push({ k: 'nafis', i, j }); return; }
+          acts.push({ text: a.text, when: a.when, done: !!a.done, done_at: a.done_at || null, done_name: a.done_name || '', note: a.note || '', due: a.due || '', refs: [{ k: 'nafis', i, j }] });
+        });
+      }
+      const nd = acts.filter((x) => x.done).length;
       programs.push({
         key, source: 'nafis', domain: 'نواتج التعلم', standard: 'التحصيل التعليمي (نافس)', code: '', indicator: `${f.subject_name}، ${f.grade_name}: ${rs.map((r) => r.domain).join('، ')}`,
         name: o.name || `البرنامج العلاجي لنافس: ${f.subject_name} (${f.grade_name})`,
         type: o.type && TYPES[o.type] ? o.type : 'remedial',
         goal: `رفع نسبة الإتقان في مجالات ${rs.map((r) => `${r.domain} إلى ${r.target}%`).join('، ')}.`,
-        procedures: acts.slice(0, 6), responsible: f.owner, from: 'بداية الفصل', to: 'قبل موعد الاختبار',
+        procedures: acts.map(withTrack), responsible: f.owner, from: 'بداية الفصل', to: 'قبل موعد الاختبار',
         kpi: o.kpi || rs[0].measure, budget: o.budget || '', evidence: ['نتائج الاختبار التشخيصي', 'سجل المجموعات العلاجية', 'نتائج الاختبارات المحاكية'],
-        progress: null, opinions: { n: 0, avg: null, comments: [] },
+        progress: { done: nd, total: acts.length, pct: acts.length ? Math.round((nd / acts.length) * 100) : 0 }, opinions: { n: 0, avg: null, comments: [] },
       });
     }
   }
@@ -144,6 +156,7 @@ function build({ report, plan, nafis, nafisA, over = {} }) {
     const target = Math.min(100, Math.max(ceil5(d.pct + 3), d.pct >= 90 ? d.pct : 0));
     return { domain: d.name, pct: d.pct, target, level: levelOf(d.pct).name, text: d.pct >= 90 ? `المحافظة على تميز مجال ${d.name} (${d.pct}%)` : `رفع متوسط الأداء في مجال ${d.name} من ${d.pct}% إلى ${target}%`, programs: ps.map((p) => p.key) };
   });
+  for (const p of programs) { p.late = p.procedures.filter((x) => x.state === 'late').length; p.maxLate = Math.max(0, ...p.procedures.map((x) => x.late || 0)); }
   const tracked = programs.filter((p) => p.progress);
   const done = tracked.reduce((a, p) => a + p.progress.done, 0), total = tracked.reduce((a, p) => a + p.progress.total, 0);
   const byType = Object.fromEntries(Object.keys(TYPES).map((t) => [t, programs.filter((p) => p.type === t).length]));
@@ -153,6 +166,7 @@ function build({ report, plan, nafis, nafisA, over = {} }) {
     vision: over.vision || '', mission: over.mission || '', values: over.values || '',
     swot, swot_edited: !!over.swot, goals, programs, byType,
     progress: { done, total, pct: total ? Math.round((done / total) * 100) : 0 },
+    late: programs.reduce((a, p) => a + p.late, 0),
     domains: G.domains, standards: G.standards,
     trial: !!(plan && plan.trial), has_plan: !!plan,
   };

@@ -17,6 +17,8 @@ const { mountEvidence } = require('./evidence');
 const { publicHtml, evidenceHtml, evidenceDocx } = require('./evidence-export');
 const operational = require('./operational');
 const { opsHtml, opsDocx, deckHtml } = require('./ops-export');
+const track = require('./track');
+const { progressHtml, teamHtml, teamCardHtml } = require('./track-export');
 
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
@@ -391,6 +393,97 @@ function mountSchool(app, { auth, currentUser }) {
     }
     db.prepare('INSERT INTO school_ops (school_id, data, updated_at) VALUES (?, ?, ?) ON CONFLICT(school_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at').run(s.id, JSON.stringify(o), Date.now());
     res.json({ ops: opsOf(s) });
+  });
+
+  // ---------- متابعة التنفيذ: المواعيد والتأخير ورابط الفريق ----------
+  const canTrack = (s) => ['improvement', 'nafis', 'operational'].some((g) => license(s).grants.includes(g));
+  const cleanRefs = (refs) => (Array.isArray(refs) ? refs : []).slice(0, 20).map((r) => ({ k: r && r.k === 'nafis' ? 'nafis' : 'plan', i: Number(r && r.i), j: Number(r && r.j) })).filter((r) => Number.isInteger(r.i) && Number.isInteger(r.j));
+  // يطبق التعديل على كل الإجراءات في المراجع ويحفظ الخطتين
+  function mutate(sid, refs, fn) {
+    const plan = latestPlan(sid); const n = nafisOf(sid);
+    const ctx = { plan, nafis: n.plan };
+    let hit = 0;
+    for (const r of refs) { const x = track.resolve(ctx, r); if (x) { fn(x); hit++; } }
+    if (!hit) return 0;
+    if (plan && refs.some((r) => r.k === 'plan')) savePlan(plan);
+    if (n.plan && refs.some((r) => r.k === 'nafis')) saveNafis(sid, { card: n.card, plan: n.plan });
+    return hit;
+  }
+  const setDone = (x, done, who, note) => {
+    x.done = !!done; x.done_at = x.done ? Date.now() : null;
+    x.done_by = x.done ? who.by : null; x.done_name = x.done ? clip(who.name, 80).trim() : '';
+    if (note !== undefined) x.note = clip(note, 300).trim();
+  };
+  app.put('/api/school/track', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    if (!canTrack(s)) return res.status(402).json({ error: 'متابعة التنفيذ متاحة بعد تفعيل الباقة', code: 'license' });
+    const b = req.body || {}; const refs = cleanRefs(b.refs);
+    if (b.due !== undefined && b.due !== '' && track.parseDay(b.due) == null) return res.status(400).json({ error: 'تاريخ غير صحيح' });
+    const ok = mutate(s.id, refs, (x) => {
+      if (b.due !== undefined) x.due = b.due || '';
+      if (b.done !== undefined) setDone(x, b.done, { by: 'principal', name: req.user.full_name || 'قائد المدرسة' }, b.note);
+    });
+    if (!ok) return res.status(404).json({ error: 'الإجراء غير موجود' });
+    res.json({ ops: opsOf(s), plan: withPeople(latestPlan(s.id), s.id), nafis: nafisView(s.id) });
+  });
+  app.post('/api/school/schedule', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    if (!canTrack(s)) return res.status(402).json({ error: 'متابعة التنفيذ متاحة بعد تفعيل الباقة', code: 'license' });
+    const b = req.body || {};
+    const plan = latestPlan(s.id); const n = nafisOf(s.id);
+    const count = track.schedule({ plan, nafis: n.plan }, b.start, b.end, !!b.force);
+    if (!count && (track.parseDay(b.start) == null || track.parseDay(b.end) == null || track.parseDay(b.end) <= track.parseDay(b.start))) return res.status(400).json({ error: 'حدد تاريخ البداية والنهاية، والنهاية بعد البداية' });
+    if (plan) savePlan(plan);
+    if (n.plan) saveNafis(s.id, { card: n.card, plan: n.plan });
+    res.json({ count, ops: opsOf(s), plan: withPeople(latestPlan(s.id), s.id) });
+  });
+  app.post('/api/school/team-link', auth, (req, res) => {
+    const s = schoolOf(req.user.id);
+    if (!canTrack(s)) return res.status(402).json({ error: 'رابط الفريق متاح بعد تفعيل الباقة', code: 'license' });
+    const token = crypto.randomBytes(12).toString('base64url');
+    db.prepare('UPDATE schools SET team_token = ? WHERE id = ?').run(token, s.id);
+    res.json({ token });
+  });
+  const byToken = (t) => (/^[\w-]{12,40}$/.test(String(t || '')) ? db.prepare('SELECT * FROM schools WHERE team_token = ?').get(String(t)) : null);
+  app.get('/t/:token', (req, res) => {
+    const s = byToken(req.params.token);
+    if (!s || !canTrack(s)) return res.status(404).type('html').send('<meta charset="utf-8"><p style="font-family:sans-serif;text-align:center;margin-top:60px">الرابط غير صالح أو تم تغييره. اطلب الرابط الجديد من قائد المدرسة.</p>');
+    res.type('html').send(teamHtml({ school: s, token: req.params.token }));
+  });
+  app.get('/api/t/:token', (req, res) => {
+    const s = byToken(req.params.token);
+    if (!s || !canTrack(s)) return res.status(404).json({ error: 'الرابط غير صالح' });
+    const ops = opsOf(s);
+    if (!ops) return res.json({ school: s.name || '', programs: [] });
+    res.json({ school: s.name || '', programs: ops.programs.map((p) => ({ key: p.key, name: p.name, type: p.type, responsible: p.responsible, procedures: p.procedures.filter((x) => x.refs).map((x) => ({ text: x.text, when: x.when, due: x.due || '', done: !!x.done, done_name: x.done_name || '', note: x.note || '', late: x.late, state: x.state, refs: x.refs })) })).filter((p) => p.procedures.length) });
+  });
+  app.put('/api/t/:token/track', (req, res) => {
+    const s = byToken(req.params.token);
+    if (!s || !canTrack(s)) return res.status(404).json({ error: 'الرابط غير صالح' });
+    const b = req.body || {};
+    const name = clip(b.name, 80).trim();
+    if (b.done && name.length < 2) return res.status(400).json({ error: 'اكتب اسمك عشان يظهر من نفّذ' });
+    const ok = mutate(s.id, cleanRefs(b.refs), (x) => setDone(x, b.done, { by: 'team', name }, b.note));
+    if (!ok) return res.status(404).json({ error: 'الإجراء غير موجود' });
+    res.json({ ok: true });
+  });
+  // تقرير الإنجاز الأسبوعي أو الشهري، وبطاقة QR للفريق
+  app.get('/school/print/progress', (req, res) => {
+    const u = currentUser(req);
+    if (!u) return res.redirect('/school');
+    const s = schoolOf(u.id);
+    const ops = opsOf(s);
+    if (!ops) return res.redirect('/school#/report');
+    const period = req.query.p === 'month' ? 'month' : 'week';
+    res.send(progressHtml({ school: s, rep: track.periodReport(ops, period), uploadsDir: UPLOADS }));
+  });
+  app.get('/school/print/team-card', async (req, res) => {
+    const u = currentUser(req);
+    if (!u) return res.redirect('/school');
+    const s = schoolOf(u.id);
+    if (!s.team_token) return res.redirect('/school#/ops');
+    const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+    res.send(await teamCardHtml({ school: s, url: `${base}/t/${s.team_token}`, uploadsDir: UPLOADS }));
   });
 
   // فريق المدرسة

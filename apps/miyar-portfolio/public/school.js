@@ -319,7 +319,8 @@ async function ops() {
   <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost" href="/school/print/ops" target="_blank">🖨️ PDF للطباعة</a>${ed ? '<a class="btn ghost" href="/school/export/ops.docx">📝 Word</a>' : ''}<a class="btn" href="/school/print/deck" target="_blank">🎞️ عرض المدرسة</a></div></div>
   ${!o.has_plan ? '<div class="banner trial"><span>ابنِ خطة التحسين أولاً، وتطلع برامجها هنا تلقائياً مع إجراءاتها ومسؤوليها.</span><a class="btn sm" href="#/plan">خطة التحسين</a></div>' : ''}
   ${!full ? `<div class="banner trial"><span>تشوف الحين معاينة. التعديل وملف Word والطباعة بدون علامة مائية متاحة في باقة المدرسة الشاملة.</span><a class="btn sm" href="#/license">الباقة الشاملة</a></div>` : ''}
-  <div class="stats"><div class="card stat">البرامج<b>${o.programs.length}</b></div><div class="card stat">الأهداف العامة<b>${o.goals.length}</b></div><div class="card stat">الإنجاز<b>${o.progress.pct}%</b></div></div>
+  <div class="stats"><div class="card stat">البرامج<b>${o.programs.length}</b></div><div class="card stat">الأهداف العامة<b>${o.goals.length}</b></div><div class="card stat">الإنجاز<b>${o.progress.pct}%</b></div><div class="card stat">إجراءات متأخرة<b style="color:${o.late ? '#d33a2c' : 'inherit'}">${o.late}</b></div></div>
+  ${trackCard(o)}
   <p style="margin:6px 0 14px">${tps}</p>
   <div class="card"><div class="head" style="margin-bottom:6px"><h2 style="font-size:18px;margin:0">التوجهات</h2>${ed ? '<button class="btn ghost sm" onclick="opsVM()">✏️ تعديل</button>' : ''}</div>
   <div id="vm"><div class="grid g2" style="gap:6px"><div><b>الرؤية:</b> ${esc(o.vision) || '<span class="muted">اكتب رؤية المدرسة</span>'}</div><div><b>الرسالة:</b> ${esc(o.mission) || '<span class="muted">اكتب رسالة المدرسة</span>'}</div><div><b>القيم:</b> ${esc(o.values) || '<span class="muted">-</span>'}</div></div></div></div>
@@ -327,16 +328,53 @@ async function ops() {
   <div id="swot" class="grid g2">${SWN.map(([k, t, c]) => `<div style="border:1.5px solid ${c};border-radius:10px;padding:8px 12px"><b style="color:${c}">${t}</b><ul style="margin:4px 0 0;padding-inline-start:18px;font-size:14px">${(o.swot[k] || []).map((x) => `<li>${esc(x)}</li>`).join('') || '<li class="muted">-</li>'}</ul></div>`).join('')}</div></div>
   <div class="card"><h2 style="font-size:18px;margin-top:0">الأهداف العامة</h2><ul class="procs">${o.goals.map((g) => `<li><span class="dot">•</span><div class="pbody"><b>${esc(g.text)}</b> <span class="muted" style="font-size:13px">(${g.programs.length} برنامج)</span></div></li>`).join('')}</ul></div>
   <h2 style="font-size:18px">البرامج والمبادرات</h2>
-  <div id="progs">${o.programs.map((p) => progCard(p, ed)).join('')}</div>`;
+  <div id="progs">${o.programs.map((p) => progCard(p, ed, canTrack() && !o.trial)).join('')}</div>`;
+  if ($('#schf')) $('#schf').onsubmit = async (e) => {
+    e.preventDefault(); const b = Object.fromEntries(new FormData(e.target)); b.force = !!b.force;
+    try { const r = await api('/api/school/schedule', { method: 'POST', body: b }); S.data.ops = r.ops; S.data.plan = r.plan; toast(`تم تحديد ${r.count} موعد`); ops(); } catch (err) { toast(err.message); }
+  };
 }
-function progCard(p, ed) {
+const canTrack = () => lic().active && ['improvement', 'nafis', 'operational'].some((g) => lic().grants.includes(g));
+const teamUrl = () => (S.data.school.team_token ? `${location.origin}/t/${S.data.school.team_token}` : '');
+const fdAr = (d) => (d ? new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long' }).format(new Date(`${d}T12:00:00Z`)) : '');
+function trackCard(o) {
+  if (!canTrack() || o.trial) return '';
+  const all = o.programs.flatMap((p) => p.procedures.filter((x) => x.refs));
+  const nodate = all.filter((x) => !x.due).length;
+  const today = new Date().toISOString().slice(0, 10);
+  const url = teamUrl();
+  return `<div class="card" style="margin-bottom:14px"><h2 style="font-size:18px;margin-top:0">متابعة التنفيذ</h2>
+  <div class="grid g2" style="gap:14px">
+  <div><b>رابط الفريق</b><p class="muted" style="margin:2px 0 8px;font-size:13px">أي عضو في الفريق يفتح الرابط أو يمسح الـQR، يكتب اسمه ويأشّر على اللي نفّذه. بدون تسجيل دخول.</p>
+  ${url ? `<input readonly dir="ltr" value="${esc(url)}" onclick="this.select()" style="margin-bottom:8px"><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" onclick="navigator.clipboard.writeText('${esc(url)}').then(()=>toast('تم نسخ الرابط'))">نسخ الرابط</button><a class="btn ghost sm" href="/school/print/team-card" target="_blank">🔳 بطاقة QR للطباعة</a><button class="btn ghost sm" onclick="teamLink(true)">↻ رابط جديد</button></div>` : '<button class="btn sm" onclick="teamLink()">أنشئ رابط الفريق</button>'}</div>
+  <div><b>التقارير</b><p class="muted" style="margin:2px 0 8px;font-size:13px">المتأخر بعدد أيامه، والمنجز خلال الفترة، ونسبة كل برنامج برسوم، بهوية الوزارة.</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn sm" href="/school/print/progress?p=week" target="_blank">📊 التقرير الأسبوعي</a><a class="btn ghost sm" href="/school/print/progress?p=month" target="_blank">📊 التقرير الشهري</a></div></div></div>
+  <details style="margin-top:12px" ${nodate === all.length && all.length ? 'open' : ''}><summary><b>مواعيد الإجراءات</b> <span class="muted" style="font-size:13px">(${nodate ? `${nodate} إجراء بدون موعد` : 'كل الإجراءات لها مواعيد'})</span></summary>
+  <p class="muted" style="font-size:13px">حدد مدة التنفيذ، ونوزّع المواعيد على الإجراءات حسب توقيت كل واحد. وتقدر تعدّل أي موعد من بطاقة البرنامج.</p>
+  <form id="schf" class="grid g3"><div class="field"><label>بداية التنفيذ</label><input type="date" name="start" value="${today}" required></div><div class="field"><label>نهاية التنفيذ</label><input type="date" name="end" required></div><div class="field"><label style="display:flex;gap:6px;align-items:center;margin-top:26px"><input type="checkbox" name="force" style="width:auto"> استبدل المواعيد الحالية</label></div><div><button class="btn sm">وزّع المواعيد</button></div></form></details></div>`;
+}
+window.teamLink = async (again) => {
+  if (again && !confirm('الرابط القديم يتوقف، وتحتاج ترسل الجديد للفريق. متأكد؟')) return;
+  try { const r = await api('/api/school/team-link', { method: 'POST' }); S.data.school.team_token = r.token; toast('جاهز الرابط'); ops(); } catch (e) { toast(e.message); }
+};
+const trackPut = async (refs, body) => { const r = await api('/api/school/track', { method: 'PUT', body: { refs, ...body } }); S.data.ops = r.ops; S.data.plan = r.plan; if (r.nafis) S.data.nafis = r.nafis; };
+window.opTick = async (key, j, el) => {
+  const x = S.data.ops.programs.find((p) => p.key === key).procedures[j];
+  try { await trackPut(x.refs, { done: el.checked }); toast(el.checked ? 'تم ✓' : 'تم إلغاء التأشير'); const y = window.scrollY; await ops(); window.scrollTo(0, y); } catch (e) { el.checked = !el.checked; toast(e.message); }
+};
+window.opDue = async (key, j, el) => {
+  const x = S.data.ops.programs.find((p) => p.key === key).procedures[j];
+  try { await trackPut(x.refs, { due: el.value }); toast('تم حفظ الموعد'); const y = window.scrollY; await ops(); window.scrollTo(0, y); } catch (e) { toast(e.message); }
+};
+const lateTag = (x) => (x.done ? (x.done_name ? `<span class="pill">نفّذه ${esc(x.done_name)}</span>` : '') : x.state === 'late' ? `<span class="lv" style="background:#d33a2c">متأخر ${x.late} يوم</span>` : x.state === 'soon' ? `<span class="lv" style="background:#d9690a">موعده ${fdAr(x.due)}</span>` : '');
+function progCard(p, ed, tr) {
   return `<div class="card row-card" id="pg-${p.key}">
     <div class="top"><div>${tpTag(p.type)} <span class="muted" style="font-size:13px">${esc(p.domain)} / ${esc(p.standard)}</span><h3>${esc(p.name)}</h3></div>
-    <div style="text-align:left">${p.progress ? `<div class="pct">${p.progress.pct}%</div><div class="bar" style="margin-top:6px;width:120px"><i style="width:${p.progress.pct}%"></i></div>` : ''}${p.opinions.n ? `<div class="muted" style="font-size:13px;margin-top:6px">رأي المعلمين: ⭐ ${p.opinions.avg ?? '-'} (${p.opinions.n})</div>` : ''}</div></div>
+    <div style="text-align:left">${p.late ? `<div><span class="lv" style="background:#d33a2c">${p.late} متأخر · حتى ${p.maxLate} يوم</span></div>` : ''}${p.progress ? `<div class="pct">${p.progress.pct}%</div><div class="bar" style="margin-top:6px;width:120px"><i style="width:${p.progress.pct}%"></i></div>` : ''}${p.opinions.n ? `<div class="muted" style="font-size:13px;margin-top:6px">رأي المعلمين: ⭐ ${p.opinions.avg ?? '-'} (${p.opinions.n})</div>` : ''}</div></div>
     <dl>
       <dt>المؤشر</dt><dd>${p.code ? `<code><bdi dir="ltr">${esc(p.code)}</bdi></code> ` : ''}${esc(p.indicator)}${p.pct != null ? ` <span class="muted">(${fmt(p.pct)} ← ${p.target}%)</span>` : ''}</dd>
       <dt>الهدف</dt><dd>${esc(p.goal)}</dd>
-      <dt>الإجراءات</dt><dd><ul class="procs">${p.procedures.map((x) => `<li class="${x.done ? 'done' : ''}"><span class="dot">${x.done ? '✓' : '•'}</span><div class="pbody"><span class="ptext">${esc(x.text)}${x.when ? ` <span class="when">${esc(x.when)}</span>` : ''}</span>${x.assignee_name ? `<div class="muted" style="font-size:12.5px">المنفذ: ${esc(x.assignee_name)}</div>` : ''}</div></li>`).join('')}</ul>${p.source === 'improvement' ? `<a class="muted" style="font-size:13px" href="#/plan">تأشير التنفيذ وإسناد المعلمين من خطة التحسين ←</a>` : ''}</dd>
+      <dt>الإجراءات</dt><dd><ul class="procs">${p.procedures.map((x, j) => `<li class="${x.done ? 'done' : ''}">${tr && x.refs ? `<input type="checkbox" ${x.done ? 'checked' : ''} onchange="opTick('${p.key}', ${j}, this)" aria-label="تم التنفيذ">` : `<span class="dot">${x.done ? '✓' : '•'}</span>`}<div class="pbody"><span class="ptext">${esc(x.text)}${x.when ? ` <span class="when">${esc(x.when)}</span>` : ''} ${lateTag(x)}</span>${x.assignee_name ? `<div class="muted" style="font-size:12.5px">المنفذ: ${esc(x.assignee_name)}</div>` : ''}${tr && x.refs ? `<div class="pmeta"><label class="muted" style="font-size:12.5px">الموعد: <input type="date" value="${esc(x.due || '')}" onchange="opDue('${p.key}', ${j}, this)" style="width:auto;padding:2px 6px;font-size:13px"></label></div>` : ''}</div></li>`).join('')}</ul>${p.source === 'improvement' ? `<a class="muted" style="font-size:13px" href="#/plan">إسناد الإجراءات للمعلمين من خطة التحسين ←</a>` : ''}</dd>
       <dt>المسؤول</dt><dd>${esc(p.responsible)}</dd>
       <dt>الزمن</dt><dd>${esc(p.from)} إلى ${esc(p.to)}</dd>
       <dt>مؤشر القياس</dt><dd>${esc(p.kpi)}</dd>
