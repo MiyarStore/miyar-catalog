@@ -11,6 +11,7 @@ const { buildPlan } = require('./plan');
 const { printHtml, planDocx, followupHtml, followupDocx } = require('./export');
 const { guessStandard } = require('../standards');
 const nafis = require('./nafis');
+const { readNafis, ACCEPT: NAFIS_ACCEPT } = require('./nafis-read');
 const { nafisHtml, nafisDocx } = require('./nafis-export');
 const { mountEvidence } = require('./evidence');
 const { publicHtml, evidenceHtml, evidenceDocx } = require('./evidence-export');
@@ -279,6 +280,25 @@ function mountSchool(app, { auth, currentUser }) {
   // ---------- الخطة العلاجية لنافس ----------
   app.get('/api/school/nafis/sample', auth, (req, res) => res.json({ card: nafis.normalize({ ...require(path.join(__dirname, 'samples', 'nafis-intermediate.json')), sample: true }) }));
   // حفظ أرقام البطاقة (الخطة القديمة تبقى حتى يعيد البناء)
+  // قراءة بطاقة نافس (PDF أو صور، حتى 3 ملفات لكل الصفوف): ترجع مسودة للمراجعة ولا تحفظ
+  const nafisUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024, files: 3 }, fileFilter: (req, f, cb) => cb(null, NAFIS_ACCEPT.includes(f.mimetype)) });
+  app.post('/api/school/nafis/pdf', auth, (req, res) => {
+    nafisUpload.array('cards', 3)(req, res, async (err) => {
+      if (err || !req.files || !req.files.length) return res.status(400).json({ error: 'ارفع بطاقة نافس بصيغة PDF أو صورة (حتى 3 ملفات، أقل من 20MB للملف)' });
+      const s = schoolOf(req.user.id);
+      if (used(s.id, 'read') >= YEAR_READ_LIMIT) return res.status(429).json({ error: 'وصلت لحد قراءة الملفات لهذا العام. أدخل الأرقام يدوياً أو تواصل معنا.' });
+      try {
+        const r = await readNafis(req.files);
+        bump(s.id, 'read');
+        res.json({ card: r.card, warnings: r.warnings });
+      } catch (e) {
+        if (e.code === 'no_ai') return res.status(503).json({ error: e.message, code: 'no_ai' });
+        console.error('nafis read error:', e.status || '', e.message);
+        res.status(502).json({ error: 'ما قدرنا نقرأ الملف. تأكد أنه بطاقة نافس من منصة تميز، أو أدخل الأرقام يدوياً.' });
+      }
+    });
+  });
+
   app.put('/api/school/nafis', auth, (req, res) => {
     const s = schoolOf(req.user.id);
     const card = nafis.normalize(req.body || {});

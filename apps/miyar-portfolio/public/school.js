@@ -440,6 +440,22 @@ function nfDraftFrom(card) {
   return c;
 }
 const nfIn = (path, v, ph = '') => `<input data-p="${path}" value="${esc(v ?? '')}" inputmode="decimal" placeholder="${ph}" dir="ltr">`;
+// رفع بطاقة نافس (PDF أو صورة، بطاقة لكل صف) وقراءتها تلقائياً
+const nfDrop = () => (S.data.reader ? `<label class="drop" style="display:block;margin-bottom:10px">📄 ارفع بطاقة نافس PDF أو صورة (بطاقة لكل صف، حتى 3 ملفات)<input type="file" id="nfpdf" accept="application/pdf,image/png,image/jpeg,image/webp" multiple hidden></label>
+  <p class="muted" style="font-size:13px;margin-top:0">نقرأ الأرقام ونعرضها لك للمراجعة. الملف نفسه ما ينحفظ عندنا.</p>` : '');
+function nfDropBind() {
+  const el = $('#nfpdf'); if (!el) return;
+  el.onchange = async (e) => {
+    const files = [...e.target.files].slice(0, 3); if (!files.length) return;
+    el.parentElement.innerHTML = `<span class="spin"></span> نقرأ ${files.length > 1 ? `${files.length} بطاقات` : 'البطاقة'}... (قرابة دقيقة)`;
+    const fd = new FormData(); files.forEach((f) => fd.append('cards', f));
+    try {
+      const r = await api('/api/school/nafis/pdf', { method: 'POST', body: fd });
+      if (!r.card.grades.length) { toast(r.warnings[0] || 'ما قدرنا نقرأ البطاقة'); return nafis(); }
+      S.nf = { ...nfDraftFrom(r.card), read: true, warnings: r.warnings }; nfSave(); toast('تمت القراءة، راجع الأرقام'); nafisEntry(); window.scrollTo(0, 0);
+    } catch (err) { toast(err.message); S.nf ? nafisEntry() : nafis(); }
+  };
+}
 function nafisEntry() {
   const d = S.nf;
   const sub = (s, gi, si) => `<div class="nf-sub">
@@ -450,8 +466,9 @@ function nafisEntry() {
     </tbody></table>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button type="button" class="btn ghost sm" onclick="nfAddDom(${gi},${si})">+ مجال</button><button type="button" class="btn ghost sm" onclick="nfPaste(${gi},${si})">📋 لصق من Excel</button></div>
   </div>`;
-  view.innerHTML = `<div class="head"><div><h1 style="margin:0">بطاقة نافس</h1><p class="muted" style="margin:0">انقل الأرقام من «بطاقة الأداء المدرسي» في منصة تميز. نحفظ ما تكتبه في جهازك أولاً بأول.</p></div>
+  view.innerHTML = `<div class="head"><div><h1 style="margin:0">بطاقة نافس</h1><p class="muted" style="margin:0">${d.read ? 'هذي الأرقام اللي قرأناها من البطاقة. عدّل أي رقم مختلف ثم احفظ.' : 'ارفع البطاقة، أو انقل الأرقام من «بطاقة الأداء المدرسي» في منصة تميز. نحفظ ما تكتبه في جهازك أولاً بأول.'}</p></div>
     <div style="display:flex;gap:8px">${S.data.nafis.card ? '<button class="btn ghost" onclick="nfCancel()">إلغاء</button>' : ''}<button class="btn" id="nfsave">حفظ وبناء الخطة</button></div></div>
+  ${d.read ? `<div class="banner trial" style="display:block"><b>قرأنا البطاقة. راجع الأرقام وقارنها بالبطاقة قبل الحفظ.</b>${(d.warnings || []).length ? `<ul style="margin:6px 0 0;padding-inline-start:18px">${d.warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}</div>` : `<div class="card">${nfDrop()}</div>`}
   <div class="card"><div class="nf-grid"><label>عام النتائج (هـ)<input data-p="year" value="${esc(d.year)}" placeholder="1447" dir="ltr"></label></div>
     <p style="margin:12px 0 6px"><b>الصفوف المختبرة في مدرستك</b></p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${Object.entries(NM().grades).map(([k, g]) => `<label class="pill nf-chip"><input type="checkbox" ${d.grades.some((x) => x.grade === k) ? 'checked' : ''} onchange="nfToggle('${k}', this.checked)"> ${esc(g.name)}</label>`).join('')}</div></div>
@@ -460,6 +477,7 @@ function nafisEntry() {
     ${g.subjects.map((s, si) => sub(s, gi, si)).join('')}</div>`).join('')}
   <p class="muted" style="font-size:13px">أسماء المجالات جاهزة من بطاقة حقيقية للثالث المتوسط. لو اختلفت في بطاقتك عدّلها أو احذفها. ولو عندك الأرقام في Excel، انسخ الأعمدة (المجال، المدرسة، الإدارة، المملكة) والصقها.</p>`;
   view.querySelectorAll('input[data-p]').forEach((el) => { el.oninput = () => { nfSet(el.dataset.p, el.value); nfSave(); }; });
+  nfDropBind();
   $('#nfsave').onclick = async (e) => {
     busy(e.target, true, 'نحلل البطاقة...');
     try {
@@ -524,9 +542,11 @@ function nafis() {
   const full = nfOk();
   if (!card) {
     view.innerHTML = `<div class="card" style="max-width:760px;margin:auto;text-align:center"><h1 style="font-size:24px">🎯 الخطة العلاجية لنافس</h1>
-    <p class="muted">أدخل أرقام «بطاقة الأداء المدرسي» من منصة تميز، ونطلع لك تحليل كل مادة ومجال فرعي مقارنة بالإدارة والمملكة، وخطة علاجية جاهزة للطباعة وWord، وملخصاً تنفيذياً للقائد.</p>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn" onclick="nfStart()">أدخل بطاقة مدرستك</button><button class="btn soft" onclick="nfSample(this)">شوف نموذجاً جاهزاً</button></div>
+    <p class="muted">ارفع «بطاقة الأداء المدرسي» لنافس من منصة تميز، ونطلع لك تحليل كل مادة ومجال فرعي مقارنة بالإدارة والمملكة، وخطة علاجية جاهزة للطباعة وWord، وملخصاً تنفيذياً للقائد.</p>
+    ${nfDrop()}
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn ${S.data.reader ? 'ghost' : ''}" onclick="nfStart()">أدخل الأرقام يدوياً</button><button class="btn soft" onclick="nfSample(this)">شوف نموذجاً جاهزاً</button></div>
     <p class="muted" style="font-size:13px;margin-bottom:0">النموذج مبني على بطاقة مدرسة متوسطة حقيقية بعد إخفاء بياناتها.</p></div>`;
+    nfDropBind();
     return;
   }
   const stale = p && p.trial && !p.sample && full;
