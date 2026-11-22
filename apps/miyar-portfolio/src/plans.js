@@ -18,7 +18,8 @@ const SCHOOL_PACKAGES = [
   { id: 'school_improve', name: 'خطة التحسين', price: n(process.env.PRICE_SCHOOL_IMPROVE, 99), days: 365, grants: ['improvement'] },
   { id: 'school_nafis', name: 'خطة نافس العلاجية', price: n(process.env.PRICE_SCHOOL_NAFIS, 99), days: 365, grants: ['nafis'] },
   { id: 'school_evidence', name: 'ملف شواهد التقويم', price: n(process.env.PRICE_SCHOOL_EVIDENCE, 99), days: 365, grants: ['evidence'] },
-  { id: 'school_bundle', name: 'باقة المدرسة الشاملة', price: n(process.env.PRICE_SCHOOL_BUNDLE, 249), days: 365, grants: ['improvement', 'nafis', 'evidence', 'operational'], best: true },
-  { id: 'school_done', name: 'نعبّيها لك', price: n(process.env.PRICE_SCHOOL_DONE, 399), days: 365, grants: ['improvement', 'nafis', 'evidence', 'operational'], service: true },
+  { id: 'school_dashboard', name: 'لوحة المدرسة الذكية', price: n(process.env.PRICE_SCHOOL_DASHBOARD, 99), days: 365, grants: ['dashboard'] },
+  { id: 'school_bundle', name: 'باقة المدرسة الشاملة', price: n(process.env.PRICE_SCHOOL_BUNDLE, 249), days: 365, grants: ['improvement', 'nafis', 'evidence', 'operational', 'dashboard'], best: true },
+  { id: 'school_done', name: 'نعبّيها لك', price: n(process.env.PRICE_SCHOOL_DONE, 399), days: 365, grants: ['improvement', 'nafis', 'evidence', 'operational', 'dashboard'], service: true },
 ];
 module.exports.SCHOOL_PACKAGES = SCHOOL_PACKAGES;

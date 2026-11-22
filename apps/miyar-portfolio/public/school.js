@@ -55,7 +55,7 @@ function toggleDark() {
 function topbar(route) {
   const l = (h, ic, t) => `<a href="#/${h}" class="${route === h ? 'on' : ''}">${ic} <span class="lbl">${t}</span></a>`;
   $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">معياري للمدرسة</span></a>
-  <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('profile', '🏫', 'المدرسة')}${l('report', '📊', 'التقرير')}${l('plan', '📋', 'خطة التحسين')}${l('ops', '🗓️', 'التشغيلية')}${l('nafis', '🎯', 'نافس')}${l('evidence', '🗂️', 'الشواهد')}${l('team', '👥', 'الفريق')}${l('license', '⭐', 'الباقة')}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
+  <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('profile', '🏫', 'المدرسة')}${l('report', '📊', 'التقرير')}${l('plan', '📋', 'خطة التحسين')}${l('ops', '🗓️', 'التشغيلية')}${l('nafis', '🎯', 'نافس')}${l('evidence', '🗂️', 'الشواهد')}${l('board', '📺', 'لوحة المدرسة')}${l('team', '👥', 'الفريق')}${l('license', '⭐', 'الباقة')}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
   document.querySelector('.nav a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
 const lic = () => S.data.school.license;
@@ -426,6 +426,56 @@ window.opsProg = (key) => {
   $('#pgf').onsubmit = async (e) => { e.preventDefault(); try { await opsPut({ program: { key, ...Object.fromEntries(new FormData(e.target)) } }); toast('تم الحفظ'); ops(); } catch (err) { toast(err.message); } };
 };
 
+// ---------- لوحة المدرسة الذكية ----------
+const BD = { day: '' };
+const BC = { good: '#0b8f55', watch: '#d9690a', alert: '#d33a2c', none: '#8a9896' };
+async function board() {
+  let d;
+  try { d = await api(`/api/school/board${BD.day ? `?day=${BD.day}` : ''}`); } catch (e) { view.innerHTML = `<div class="card">${esc(e.message)}</div>`; return; }
+  S.board = d;
+  const ind = d.ind;
+  const ok = d.licensed;
+  const rec = d.team_token ? `${location.origin}/r/${d.team_token}` : '';
+  const tv = d.tv_token ? `${location.origin}/tv/${d.tv_token}` : '';
+  const setup = !d.classes.length || !d.staff.length;
+  const copy = (u) => `navigator.clipboard.writeText('${esc(u)}').then(()=>toast('تم النسخ'))`;
+  view.innerHTML = `<div class="head"><div><h1 style="margin:0">لوحة المدرسة الذكية</h1><p class="muted" style="margin:0">الحضور والغياب وحصص الانتظار وتنفيذ الخطة في لوحة وحدة. المعلم يرصد من جواله، والمؤشرات تنحسب لحالها.</p></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" value="${ind.day}" onchange="BD.day=this.value;board()" style="width:auto">${ok ? '<a class="btn ghost" href="/school/print/board?r=daily" target="_blank">🖨️ التقارير</a>' : ''}</div></div>
+  ${!ok ? '<div class="banner trial"><span>تشوف الحين معاينة. الرصد من جوال المعلم وشاشة التلفاز والتقارير متاحة بعد تفعيل لوحة المدرسة أو الباقة الشاملة.</span><a class="btn sm" href="#/license">فعّل</a></div>' : ''}
+  <div class="grid g4" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:14px">${ind.list.map((x) => `<div class="card" style="border-top:5px solid ${BC[x.state]};margin:0"><div class="muted" style="font-size:13px">${esc(x.name)}</div><div style="font-size:30px;font-weight:700;color:${BC[x.state]}">${x.value == null ? '-' : x.value}<small style="font-size:15px">${x.value == null ? '' : esc(x.unit)}</small></div><div class="muted" style="font-size:12.5px">${esc(x.note)}</div></div>`).join('')}</div>
+  ${ok ? `<div class="card" style="margin-bottom:14px"><div class="grid g2" style="gap:14px">
+    <div><b>رابط رصد الحضور للمعلمين</b><p class="muted" style="margin:2px 0 8px;font-size:13px">المعلم يفتحه من جواله، يختار الفصل ويرصد الغياب والتأخر. نفس رابط فريق الخطة.</p>${rec ? `<input readonly dir="ltr" value="${esc(rec)}" onclick="this.select()" style="margin-bottom:6px"><button class="btn sm" onclick="${copy(rec)}">نسخ الرابط</button> <a class="btn ghost sm" href="/school/print/team-card" target="_blank">🔳 بطاقة QR</a>` : '<button class="btn sm" onclick="bdTeam()">أنشئ الرابط</button>'}</div>
+    <div><b>شاشة العرض لتلفاز المدرسة</b><p class="muted" style="margin:2px 0 8px;font-size:13px">افتحها على تلفاز غرفة المعلمين أو المدخل، تتحدث كل دقيقة. للعرض فقط.</p>${tv ? `<input readonly dir="ltr" value="${esc(tv)}" onclick="this.select()" style="margin-bottom:6px"><button class="btn sm" onclick="${copy(tv)}">نسخ</button> <a class="btn ghost sm" href="${esc(tv)}" target="_blank">📺 افتح الشاشة</a>` : '<button class="btn sm" onclick="bdTv()">أنشئ رابط الشاشة</button>'}</div></div></div>` : ''}
+  ${setup ? '<div class="banner trial"><span>ابدأ بإضافة الفصول والمنسوبين تحت، مرة وحدة في بداية العام.</span></div>' : ''}
+  <div class="grid g2" style="gap:14px">
+  <div class="card" style="margin:0"><h3 style="margin-top:0">حضور الفصول ${ind.missing.length && d.classes.length ? `<span class="lv" style="background:#d33a2c">${ind.missing.length} ما رُصد</span>` : ''}</h3>
+  ${d.classes.length ? `<table class="tbl"><thead><tr><th>الفصل</th><th>الغياب</th><th>التأخر</th><th>رصده</th></tr></thead><tbody>${ind.classes.map((c) => `<tr><td><b>${esc(c.name)}</b> <span class="muted" style="font-size:12px">${c.students || ''}</span></td>${c.rec ? `<td>${c.absent}${c.names ? `<div class="muted" style="font-size:12px">${esc(c.names)}</div>` : ''}</td><td>${c.late}</td><td class="muted" style="font-size:12.5px">${esc(c.by)}</td>` : `<td colspan="3"><span style="color:#d33a2c">لم يُرصد</span>${ok ? ` <button class="btn ghost sm" onclick="bdAtt(${c.id})">رصد</button>` : ''}</td>`}</tr>`).join('')}</tbody></table>` : '<p class="muted">ما فيه فصول.</p>'}
+  ${ok ? `<details style="margin-top:10px"><summary>الفصول (${d.classes.length})</summary><p class="muted" style="font-size:13px">كل فصل في سطر: اسم الفصل، عدد طلابه. مثال: 1/أ، 28</p><form id="bcf"><textarea name="text" style="min-height:90px" placeholder="1/أ، 28&#10;1/ب، 27"></textarea><button class="btn sm">إضافة</button></form>
+  <ul class="procs">${d.classes.map((c) => `<li><span class="dot">•</span><div class="pbody">${esc(c.name)} · ${c.students} طالب <button class="btn ghost sm" onclick="bdDel('classes', ${c.id})">حذف</button></div></li>`).join('')}</ul></details>` : ''}</div>
+  <div class="card" style="margin:0"><h3 style="margin-top:0">غياب المنسوبين وحصص الانتظار</h3>
+  ${ok && d.staff.length ? `<form id="saf" class="grid g3" style="align-items:end"><div class="field"><label>المعلم</label><select name="staff_id">${d.staff.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>الحالة</label><select name="kind"><option>غياب</option><option>إجازة</option><option>مهمة رسمية</option><option>تأخر</option></select></div><div class="field"><label>حصصه (مثال: 1،3،5)</label><input name="periods" inputmode="numeric"></div><div><button class="btn sm">تسجيل</button></div></form>` : ''}
+  ${ind.staffAbs.length ? ind.staffAbs.map((x) => `<div style="border-top:1px solid var(--line,#e6ecea);padding:8px 0"><b>${esc(x.name)}</b> <span class="pill">${esc(x.kind)}</span>${ok ? ` <button class="btn ghost sm" onclick="bdAbsDel(${x.staff_id})">إلغاء</button>` : ''}
+    ${ind.subs.filter((s) => s.absent_id === x.staff_id).map((s) => `<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap"><span>الحصة ${s.period}</span>${ok ? `<select onchange="bdSub(${s.period}, ${s.absent_id}, this.value, this.parentElement.querySelector('input').value)" style="width:auto"><option value="">بدون بديل</option>${d.staff.filter((p) => !ind.staffAbs.some((a) => a.staff_id === p.id)).map((p) => `<option value="${p.id}" ${s.sub_id === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select><input placeholder="الفصل" value="${esc(s.class_name)}" style="width:90px" onchange="bdSub(${s.period}, ${s.absent_id}, this.parentElement.querySelector('select').value, this.value)">` : esc(s.sub_name || '-')}</div>`).join('')}</div>`).join('') : '<p class="muted">ما فيه غياب منسوبين في هذا اليوم.</p>'}
+  <p class="muted" style="font-size:12.5px">البديل المقترح: الحاضر اللي أخذ أقل حصص انتظار هذا الأسبوع وغير مكلّف في نفس الحصة، وتقدر تغيّره.</p>
+  ${ok ? `<details style="margin-top:6px"><summary>المنسوبون (${d.staff.length})</summary><p class="muted" style="font-size:13px">كل شخص في سطر: الاسم، الدور أو التخصص.</p><form id="bsf"><textarea name="text" style="min-height:90px" placeholder="أحمد الزهراني، رياضيات&#10;سعد الحربي، لغتي"></textarea><button class="btn sm">إضافة</button></form>
+  <ul class="procs">${d.staff.map((p) => `<li><span class="dot">•</span><div class="pbody">${esc(p.name)}${p.role ? ` · ${esc(p.role)}` : ''} <button class="btn ghost sm" onclick="bdDel('staff', ${p.id})">حذف</button></div></li>`).join('')}</ul></details>` : ''}</div></div>
+  ${ok ? `<div class="card" style="margin-top:14px"><h3 style="margin-top:0">التقارير (بهوية الوزارة)</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${[['daily', 'اليومي'], ['weekly', 'الحضور الأسبوعي'], ['monthly', 'الحضور الشهري'], ['top', 'الأعلى غياباً وتأخراً'], ['missing', 'الفصول غير المرصودة'], ['subs', 'حصص الانتظار']].map(([k, t]) => `<a class="btn ghost sm" target="_blank" href="/school/print/board?r=${k}&day=${ind.day}">${t}</a>`).join('')}</div></div>` : ''}`;
+  const bulk = (id, what) => { const f = $(id); if (f) f.onsubmit = async (e) => { e.preventDefault(); try { await api(`/api/school/board/${what}`, { method: 'POST', body: { text: e.target.text.value } }); toast('تمت الإضافة'); board(); } catch (err) { toast(err.message); } }; };
+  bulk('#bcf', 'classes'); bulk('#bsf', 'staff');
+  if ($('#saf')) $('#saf').onsubmit = async (e) => { e.preventDefault(); try { await api('/api/school/board/staff-abs', { method: 'PUT', body: { ...Object.fromEntries(new FormData(e.target)), day: ind.day } }); toast('تم التسجيل، واقترحنا البدلاء'); board(); } catch (err) { toast(err.message); } };
+}
+window.bdTeam = async () => { try { const r = await api('/api/school/team-link', { method: 'POST' }); S.data.school.team_token = r.token; board(); } catch (e) { toast(e.message); } };
+window.bdTv = async () => { try { await api('/api/school/tv-link', { method: 'POST' }); board(); } catch (e) { toast(e.message); } };
+window.bdDel = async (what, id) => { if (!confirm('نحذفه؟')) return; try { await api(`/api/school/board/${what}/${id}`, { method: 'DELETE' }); board(); } catch (e) { toast(e.message); } };
+window.bdAbsDel = async (sid) => { try { await api('/api/school/board/staff-abs', { method: 'PUT', body: { staff_id: sid, remove: true, day: S.board.ind.day } }); board(); } catch (e) { toast(e.message); } };
+window.bdSub = async (period, absent_id, sub_id, class_name) => { try { await api('/api/school/board/subs', { method: 'PUT', body: { period, absent_id, sub_id, class_name, day: S.board.ind.day } }); toast('تم الحفظ'); } catch (e) { toast(e.message); } };
+window.bdAtt = async (cid) => {
+  const c = S.board.ind.classes.find((x) => x.id === cid);
+  const a = prompt(`عدد الغياب في ${c.name}`, '0'); if (a == null) return;
+  const l = prompt(`عدد المتأخرين في ${c.name}`, '0'); if (l == null) return;
+  try { await api('/api/school/board/att', { method: 'PUT', body: { class_id: cid, absent: a, late: l, day: S.board.ind.day } }); board(); } catch (e) { toast(e.message); }
+};
+
 // ---------- فريق المدرسة ----------
 function team() {
   const ms = S.data.members || [];
@@ -719,7 +769,7 @@ async function route() {
   if (!S.data) { try { await load(); } catch { return; } }
   topbar(p);
   window.scrollTo(0, 0);
-  ({ '': home, profile, report, plan, ops, nafis, evidence, team, license }[p] || home)();
+  ({ '': home, profile, report, plan, ops, nafis, evidence, board, team, license }[p] || home)();
 }
 window.addEventListener('hashchange', route);
 route();

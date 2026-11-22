@@ -18,6 +18,7 @@ const { publicHtml, evidenceHtml, evidenceDocx } = require('./evidence-export');
 const operational = require('./operational');
 const { opsHtml, opsDocx, deckHtml } = require('./ops-export');
 const track = require('./track');
+const { mountBoard } = require('./board-routes');
 const { progressHtml, teamHtml, teamCardHtml } = require('./track-export');
 
 const DAY = 86400000;
@@ -396,7 +397,7 @@ function mountSchool(app, { auth, currentUser }) {
   });
 
   // ---------- متابعة التنفيذ: المواعيد والتأخير ورابط الفريق ----------
-  const canTrack = (s) => ['improvement', 'nafis', 'operational'].some((g) => license(s).grants.includes(g));
+  const canTrack = (s) => ['improvement', 'nafis', 'operational', 'dashboard'].some((g) => license(s).grants.includes(g));
   const cleanRefs = (refs) => (Array.isArray(refs) ? refs : []).slice(0, 20).map((r) => ({ k: r && r.k === 'nafis' ? 'nafis' : 'plan', i: Number(r && r.i), j: Number(r && r.j) })).filter((r) => Number.isInteger(r.i) && Number.isInteger(r.j));
   // يطبق التعديل على كل الإجراءات في المراجع ويحفظ الخطتين
   function mutate(sid, refs, fn) {
@@ -485,6 +486,8 @@ function mountSchool(app, { auth, currentUser }) {
     const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
     res.send(await teamCardHtml({ school: s, url: `${base}/t/${s.team_token}`, uploadsDir: UPLOADS }));
   });
+
+  mountBoard(app, { auth, currentUser, schoolOf, license, opsOf, uploadsDir: UPLOADS });
 
   // فريق المدرسة
   const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
