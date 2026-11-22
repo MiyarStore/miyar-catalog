@@ -518,7 +518,8 @@ function nfRow(r, i, editable) {
   return `<div class="card row-card" id="nrow${i}"><div class="top"><div><span class="muted" style="font-size:13px">${esc(r.subject_name)} · ${esc(r.grade_name)}</span><h3>${esc(r.domain)}</h3></div>
     <div style="text-align:left"><div class="pct">${pc(r.school)} <small class="muted" style="font-size:13px">← ${pc(r.target)}</small></div>${nfTag(r.cls)} <span class="pill">المملكة ${pc(r.ksa)}</span></div></div>
     <dl><dt>الإجراءات العلاجية</dt><dd><ol>${r.actions.map((x) => `<li>${esc(x.text)}${x.when ? ` <span class="when">${esc(x.when)}</span>` : ''}</li>`).join('')}</ol></dd>
-    <dt>المسؤول</dt><dd>${esc(r.owner)}</dd><dt>مؤشر المتابعة</dt><dd>${esc(r.measure)}</dd></dl>
+    <dt>المسؤول</dt><dd>${esc(r.owner)}</dd><dt>مؤشر المتابعة</dt><dd>${esc(r.measure)}</dd>
+    ${r.pack ? `<dt>محتوى علاجي جاهز</dt><dd>${r.pack.sheets.map((w) => `<span class="pill">ورقة ${w.n}: ${esc(w.t)}</span>`).join(' ')}<div style="margin-top:6px;font-size:13px">من <a href="${esc(r.pack.url)}" target="_blank" rel="noopener">${esc(r.pack.name)}</a>، ومعها الواجب الإلكتروني لكل مهارة</div></dd>` : ''}</dl>
     ${editable ? `<button class="btn ghost sm" style="margin-top:10px" onclick="nfEdit(${i})">✏️ تعديل</button>` : ''}</div>`;
 }
 window.nfEdit = (i) => {

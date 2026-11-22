@@ -152,10 +152,40 @@ const SCHOOL_ACTIONS = [
   { text: 'تهيئة الطلاب ليوم الاختبار: التعريف بنمط الأسئلة، وإدارة الوقت، وتخفيف القلق، وضمان حضور جميع المسجلين', owner: 'الموجه/ة الطلابي، لجنة نافس', when: 'قبل موعد الاختبار' },
 ];
 
-function actionsFor(subject, domain, cls) {
+// ربط المجال الضعيف بأوراق العمل والواجبات الإلكترونية في حقيبة نافس 1448 للصف والمادة.
+// رقم المجال من رموز النواتج في الحقيبة: الرياضيات والعلوم من الخانة الثالثة، والقراءة من الأولى.
+const PACKS = require('./nafis-packs.json');
+const PACK_URL = {
+  g3p: 'https://miyarstore.com/حقيبة-نافس-الثالث-الابتدائي-1448/p543560369',
+  g6p: 'https://miyarstore.com/حقيبة-نافس-السادس-الابتدائي-1448/p1809030845',
+  g3m: 'https://miyarstore.com/حقيبة-نافس-الثالث-المتوسط-1448/p219429306',
+};
+const DOMAIN_KEY = {
+  math: [[1, /عدد|أعداد|عمليات/], [2, /جبر|أنماط/], [3, /هندس|قياس/], [4, /بيانات|احتمال|إحصاء/]],
+  science: [[1, /حياة|أحياء/], [2, /فيزيا|كيمي|مادة|طاقة/], [3, /أرض|فلك|فضاء/]],
+  reading: [[1, /ألفاظ|مفردات|دلال/], [2, /استيعاب|فهم|أفكار/], [3, /تقويم|نقد|رأي/]],
+};
+function packFor(grade, subject, domain) {
+  const list = PACKS[grade] && PACKS[grade][subject];
+  if (!list) return null;
+  const hit = (DOMAIN_KEY[subject] || []).find(([, re]) => re.test(domain || ''));
+  if (!hit) return null;
+  const sheets = list.filter((w) => w.d.includes(hit[0])).map((w) => ({ n: w.n, t: w.t }));
+  if (!sheets.length) return null;
+  return { name: `حقيبة نافس ${SUBJECTS[subject].name} ${GRADES[grade].name} 1448`, url: PACK_URL[grade], sheets };
+}
+function packAction(pack) {
+  const many = pack.sheets.length > 4;
+  const ws = many ? `أوراق العمل (${pack.sheets.length} أوراق)` : `أوراق العمل ${pack.sheets.map((w) => `${w.n} «${w.t}»`).join('، ')}`;
+  return `تدريب الطلاب على ${ws} من ${pack.name}، وإرسال الواجب الإلكتروني لمهارات المجال ومتابعة نتائجه`;
+}
+
+function actionsFor(subject, domain, cls, grade) {
   if (cls === 'strength') return BANK.strength.map(([text, when]) => ({ text, when }));
   const out = [];
   if (DOMAIN_BANK[domain]) out.push({ text: DOMAIN_BANK[domain], when: W.mid });
+  const pack = grade && packFor(grade, subject, domain);
+  if (pack) out.push({ text: packAction(pack), when: W.mid });
   for (const [text, when] of BANK[`${subject}|${cls}`] || []) out.push({ text, when });
   return out.slice(0, 4);
 }
@@ -172,7 +202,8 @@ function buildNafisPlan(card, { limit = 0 } = {}) {
     .map((d) => ({
       grade: d.grade, grade_name: d.grade_name, subject: d.subject, subject_name: d.subject_name,
       domain: d.name, school: d.school, office: d.office, ksa: d.ksa, gap: d.gap, cls: d.cls, target: d.target,
-      actions: actionsFor(d.subject, d.name, d.cls),
+      actions: actionsFor(d.subject, d.name, d.cls, d.grade),
+      pack: packFor(d.grade, d.subject, d.name),
       owner: `${SUBJECTS[d.subject].teacher} (${d.grade_name})`,
       measure: MEASURE[d.cls],
     }));
@@ -216,4 +247,4 @@ function summaryOf(a) {
   return { lines, decision, steps };
 }
 
-module.exports = { SUBJECTS, GRADES, DOMAINS, CLS, normalize, analyze, buildNafisPlan, classify, targetOf, actionsFor };
+module.exports = { SUBJECTS, GRADES, DOMAINS, CLS, normalize, analyze, buildNafisPlan, classify, targetOf, actionsFor, packFor };
