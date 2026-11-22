@@ -44,7 +44,7 @@ function normalize(input = {}) {
       const lv = s.levels || {};
       subjects.push({
         subject: key,
-        mastery: num(s.mastery), office: num(s.office), ksa: num(s.ksa), last: num(s.last),
+        mastery: num(s.mastery), office: num(s.office), ksa: num(s.ksa), last: num(s.last), goal: num(s.goal),
         mean: num(s.mean), mean_ksa: num(s.mean_ksa),
         levels: { high: num(lv.high), mid: num(lv.mid), low: num(lv.low), vlow: num(lv.vlow) },
         domains: (Array.isArray(s.domains) ? s.domains : []).slice(0, 8).map((d) => ({ name: clip(d && d.name, 80), school: num(d && d.school), office: num(d && d.office), ksa: num(d && d.ksa) })).filter((d) => d.name),
@@ -77,7 +77,9 @@ function analyze(card) {
       gap_office: s.mastery != null && s.office != null ? r1(s.mastery - s.office) : null,
       change: s.mastery != null && s.last != null ? r1(s.mastery - s.last) : null,
       cls: classify(s.mastery, s.ksa),
-      target: targetOf(s.mastery, s.ksa),
+      // مستهدف يكتبه المدير (مثل مستهدف 2030 أو مستهدف الإدارة) يتقدم على المقترح
+      target: s.goal != null ? s.goal : targetOf(s.mastery, s.ksa),
+      target_gap: s.goal != null && s.mastery != null ? r1(s.goal - s.mastery) : null,
       domains: s.domains.map((d) => ({ ...d, gap: d.school != null && d.ksa != null ? r1(d.school - d.ksa) : null, cls: classify(d.school, d.ksa), target: targetOf(d.school, d.ksa) })),
     }));
     return { ...g, name: def.name, participation, change: g.index != null && g.index_last != null ? r1(g.index - g.index_last) : null, subjects };

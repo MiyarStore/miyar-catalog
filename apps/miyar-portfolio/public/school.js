@@ -254,6 +254,7 @@ function plan() {
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     ${p ? `<a class="btn ghost" href="/school/print/plan" target="_blank">🖨️ PDF للطباعة</a>${full && !p.trial ? '<a class="btn ghost" href="/school/export/plan.docx">📝 Word</a><a class="btn ghost" href="/school/print/followup" target="_blank">📈 تقرير المتابعة</a><a class="btn ghost" href="/school/export/followup.docx">📝 المتابعة Word</a>' : ''}` : ''}
     ${p && (p.sample || !stale) ? '' : `<button class="btn" id="gen">${p ? 'ابنِ الخطة كاملة' : 'ابنِ الخطة'}</button>`}${p && !p.sample && !stale ? '<button class="btn ghost" id="gen" title="يمسح التعديلات والمتابعة">↻ إعادة البناء</button>' : ''}</div></div>
+  ${resultsBoard()}
   ${p && p.sample ? `<div class="banner trial"><span>هذا نموذج على تقرير مدرسة حقيقية (مخفية البيانات). جاهز تسويها لمدرستك؟</span><a class="btn sm" href="#/report" onclick="S.data.report=null;S.draft=null">ارفع تقرير مدرستك</a></div>` : ''}
   ${p && full && !p.trial ? (() => { const g = progress(p.rows); return `<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><b>متابعة التنفيذ: ${g.d} من ${g.t} إجراء منجز</b><b style="color:var(--brand-text)">${g.pct}%</b></div><div class="bar" style="margin-top:8px"><i style="width:${g.pct}%"></i></div></div>`; })() : ''}
   ${full ? `<p class="muted" style="font-size:13px">المستخدم هذا العام: ${usage.plans} من ${usage.planLimit} عملية بناء.</p>` : ''}
@@ -273,6 +274,23 @@ function plan() {
     try { const r = await api('/api/school/plan', { method: 'POST' }); S.data.plan = r.plan; await load(); toast('تم بناء الخطة'); plan(); }
     catch (err) { toast(err.message); busy(e.target, false); if (err.code === 'license') location.hash = '#/license'; }
   };
+}
+// لوحة نتائج التقويم الذاتي: توزيع المستويات، المجالات والمعايير مقابل مستهدف التميز، وأكبر الفجوات
+function resultsBoard() {
+  const r = S.data.report, o = S.data.ops;
+  if (!r || !r.complete || !o) return '';
+  const inds = r.indicators.filter((i) => i.pct != null && i.pct !== '');
+  if (!inds.length) return '';
+  const T = 90;
+  const cnt = LEVELS.map((l) => ({ ...l, n: inds.filter((i) => levelOf(i.pct) === l).length }));
+  const stack = `<div style="display:flex;height:16px;border-radius:99px;overflow:hidden;margin:6px 0">${cnt.filter((l) => l.n).map((l) => `<i title="${l.name}" style="flex:${l.n};background:${l.color}"></i>`).join('')}</div><div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px">${cnt.map((l) => `<span><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${l.color}"></i> ${l.name}: <b>${l.n}</b></span>`).join('')}</div>`;
+  const bar = (x) => { const c = levelOf(x.pct).color; const gap = Math.max(0, Math.round((T - x.pct) * 10) / 10); return `<div style="display:grid;grid-template-columns:minmax(120px,38%) 1fr 92px;gap:8px;align-items:center;margin:5px 0;font-size:13.5px"><span>${esc(x.name)}</span><div style="position:relative;height:12px;background:var(--line, #e6ecea);border-radius:99px"><i style="position:absolute;inset-inline-start:0;top:0;bottom:0;width:${Math.min(100, x.pct)}%;background:${c};border-radius:99px"></i><i title="مستهدف التميز ${T}%" style="position:absolute;inset-inline-start:${T}%;top:-3px;bottom:-3px;width:2px;background:#10201e"></i></div><span style="text-align:left"><b>${fmt(x.pct)}</b>${gap ? ` <small style="color:#d33a2c"><bdi dir="ltr">-${gap}</bdi></small>` : ' ✓'}</span></div>`; };
+  const gaps = [...inds].sort((a, b) => a.pct - b.pct).slice(0, 5);
+  return `<details class="card" style="margin-bottom:14px" open><summary style="cursor:pointer"><b style="font-size:17px">لوحة النتائج</b> <span class="muted" style="font-size:13px">الأداء العام ${fmt(r.overall)} · الخط الأسود مستهدف التميز ${T}%، والرقم الأحمر الفجوة عنه</span></summary>
+  <div class="grid g2" style="gap:18px;margin-top:10px"><div><b>توزيع ${inds.length} مؤشر على المستويات</b>${stack}
+  <b style="display:block;margin-top:14px">المجالات</b>${o.domains.map(bar).join('')}</div>
+  <div><b>أكبر 5 فجوات عن التميز</b><ol style="margin:6px 0;padding-inline-start:18px;font-size:13.5px">${gaps.map((i) => `<li>${esc(i.text.length > 80 ? `${i.text.slice(0, 80)}…` : i.text)} <b style="color:${levelOf(i.pct).color}">${fmt(i.pct)}</b></li>`).join('')}</ol></div></div>
+  <b style="display:block;margin-top:10px">المعايير من الأضعف</b>${[...o.standards].sort((a, b) => a.pct - b.pct).map(bar).join('')}</details>`;
 }
 window.toggleProc = async (i, j, el) => {
   try { const res = await api(`/api/school/plan/rows/${i}/procs/${j}`, { method: 'PUT', body: { done: el.checked } }); S.data.plan = res.plan; toast(el.checked ? 'تم ✓' : 'تم إلغاء التأشير'); const y = window.scrollY; plan(); window.scrollTo(0, y); }
@@ -468,7 +486,7 @@ const pc = (n) => (n == null ? '-' : `${n}%`);
 const nfOk = () => lic().active && lic().grants.includes('nafis');
 function nfGrade(key, old) {
   const g = NM().grades[key];
-  return old || { grade: key, students: '', tested: '', index: '', index_last: '', subjects: g.subjects.map((s) => ({ subject: s, mastery: '', office: '', ksa: '', last: '', mean: '', domains: NM().domains[s].map((name) => ({ name, school: '', office: '', ksa: '' })) })) };
+  return old || { grade: key, students: '', tested: '', index: '', index_last: '', subjects: g.subjects.map((s) => ({ subject: s, mastery: '', office: '', ksa: '', last: '', goal: '', mean: '', domains: NM().domains[s].map((name) => ({ name, school: '', office: '', ksa: '' })) })) };
 }
 function nfDraftFrom(card) {
   const c = JSON.parse(JSON.stringify(card || { year: '', grades: [] }));
@@ -498,7 +516,7 @@ function nafisEntry() {
   const d = S.nf;
   const sub = (s, gi, si) => `<div class="nf-sub">
     <h4>${esc(NM().subjects[s.subject].name)}</h4>
-    <div class="nf-grid"><label>إتقان المدرسة %${nfIn(`${gi}.${si}.mastery`, s.mastery)}</label><label>الإدارة %${nfIn(`${gi}.${si}.office`, s.office)}</label><label>المملكة %${nfIn(`${gi}.${si}.ksa`, s.ksa)}</label><label>العام الماضي % <small class="muted">اختياري</small>${nfIn(`${gi}.${si}.last`, s.last)}</label></div>
+    <div class="nf-grid"><label>إتقان المدرسة %${nfIn(`${gi}.${si}.mastery`, s.mastery)}</label><label>الإدارة %${nfIn(`${gi}.${si}.office`, s.office)}</label><label>المملكة %${nfIn(`${gi}.${si}.ksa`, s.ksa)}</label><label>العام الماضي % <small class="muted">اختياري</small>${nfIn(`${gi}.${si}.last`, s.last)}</label><label>المستهدف % <small class="muted">اختياري، مثل مستهدف 2030</small>${nfIn(`${gi}.${si}.goal`, s.goal)}</label></div>
     <table class="tbl nf-dom"><thead><tr><th>المجال الفرعي (كما في البطاقة)</th><th>المدرسة %</th><th>الإدارة %</th><th>المملكة %</th><th></th></tr></thead><tbody>
     ${s.domains.map((x, di) => `<tr><td><input data-p="${gi}.${si}.d.${di}.name" value="${esc(x.name)}"></td><td>${nfIn(`${gi}.${si}.d.${di}.school`, x.school)}</td><td>${nfIn(`${gi}.${si}.d.${di}.office`, x.office)}</td><td>${nfIn(`${gi}.${si}.d.${di}.ksa`, x.ksa)}</td><td><button type="button" class="btn ghost sm" onclick="nfDelDom(${gi},${si},${di})" title="حذف">✕</button></td></tr>`).join('')}
     </tbody></table>
@@ -591,7 +609,7 @@ function nafis() {
   const stale = p && p.trial && !p.sample && full;
   const grades = a.grades.map((g) => `<div class="card"><h2 style="font-size:18px;margin-top:0">${esc(g.name)}</h2>
     <p class="muted" style="margin-top:0">المختبرون ${g.tested ?? '-'} من ${g.students ?? '-'} (المشاركة ${pc(g.participation)})${g.index != null ? ` · المؤشر الجامع ${g.index}${g.change != null ? ` (${sgn(g.change)})` : ''}` : ''}</p>
-    <div class="stats">${g.subjects.map((s) => `<div class="card stat">${esc(s.name)}<b>${pc(s.mastery)}</b><span class="muted" style="font-size:12px">المملكة ${pc(s.ksa)} · ${sgn(s.gap)}</span><div>${nfTag(s.cls)}</div></div>`).join('')}</div>
+    <div class="stats">${g.subjects.map((s) => `<div class="card stat">${esc(s.name)}<b>${pc(s.mastery)}</b><span class="muted" style="font-size:12px">المملكة ${pc(s.ksa)} · ${sgn(s.gap)}</span><span class="muted" style="font-size:12px;display:block">المستهدف ${pc(s.target)}${s.target_gap != null ? ` · باقي ${s.target_gap} نقطة` : ''}</span><div>${nfTag(s.cls)}</div></div>`).join('')}</div>
     <table class="tbl" style="margin-top:10px"><thead><tr><th>المجال</th><th>المادة</th><th>المدرسة</th><th>المملكة</th><th>الفرق</th><th>التصنيف</th></tr></thead><tbody>
     ${g.subjects.flatMap((s) => s.domains.map((d) => `<tr><td>${esc(d.name)}</td><td>${esc(s.name)}</td><td><b>${pc(d.school)}</b></td><td>${pc(d.ksa)}</td><td>${sgn(d.gap)}</td><td>${nfTag(d.cls)}</td></tr>`)).join('')}</tbody></table></div>`).join('');
   view.innerHTML = `${full ? '' : `<div class="banner trial"><span>${p && p.sample ? 'هذا نموذج للعرض.' : 'أنت في وضع التجربة: تشوف التحليل كامل وأول 3 مجالات من الخطة.'} فعّل باقة نافس للخطة كاملة وWord.</span><a class="btn sm" href="#/license">فعّل الباقة</a></div>`}
