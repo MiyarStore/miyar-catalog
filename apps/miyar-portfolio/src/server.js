@@ -355,6 +355,14 @@ app.get('/print/evidence/:id', async (req, res) => {
 });
 
 mountSchool(app, { auth, currentUser });
+// «مساعد المعلم»: سجل المادة لكل شعبة
+function addEvidence(userId, e) {
+  const now = Date.now();
+  const info = db.prepare(`INSERT INTO evidences (user_id, standard_id, title, goals, description, steps, impact, ev_date, links, verify_code, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(userId, e.standard_id, clip(e.title, 160), JSON.stringify(e.goals || []), clip(e.description, 3000), clip(e.steps, 3000), clip(e.impact, 1500), clip(e.ev_date || new Date().toISOString().slice(0, 10), 20), JSON.stringify(e.links || []), rand(10), now, now);
+  return evidenceRow(db.prepare('SELECT * FROM evidences WHERE id = ?').get(info.lastInsertRowid));
+}
+require('./teacher/routes').mountTeacher(app, { auth, active, printGuard, addEvidence, baseUrl });
 
 app.get('/privacy', (req, res) => res.send(views.privacyPage(STORE_URL, baseUrl(req))));
 app.get('/terms', (req, res) => res.redirect('/privacy#terms'));
