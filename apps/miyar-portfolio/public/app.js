@@ -43,7 +43,7 @@ function topbar(route) {
   if (!S.me) { $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="${forSchool() ? '/school' : '/'}"><b>م</b>${forSchool() ? 'معياري للمدرسة' : 'معياري للمعلم'}</a><div class="nav" style="flex:none"><button onclick="toggleDark()" title="الوضع الليلي">🌙</button></div></div></div>`; return; }
   const l = (h, ic, t) => `<a href="#/${h}" class="${route === h ? 'on' : ''}">${ic} <span class="lbl">${t}</span></a>`;
   $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">معياري للمعلم</span></a>
-    <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('new', '➕', 'شاهد جديد')}${l('rec', '📚', 'مساعد المعلم')}${l('profile', '👤', 'ملفي')}${l('subscription', '⭐', 'الاشتراك')}${S.me.is_admin ? l('admin', '🛠️', 'الإدارة') : ''}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
+    <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('new', '➕', 'شاهد جديد')}${l('rec', '📚', 'مساعد المعلم')}${l('exam', '📝', 'صانع الاختبارات')}${l('profile', '👤', 'ملفي')}${l('subscription', '⭐', 'الاشتراك')}${S.me.is_admin ? l('admin', '🛠️', 'الإدارة') : ''}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
   document.querySelector('.nav a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
 
@@ -94,6 +94,7 @@ function dashboard() {
   </div>
   ${tasksCard()}
   <a class="card" href="#/rec" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit;border:2px solid var(--brand-2)"><div style="font-size:30px">📚</div><div style="flex:1"><h3 style="margin:0">مساعد المعلم: سجل المادة يتجهز لحاله</h3><div class="muted" style="font-size:13px">أدخل طلابك وجدولك ودروسك مرة وحدة، وتطلع لك الخطة الأسبوعية والاختبارات والتحليل والخطط العلاجية ورسائل أولياء الأمور والشواهد.</div></div><span class="btn sm">افتح</span></a>
+  <a class="card" href="#/exam" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit"><div style="font-size:30px">📝</div><div style="flex:1"><h3 style="margin:0">صانع الاختبارات بجدول المواصفات</h3><div class="muted" style="font-size:13px">اختر الدروس ويتبني جدول المواصفات وتنكتب الأسئلة عليه، ثم اطبعها بنموذجين ومفتاح وورقة تظليل أو نزّلها Word.</div></div><span class="btn sm">افتح</span></a>
   <div class="stats">
     <div class="card stat"><b>${S.evs.length}</b>شاهد موثّق</div>
     <div class="card stat"><b>${covered}/11</b>عنصر مغطّى</div>
@@ -357,6 +358,7 @@ async function route() {
     case 'new': return editor(null, q);
     case 'edit': return editor(parts[1], q);
     case 'rec': return window.recView(parts[1], parts[2], q);
+    case 'exam': return window.examView(parts[1], parts[2]);
     case 'profile': return profile();
     case 'subscription': return subscription();
     case 'admin': return adminView();

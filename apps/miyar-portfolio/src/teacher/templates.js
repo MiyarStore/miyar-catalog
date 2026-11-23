@@ -30,4 +30,18 @@ function apply(id, uid) {
   if (t.end_of_part) lessons.push({ id: uid(), unit: lessons.length ? lessons[lessons.length - 1].unit : '', title: t.end_of_part.title, periods: t.end_of_part.periods || 1, skill: '', done: false, done_at: null });
   return { subject: t.course, stage: t.stage, term: (t.term || '').replace(/\s*\d{4}هـ?$/, ''), start: t.calendar.students_start, weeks: Math.min(total, 24), off: [...new Set(off)].sort((a, b) => a - b), skills, lessons, template: t.id, per_hint: t.periods_per_week };
 }
-module.exports = { list, apply };
+// دروس القالب لصانع الاختبارات: مع أهداف الوحدة ونص المهارة لكل درس
+function examLessons(id, uid) {
+  const t = all().find((x) => x.id === id); if (!t) return null;
+  const lessons = [];
+  for (const u of t.units) {
+    const unit = `الوحدة ${u.unit}: ${u.title}`;
+    for (const l of u.lessons) {
+      if (l.project) continue;
+      const sk = (l.skills || []).map((n) => u.skills[n - 1]).filter(Boolean);
+      lessons.push({ id: uid(), unit, title: l.title, periods: l.periods, skill: '', skill_name: sk.join('، '), objectives: (u.objectives || []).slice(0, 10), page: l.page });
+    }
+  }
+  return { subject: t.course, stage: t.stage, term: (t.term || '').replace(/\s*\d{4}هـ?$/, ''), lessons };
+}
+module.exports = { list, apply, examLessons };

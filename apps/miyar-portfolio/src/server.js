@@ -363,10 +363,12 @@ function addEvidence(userId, e) {
   return evidenceRow(db.prepare('SELECT * FROM evidences WHERE id = ?').get(info.lastInsertRowid));
 }
 require('./teacher/routes').mountTeacher(app, { auth, active, printGuard, addEvidence, baseUrl });
+require('./exam/routes').mountExam(app, { auth, active, printGuard, uploadsDir: UPLOADS });
 
 app.get('/privacy', (req, res) => res.send(views.privacyPage(STORE_URL, baseUrl(req))));
 app.get('/terms', (req, res) => res.redirect('/privacy#terms'));
 app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS, PLANS, baseUrl(req))));
+app.get('/exam-maker', (req, res) => res.send(views.examLanding(TRIAL_DAYS, baseUrl(req))));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'app.html')));
 app.use((req, res) => res.status(404).send(views.notFound()));

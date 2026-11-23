@@ -73,6 +73,12 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
     <a class="btn" href="/school">جرّبها لمدرستك</a>
   </div>
 </section>
+<section class="wrap" style="padding-bottom:40px">
+  <div class="card" style="display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+    <div><span class="pill">جديد للمعلم</span><h2 style="margin:8px 0 4px">صانع الاختبارات بجدول المواصفات</h2><p class="muted" style="margin:0">الجدول على المعرفة والتطبيق والاستدلال، والأسئلة تُكتب حسبه، ونموذجان ومفتاح وورقة تظليل.</p></div>
+    <a class="btn ghost" href="/exam-maker">اعرف أكثر</a>
+  </div>
+</section>
 <section class="wrap" style="padding-bottom:50px" id="pricing">
   <h2 style="text-align:center">الباقات</h2>
   <p class="muted" style="text-align:center;margin-top:0">ابدأ بتجربة مجانية ${trialDays} أيام، وبعدها اختر الباقة اللي تناسبك.</p>
@@ -327,4 +333,69 @@ ${ul([
 </article>`,
   });
 }
-module.exports = { privacyPage, PRIVACY_UPDATED, landing, publicPage, verifyPage, printReport, notFound, message, esc };
+
+// ---------- صفحة صانع الاختبارات ----------
+function examLanding(trialDays, base = '') {
+  const feats = [
+    ['📊', 'جدول مواصفات حقيقي', 'وزن كل درس من عدد حصصه، وتوزيع الأسئلة على مستويات المعرفة والتطبيق والاستدلال بنسب تحددها أنت، والجدول يتحدث مباشرة.'],
+    ['🤖', 'أسئلة تُكتب حسب الجدول', 'كل خانة في الجدول تتحول إلى سؤال من درسها ومستواها، مكتوب من أهداف الدرس ومهاراته، وتقدر تعيد كتابة أي سؤال بضغطة.'],
+    ['🧩', 'ستة أنواع أسئلة', 'اختيار من متعدد، صح وخطأ، أكمل الفراغ، المزاوجة، الإجابة القصيرة، والمقالي، بالدرجات والتعليمات الرسمية.'],
+    ['🔀', 'نموذجان (أ) و(ب)', 'نفس الأسئلة بترتيب مختلف للحد من الغش، مع مفتاح إجابة لكل نموذج.'],
+    ['🖨️', 'ورقة جاهزة للطباعة', 'ترويسة الوزارة، بيانات الطالب، جدول الدرجات، ورقة الإجابة الإلكترونية (تظليل)، وجدول المواصفات موقّع، بصيغة PDF وWord.'],
+    ['📈', 'مربوط بسجل المادة', 'أرسل الاختبار لسجل الفصل، وأدخل الدرجات، ويطلع لك تحليل المهارات وأضعف نواتج التعلم.'],
+  ];
+  const steps = [
+    ['اختر المصدر', 'من سجل المادة، أو قالب المقرر، أو اكتب الدروس بنفسك.'],
+    ['حدد الدروس والحصص', 'الجدول يحسب الأوزان ويوزع الأسئلة على الدروس والمستويات.'],
+    ['اكتب الأسئلة', 'آلياً حسب الجدول، أو يدوياً، وراجع وعدّل كل سؤال.'],
+    ['اطبع أو صدّر', 'الورقة، النموذج (ب)، المفتاح، ورقة التظليل، وجدول المواصفات.'],
+  ];
+  const faq = [
+    ['هل جدول المواصفات مطابق للمطلوب في المدارس؟', 'يُبنى على الطريقة المعتمدة: الوزن النسبي لكل درس من عدد الحصص، وتوزيع الأسئلة على المستويات المعرفية الثلاثة، مع إمكانية تعديل النسب حسب توجيه مشرفك.'],
+    ['هل أقدر أعدّل الأسئلة؟', 'نعم، كل سؤال قابل للتعديل والحذف وإعادة الكتابة، وتضيف أسئلتك الخاصة متى ما تبي.'],
+    ['هل الأسئلة دقيقة علمياً؟', 'تُكتب من أهداف الدرس ومحتواه، وإذا لصقت نص الدرس تكون أدق. ومع ذلك راجعها قبل الطباعة، فالمعلم هو المسؤول عن ورقته.'],
+    ['هل هو ضمن اشتراك معياري؟', 'نعم، صانع الاختبارات جزء من معياري للمعلم، مع ملف الإنجاز وسجل المادة، باشتراك واحد.'],
+  ];
+  const ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
+  return shell({
+    title: 'صانع الاختبارات بجدول المواصفات | معياري',
+    extraHead: `${shareMeta({ base, url: `${base}/exam-maker`, title: 'صانع الاختبارات بجدول المواصفات للمعلم والمعلمة', desc: 'اختبار كامل بجدول مواصفات على مستويات المعرفة والتطبيق والاستدلال، وأسئلة تُكتب حسب الجدول، ونموذجان ومفتاح وورقة تظليل، بترويسة الوزارة وPDF وWord.' })}
+<link rel="canonical" href="${esc(base)}/exam-maker"><script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>
+<style>.stp{display:flex;gap:12px;align-items:flex-start}.stp b{flex:0 0 34px;height:34px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center}
+details.card summary{cursor:pointer;font-weight:600}details.card p{margin:10px 0 0}</style>`,
+    body: `
+<header class="wrap" style="display:flex;justify-content:space-between;align-items:center;padding-top:18px;padding-bottom:18px">
+  <a class="logo" href="/"><b>م</b>معياري</a>
+  <a class="btn ghost" href="/app#/exam">تسجيل الدخول</a>
+</header>
+<section class="wrap" style="padding:40px 16px 30px;text-align:center">
+  <span class="pill">صانع الاختبارات للمعلم والمعلمة</span>
+  <h1 style="font-size:clamp(28px,6vw,44px);margin:16px 0 10px">اختبارك بجدول مواصفاته<br><span style="color:var(--brand)">جاهز للطباعة في دقائق.</span></h1>
+  <p class="muted" style="max-width:660px;margin:0 auto 22px;font-size:17px">حدد الدروس وعدد الحصص، ومعياري يبني جدول المواصفات على المعرفة والتطبيق والاستدلال، ويكتب الأسئلة حسب الجدول، ويطلع لك الورقة والنموذج (ب) والمفتاح وورقة التظليل بترويسة الوزارة.</p>
+  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+    <a class="btn" href="/app#/register" style="font-size:17px;padding:12px 22px">جرّبه ${trialDays} أيام مجاناً</a>
+    <a class="btn ghost" href="/" style="font-size:17px;padding:12px 22px">تعرّف على معياري</a>
+  </div>
+</section>
+<section class="wrap grid g3" style="padding-bottom:40px">
+  ${feats.map(([i, t, d]) => `<div class="card"><div style="font-size:28px">${i}</div><h3>${t}</h3><p class="muted" style="margin:0">${d}</p></div>`).join('')}
+</section>
+<section class="wrap" style="padding-bottom:40px">
+  <h2 style="text-align:center">كيف يشتغل؟</h2>
+  <div class="grid g2">${steps.map(([t, d], i) => `<div class="card stp"><b>${i + 1}</b><div><h3 style="margin:0 0 4px">${t}</h3><p class="muted" style="margin:0">${d}</p></div></div>`).join('')}</div>
+</section>
+<section class="wrap" style="padding-bottom:40px">
+  <h2 style="text-align:center">أسئلة شائعة</h2>
+  <div style="display:grid;gap:10px">${faq.map(([q, a]) => `<details class="card"><summary>${q}</summary><p class="muted">${a}</p></details>`).join('')}</div>
+</section>
+<section class="wrap" style="padding-bottom:50px">
+  <div class="card" style="text-align:center;border-color:var(--brand-2)">
+    <h2 style="margin-top:0">اختبارك القادم خلّه أسهل</h2>
+    <a class="btn" href="/app#/register">ابدأ مجاناً</a>
+  </div>
+</section>
+<footer class="wrap muted" style="padding:20px 16px 40px;text-align:center;font-size:13px">معياري من متجر معيار للمنتجات التعليمية الرقمية · <a href="/privacy">الخصوصية وشروط الاستخدام</a></footer>`,
+  });
+}
+
+module.exports = { examLanding, privacyPage, PRIVACY_UPDATED, landing, publicPage, verifyPage, printReport, notFound, message, esc };
