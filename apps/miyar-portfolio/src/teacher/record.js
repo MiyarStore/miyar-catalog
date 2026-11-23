@@ -61,7 +61,7 @@ function blank(b = {}, user = {}) {
     subject: clip(b.subject || user.subject, 60), grade: clip(b.grade, 40), section: clip(b.section, 20), stage: clip(b.stage || user.stage, 40),
     term: clip(b.term || 'الفصل الدراسي الأول', 40), year: clip(b.year || user.year || '1448 هـ', 20),
     start: parseDay(b.start) != null ? b.start : '', weeks: Math.min(Math.max(Number(b.weeks) || 18, 4), 24), off: [],
-    slots: [], students: [], lessons: [], skills: [], tests: [], remedial_done: {}, messages: [],
+    slots: [], students: [], lessons: [], skills: [], tests: [], remedial_done: {}, messages: [], template: '', per_hint: 0,
   };
 }
 // تحقق من البيانات اللي ترسلها الواجهة (كل الحفظ يمر من هنا)
@@ -69,12 +69,13 @@ function clean(d) {
   const o = blank();
   for (const k of ['subject', 'grade', 'section', 'stage', 'term', 'year']) o[k] = clip(d[k], 60).trim();
   o.start = parseDay(d.start) != null ? d.start : '';
+  o.template = clip(d.template, 40); o.per_hint = Math.min(Math.max(Number(d.per_hint) || 0, 0), 12);
   o.weeks = Math.min(Math.max(Number(d.weeks) || 18, 4), 24);
   o.off = [...new Set((Array.isArray(d.off) ? d.off : []).map(Number).filter((w) => w >= 1 && w <= o.weeks))].sort((a, b) => a - b);
   o.slots = (Array.isArray(d.slots) ? d.slots : []).map((s) => ({ day: Number(s.day), period: Number(s.period) })).filter((s) => s.day >= 0 && s.day <= 4 && s.period >= 1 && s.period <= 8)
     .filter((s, i, a) => a.findIndex((x) => x.day === s.day && x.period === s.period) === i).sort((a, b) => a.day - b.day || a.period - b.period).slice(0, 20);
   o.students = (Array.isArray(d.students) ? d.students : []).slice(0, 60).map((s) => ({ id: clip(s.id, 12) || uid(), name: clip(s.name, 80).trim(), phone: clip(s.phone, 16).replace(/[^\d+]/g, ''), note: clip(s.note, 300) })).filter((s) => s.name);
-  o.lessons = (Array.isArray(d.lessons) ? d.lessons : []).slice(0, 200).map((l) => ({ id: clip(l.id, 12) || uid(), unit: clip(l.unit, 120), title: clip(l.title, 160).trim(), periods: Math.min(Math.max(Number(l.periods) || 1, 1), 10), skill: clip(l.skill, 12), done: !!l.done, done_at: l.done ? Number(l.done_at) || Date.now() : null })).filter((l) => l.title);
+  o.lessons = (Array.isArray(d.lessons) ? d.lessons : []).slice(0, 200).map((l) => ({ id: clip(l.id, 12) || uid(), unit: clip(l.unit, 120), title: clip(l.title, 160).trim(), periods: Math.min(Math.max(Number(l.periods) || 1, 1), 10), skill: clip(l.skill, 12), page: Number(l.page) || null, done: !!l.done, done_at: l.done ? Number(l.done_at) || Date.now() : null })).filter((l) => l.title);
   o.skills = (Array.isArray(d.skills) ? d.skills : []).slice(0, 40).map((s) => ({ id: clip(s.id, 12) || uid(), name: clip(s.name, 160).trim() })).filter((s) => s.name);
   const sids = new Set(o.students.map((s) => s.id));
   const kids = new Set(o.skills.map((s) => s.id));
@@ -127,7 +128,7 @@ function plan(d) {
       while (cap > 0 && qi < queue.length) {
         const l = queue[qi]; const take = Math.min(cap, l.left);
         const prev = wk.items.find((x) => x.id === l.id);
-        if (prev) prev.periods += take; else wk.items.push({ type: 'lesson', id: l.id, unit: l.unit, title: l.title, periods: take, done: l.done, cont: l.left < l.periods });
+        if (prev) prev.periods += take; else wk.items.push({ type: 'lesson', id: l.id, unit: l.unit, title: l.title, page: l.page, periods: take, done: l.done, cont: l.left < l.periods });
         l.left -= take; cap -= take;
         if (l.left <= 0) qi++;
       }

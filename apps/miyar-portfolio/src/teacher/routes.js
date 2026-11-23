@@ -2,17 +2,21 @@
 const R = require('./record');
 const { build } = require('./record-export');
 const { generateTest, testAi } = require('./ai');
+const TPL = require('./templates');
 
 function mountTeacher(app, { auth, active, printGuard, addEvidence, baseUrl }) {
   const summary = (r) => ({ id: r.id, subject: r.subject, grade: r.grade, section: r.section, term: r.term, students: r.students.length, lessons: r.lessons.length, tests: r.tests.length, updated_at: r.updated_at, progress: R.progress(r).pct });
   const out = (r) => ({ rec: r, calc: R.full(r), ai: testAi() });
   const mine = (req, res) => { const r = R.get(req.user.id, req.params.id); if (!r) res.status(404).json({ error: 'السجل غير موجود' }); return r; };
 
-  app.get('/api/rec', auth, (req, res) => res.json({ list: R.list(req.user.id).map(summary), ai: testAi() }));
+  app.get('/api/rec', auth, (req, res) => res.json({ list: R.list(req.user.id).map(summary), ai: testAi(), templates: TPL.list() }));
   app.post('/api/rec', auth, active, (req, res) => {
     const b = req.body || {};
     if (R.list(req.user.id).length >= 30) return res.status(400).json({ error: 'وصلت الحد الأعلى للسجلات (30)' });
+    const tp = b.template ? TPL.apply(String(b.template), R.uid) : null;
+    if (tp) for (const k of ['subject', 'stage', 'term']) if (!b[k] || k === 'subject') b[k] = tp[k];
     const d = R.blank(b, req.user);
+    if (tp) Object.assign(d, { lessons: tp.lessons, skills: tp.skills, start: b.start || tp.start, weeks: tp.weeks, off: tp.off, template: tp.template, per_hint: tp.per_hint });
     if (!d.subject) return res.status(400).json({ error: 'اكتب اسم المادة' });
     // نسخ الدروس والمهارات وإعدادات الفصل من شعبة ثانية لنفس المادة (بدون الطلاب والدرجات)
     if (b.copy_from) {

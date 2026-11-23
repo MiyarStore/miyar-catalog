@@ -34,18 +34,20 @@ async function recSave(patch, quiet) {
 // ---------- قائمة السجلات ----------
 async function recList() {
   view.innerHTML = '<p class="muted">جاري التحميل...</p>';
-  let list = [];
-  try { ({ list } = await api('/api/rec')); } catch (e) { view.innerHTML = `<p>${esc(e.message)}</p>`; return; }
+  let list = [], templates = [];
+  try { ({ list, templates = [] } = await api('/api/rec')); } catch (e) { view.innerHTML = `<p>${esc(e.message)}</p>`; return; }
   view.innerHTML = `${banner()}<div class="head"><div><h1 style="margin:0">📚 مساعد المعلم</h1><p class="muted" style="margin:4px 0 0">أدخل طلابك وجدولك ودروسك مرة وحدة، والباقي يتجهز لحاله: الخطة الأسبوعية والفصلية، والاختبارات، والتحليل، والخطط العلاجية والإثرائية، ومتابعة الطلاب، ورسائل أولياء الأمور، وشواهد ملف الإنجاز.</p></div></div>
   <div class="grid g2" style="margin-bottom:16px">${list.map((r) => `<a class="card" href="#/rec/${r.id}" style="text-decoration:none;color:inherit">
     <div class="head" style="margin:0"><h3 style="margin:0">${esc(r.subject)}${r.grade ? ` · ${esc(r.grade)}` : ''}${r.section ? ` (${esc(r.section)})` : ''}</h3><span class="pill">${r.progress}% منفذ</span></div>
     <div class="muted" style="font-size:13px;margin-top:6px">${esc(r.term)} · ${r.students} طالب · ${r.lessons} درس · ${r.tests} اختبار</div></a>`).join('')}</div>
   <form id="nr" class="card"><h3 style="margin-top:0">➕ سجل جديد لشعبة</h3>
+    ${templates.length ? `<div class="field"><label>مادة جاهزة <span class="muted">(الدروس والمهارات والتقويم من الكتاب، بدون لصق)</span></label><select name="template" id="tpl"><option value="">بدون، أدخل الدروس بنفسي</option>${templates.map((t) => `<option value="${esc(t.id)}">${esc(t.name)}، ${esc(t.stage)} (${t.lessons} درس)</option>`).join('')}</select></div>` : ''}
     <div class="grid g3"><div class="field"><label>المادة</label><input name="subject" required value="${esc(S.me.subject)}" placeholder="رياضيات"></div>
     <div class="field"><label>الصف</label><input name="grade" placeholder="الثالث المتوسط"></div><div class="field"><label>الشعبة / الفصل</label><input name="section" placeholder="3/1"></div>
     <div class="field"><label>الفصل الدراسي</label><input name="term" value="الفصل الدراسي الأول"></div><div class="field"><label>بداية الدراسة</label><input type="date" name="start"></div><div class="field"><label>عدد الأسابيع</label><input type="number" name="weeks" value="18" min="4" max="24"></div></div>
     ${list.length ? `<div class="field"><label>انسخ الدروس والمهارات والاختبارات من سجل ثاني <span class="muted">(اختياري، لنفس المادة في شعبة ثانية)</span></label><select name="copy_from"><option value="">بدون نسخ</option>${list.map((r) => `<option value="${r.id}">${esc(r.subject)} ${esc(r.grade)} ${esc(r.section)}</option>`).join('')}</select></div>` : ''}
     <button class="btn">إنشاء السجل</button></form>`;
+  if ($('#tpl')) $('#tpl').onchange = (e) => { const t = templates.find((x) => x.id === e.target.value); if (t) { $('#nr [name=subject]').value = t.name; $('#nr [name=weeks]').closest('.field').style.display = 'none'; $('#nr [name=start]').closest('.field').style.display = 'none'; } else { $('#nr [name=weeks]').closest('.field').style.display = ''; $('#nr [name=start]').closest('.field').style.display = ''; } };
   $('#nr').onsubmit = async (e) => { e.preventDefault(); try { const d = await api('/api/rec', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); Object.assign(RC, d); location.hash = `#/rec/${d.rec.id}`; } catch (err) { toast(err.message); } };
 }
 
@@ -73,7 +75,7 @@ function tSetup(el) {
     ${[['subject', 'المادة'], ['grade', 'الصف'], ['section', 'الشعبة'], ['stage', 'المرحلة'], ['term', 'الفصل الدراسي'], ['year', 'العام الدراسي']].map(([k, l]) => `<div class="field"><label>${l}</label><input name="${k}" value="${esc(r[k])}"></div>`).join('')}
     <div class="field"><label>بداية الدراسة (أول يوم)</label><input type="date" name="start" value="${esc(r.start)}"></div><div class="field"><label>عدد الأسابيع</label><input type="number" name="weeks" min="4" max="24" value="${r.weeks}"></div>
     <div class="field"><label>أسابيع الإجازات والاختبارات <span class="muted">(أرقام، مثل 9، 18)</span></label><input name="off" value="${esc(r.off.join('، '))}"></div></div>
-    <h3>جدول حصص الشعبة</h3><p class="muted" style="margin-top:0;font-size:13px">علّم حصص هذي الشعبة في الأسبوع، والخطة تتوزع عليها.</p>
+    <h3>جدول حصص الشعبة</h3><p class="muted" style="margin-top:0;font-size:13px">علّم حصص هذي الشعبة في الأسبوع، والخطة تتوزع عليها.${r.per_hint ? ` <b>المعتاد لهذي المادة ${r.per_hint} حصص في الأسبوع.</b>` : ''}</p>
     <div style="overflow:auto"><table class="tt"><tr><th></th>${[1, 2, 3, 4, 5, 6, 7, 8].map((p) => `<th>${p}</th>`).join('')}</tr>${DAYS_AR.map((d, i) => `<tr><th>${d}</th>${[1, 2, 3, 4, 5, 6, 7, 8].map((p) => `<td><label><input type="checkbox" name="slot" value="${i}:${p}" ${r.slots.some((s) => s.day === i && s.period === p) ? 'checked' : ''}></label></td>`).join('')}</tr>`).join('')}</table></div>
     <div style="margin-top:12px"><button class="btn">💾 حفظ البيانات والجدول</button></div></form>
 
@@ -129,7 +131,7 @@ function tPlan(el) {
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><a class="btn sm" target="_blank" href="/rec/${r.id}/print?k=week&week=${p.current}">🖨️ خطة هذا الأسبوع</a><a class="btn soft sm" target="_blank" href="/rec/${r.id}/print?k=weeks">🖨️ كل الخطط الأسبوعية</a><a class="btn soft sm" target="_blank" href="/rec/${r.id}/print?k=term">🖨️ الخطة الفصلية</a><a class="btn ghost sm" target="_blank" href="/rec/${r.id}/print?k=progress">🖨️ تقرير سير المادة</a></div>
   <p class="muted" style="font-size:13px;margin-top:0">علّم الدرس لما تنفذه، ويتحدث تقرير سير المادة. ★ تعني إجراء تلقائي (التشخيصي، أو حصة علاجية بعد اختبار مرصود).</p>
   ${p.weeks.map((w) => `<div class="wkc ${w.n === p.current ? 'cur' : ''}" id="w${w.n}"><div class="head" style="margin:0 0 4px"><b>الأسبوع ${w.n}${w.n === p.current ? ' (الحالي)' : ''}</b><span class="muted" style="font-size:12.5px">${w.from ? `${fdate(w.from)} - ${fdate(w.to)}` : ''} ${w.off ? '· إجازة / اختبارات' : ''}</span></div>
-    ${w.items.map((x) => x.type === 'lesson' ? `<label class="it ${x.done ? 'done-l' : ''}"><input type="checkbox" data-l="${x.id}" ${x.done ? 'checked' : ''}> ${esc(x.title)} <span class="muted">(${x.periods} ${x.periods > 1 ? 'حصص' : 'حصة'}${x.cont ? '، تكملة' : ''})</span></label>` : `<div class="it" style="color:var(--brand-text)">★ ${esc(x.title)}</div>`).join('') || (w.off ? '' : '<div class="muted it">-</div>')}
+    ${w.items.map((x) => x.type === 'lesson' ? `<label class="it ${x.done ? 'done-l' : ''}"><input type="checkbox" data-l="${x.id}" ${x.done ? 'checked' : ''}> ${esc(x.title)} <span class="muted">(${x.page ? `ص ${x.page}، ` : ''}${x.periods} ${x.periods > 1 ? 'حصص' : 'حصة'}${x.cont ? '، تكملة' : ''})</span></label>` : `<div class="it" style="color:var(--brand-text)">★ ${esc(x.title)}</div>`).join('') || (w.off ? '' : '<div class="muted it">-</div>')}
     ${w.off ? '' : `<a class="muted" style="font-size:12px" target="_blank" href="/rec/${r.id}/print?k=week&week=${w.n}">طباعة الأسبوع</a>`}</div>`).join('')}`;
   el.onchange = async (e) => { const id = e.target.dataset.l; if (!id) return; const lessons = RC.rec.lessons.map((l) => (l.id === id ? { ...l, done: e.target.checked, done_at: e.target.checked ? Date.now() : null } : l)); try { await recSave({ lessons }, true); tPlan(el); toast(e.target.checked ? 'تم ✅' : 'تم التراجع'); } catch (err) { toast(err.message); } };
   setTimeout(() => document.getElementById(`w${p.current}`)?.scrollIntoView({ block: 'center' }), 50);
