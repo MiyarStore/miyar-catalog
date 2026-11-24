@@ -105,7 +105,7 @@
     }
   }
   // شعار معياري: دائرة نعناعية وعلامة صح كحلية
-  const logo = (size = 34) => `<svg width="${size}" height="${size}" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="17" fill="#3DDBB0"/><path d="M10 18l5 5 9-11" fill="none" stroke="#0B1B2B" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const logo = (size = 34) => `<svg width="${size}" height="${size}" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="17" fill="#0E7C66"/><path d="M10 18l5 5 9-11" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   // نفس التحويل لكن على نص HTML (للصفحات اللي يرسمها الخادم)
   const iconizeHtml = (html, size = 20) => String(html).replace(RE, (m) => { const k = nameOf(m); return k ? ico(k, size, 'ie') : m; });
   const api = { iconizeHtml, logo, ico, icoFor, nameOf, strip, iconize, ICONS: I };

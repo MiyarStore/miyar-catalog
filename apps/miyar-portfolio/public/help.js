@@ -17,23 +17,23 @@
     send: svg('<path d="M20 12L4 4l3 8-3 8z"/><path d="M7 12h6"/>', 20),
   };
   const css = `.mh-dock{position:fixed;z-index:60;left:16px;bottom:20px;display:flex;flex-direction:column;gap:10px;align-items:flex-start;font-family:'Readex Pro','IBM Plex Sans Arabic',Tahoma,sans-serif}
-.mh-fab{display:flex;align-items:center;gap:8px;height:54px;min-width:54px;padding:0 16px;border-radius:999px;border:0;cursor:pointer;font:inherit;font-weight:600;font-size:14.5px;box-shadow:0 8px 24px rgba(11,27,43,.22);text-decoration:none;transition:transform .15s}
-.mh-fab:hover{transform:translateY(-2px)}.mh-ai{background:#3DDBB0;color:#0B1B2B}.mh-ai svg{color:#0B1B2B}.mh-wa{background:#25D366;color:#fff;padding:0;justify-content:center;width:54px}
+.mh-fab{display:flex;align-items:center;gap:8px;height:54px;min-width:54px;padding:0 16px;border-radius:999px;border:0;cursor:pointer;font:inherit;font-weight:600;font-size:14.5px;box-shadow:0 8px 24px rgba(23,35,46,.18);text-decoration:none;transition:transform .15s}
+.mh-fab:hover{transform:translateY(-2px)}.mh-ai{background:#0E7C66;color:#fff}.mh-ai svg{color:#fff}.mh-wa{background:#25D366;color:#fff;padding:0;justify-content:center;width:54px}
 @media(max-width:860px){.mh-ai span{display:none}.mh-ai{padding:0;width:54px;justify-content:center}body:has(.bnav) .mh-dock{bottom:96px}}
-.mh-panel{position:fixed;z-index:70;left:16px;bottom:20px;width:380px;max-width:calc(100vw - 32px);height:min(600px,calc(100vh - 40px));background:#fff;color:#0B1B2B;border-radius:24px;box-shadow:0 24px 60px rgba(11,27,43,.3);display:none;flex-direction:column;overflow:hidden;font-family:'Readex Pro','IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl}
-.mh-panel.on{display:flex}.mh-hd{background:#0B1B2B;color:#fff;padding:16px 18px;display:flex;gap:12px;align-items:center}
-.mh-hd b{display:block;font-size:16px;font-weight:600}.mh-hd small{display:block;color:#B7C4D1;font-size:12.5px}.mh-hd button{margin-inline-start:auto;background:#132A40;border:0;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;display:grid;place-items:center}
-.mh-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:#F3F5F8}
-.mh-m{max-width:86%;padding:10px 14px;border-radius:18px;font-size:14.5px;line-height:1.75;word-wrap:break-word}.mh-m a{color:#0A7B67;font-weight:600}
-.mh-b{background:#fff;border:1px solid #E2E8EF;align-self:flex-start;border-start-start-radius:6px}.mh-u{background:#0B1B2B;color:#fff;align-self:flex-end;border-start-end-radius:6px}
-.mh-chips{display:flex;flex-wrap:wrap;gap:8px}.mh-chips button{border:1px solid #C9D3DE;background:#fff;border-radius:999px;padding:7px 13px;font:inherit;font-size:13px;color:#0B1B2B;cursor:pointer}.mh-chips button:hover{border-color:#0B1B2B}
+.mh-panel{position:fixed;z-index:70;left:16px;bottom:20px;width:380px;max-width:calc(100vw - 32px);height:min(600px,calc(100vh - 40px));background:#fff;color:#17232E;border-radius:24px;box-shadow:0 24px 60px rgba(23,35,46,.22);border:1px solid #E7E1D5;display:none;flex-direction:column;overflow:hidden;font-family:'Readex Pro','IBM Plex Sans Arabic',Tahoma,sans-serif;direction:rtl}
+.mh-panel.on{display:flex}.mh-hd{background:linear-gradient(135deg,#DDEFE6 0%,#EEF3E6 45%,#F5EBDB 100%);color:#17232E;border-bottom:1px solid #E7E1D5;padding:16px 18px;display:flex;gap:12px;align-items:center}
+.mh-hd b{display:block;font-size:16px;font-weight:600}.mh-hd small{display:block;color:#5F6B74;font-size:12.5px}.mh-hd button{margin-inline-start:auto;background:#fff;border:1px solid #E7E1D5;color:#17232E;width:36px;height:36px;border-radius:50%;cursor:pointer;display:grid;place-items:center}
+.mh-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:#F7F4EE}
+.mh-m{max-width:86%;padding:10px 14px;border-radius:18px;font-size:14.5px;line-height:1.75;word-wrap:break-word}.mh-m a{color:#0B6A57;font-weight:600}
+.mh-b{background:#fff;border:1px solid #E7E1D5;align-self:flex-start;border-start-start-radius:6px}.mh-u{background:#0E7C66;color:#fff;align-self:flex-end;border-start-end-radius:6px}
+.mh-chips{display:flex;flex-wrap:wrap;gap:8px}.mh-chips button{border:1px solid #D6CEBF;background:#fff;border-radius:999px;padding:7px 13px;font:inherit;font-size:13px;color:#17232E;cursor:pointer}.mh-chips button:hover{border-color:#0E7C66;color:#0B6A57}
 .mh-dots{display:inline-flex;gap:4px}.mh-dots i{width:7px;height:7px;border-radius:50%;background:#8FA3B6;animation:mhd 1s infinite}.mh-dots i:nth-child(2){animation-delay:.15s}.mh-dots i:nth-child(3){animation-delay:.3s}@keyframes mhd{50%{opacity:.25}}
-.mh-ft{padding:12px;border-top:1px solid #E2E8EF;background:#fff}.mh-f{display:flex;gap:8px}.mh-f input{flex:1;min-width:0;border:1px solid #C9D3DE;border-radius:999px;padding:11px 16px;font:inherit;font-size:16px;color:#0B1B2B;background:#fff}
-.mh-f input:focus{outline:2px solid #3DDBB0;border-color:transparent}.mh-f button{flex:none;width:46px;height:46px;border-radius:50%;border:0;background:#3DDBB0;color:#0B1B2B;cursor:pointer;display:grid;place-items:center}.mh-f button:disabled{opacity:.5}
-.mh-note{font-size:11.5px;color:#5B6B7C;margin-top:8px;text-align:center}.mh-note a{color:#0A7B67;font-weight:600}
+.mh-ft{padding:12px;border-top:1px solid #E7E1D5;background:#fff}.mh-f{display:flex;gap:8px}.mh-f input{flex:1;min-width:0;border:1px solid #D6CEBF;border-radius:999px;padding:11px 16px;font:inherit;font-size:16px;color:#17232E;background:#fff}
+.mh-f input:focus{outline:2px solid #4DB89A;border-color:transparent}.mh-f button{flex:none;width:46px;height:46px;border-radius:50%;border:0;background:#0E7C66;color:#fff;cursor:pointer;display:grid;place-items:center}.mh-f button:disabled{opacity:.5}
+.mh-note{font-size:11.5px;color:#5F6B74;margin-top:8px;text-align:center}.mh-note a{color:#0B6A57;font-weight:600}
 @media(max-width:560px){.mh-panel{left:0;right:0;bottom:0;width:100%;max-width:none;height:min(88vh,640px);border-radius:24px 24px 0 0}}`;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
-  const logo = '<svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="17" fill="#3DDBB0"/><path d="M10 18l5 5 9-11" fill="none" stroke="#0B1B2B" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const logo = '<svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="17" fill="#0E7C66"/><path d="M10 18l5 5 9-11" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const SUGG = ['كم أسعار الاشتراك؟', 'كيف أفعّل اشتراكي؟', 'وش الوظائف اللي يدعمها؟', 'هل يفيد قائد المدرسة؟'];
   const dock = document.createElement('div'); dock.className = 'mh-dock';
   dock.innerHTML = `<button type="button" class="mh-fab mh-ai" aria-label="اسأل معياري">${I.chat}<span>اسأل معياري</span></button><a class="mh-fab mh-wa" target="_blank" rel="noopener" aria-label="تواصل معنا واتساب" title="تواصل معنا واتساب">${I.wa}</a>`;

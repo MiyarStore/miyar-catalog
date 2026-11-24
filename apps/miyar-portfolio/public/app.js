@@ -127,7 +127,7 @@ const nEl = (n) => (n === 1 ? 'عنصر واحد' : n === 2 ? 'عنصران' : n
 function ring(pct) {
   const C = 2 * Math.PI * 48;
   const d = Math.max(0, Math.min(C, (pct / 100) * C)).toFixed(1);
-  return `<svg class="ring" width="112" height="112" viewBox="0 0 112 112" role="img" aria-label="جاهزية الملف ${pct}% من أوزان التقييم"><circle cx="56" cy="56" r="48" fill="none" stroke="#22405C" stroke-width="10"/>${pct > 0 ? `<circle cx="56" cy="56" r="48" fill="none" stroke="#3DDBB0" stroke-width="10" stroke-linecap="round" stroke-dasharray="${d} 302" transform="rotate(-90 56 56)"/>` : ''}<text x="56" y="64" text-anchor="middle" font-family="Readex Pro, sans-serif" font-size="25" font-weight="700" fill="#fff">${pct}%</text></svg>`;
+  return `<svg class="ring" width="112" height="112" viewBox="0 0 112 112" role="img" aria-label="جاهزية الملف ${pct}% من أوزان التقييم"><circle cx="56" cy="56" r="48" fill="none" stroke="rgba(14,124,102,.14)" stroke-width="10"/>${pct > 0 ? `<circle cx="56" cy="56" r="48" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-dasharray="${d} 302" transform="rotate(-90 56 56)"/>` : ''}<text x="56" y="64" text-anchor="middle" font-family="Readex Pro, sans-serif" font-size="25" font-weight="500" fill="currentColor">${pct}%</text></svg>`;
 }
 function dashboard() {
   const counts = Object.fromEntries(S.standards.map((s) => [s.id, S.evs.filter((e) => e.standard_id === s.id).length]));

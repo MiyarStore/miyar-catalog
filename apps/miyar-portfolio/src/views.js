@@ -31,7 +31,7 @@ function shareMeta({ title, desc, url, base }) {
   return `<meta name="description" content="${esc(desc)}"><meta property="og:type" content="website"><meta property="og:locale" content="ar_SA">
 <meta property="og:site_name" content="معياري"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${esc(url)}"><meta property="og:image" content="${esc(img)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image"><meta name="theme-color" content="#0B1B2B">`;
+<meta name="twitter:card" content="summary_large_image"><meta name="theme-color" content="#F7F4EE">`;
 }
 
 // التقارير المطبوعة تبقى بهويتها الرسمية السابقة (الخط والألوان) بعد تغيير تصميم الواجهة
@@ -48,113 +48,166 @@ h1, h2, h3, b, strong { font-weight: 700; } body { -webkit-font-smoothing: auto;
 
 // ---------- الصفحة التعريفية ----------
 const LANDING_CSS = `<style>
-.lp{background:#fff;color:#0B1B2B}.lp-dark{background:#0B1B2B;color:#fff}
+.lp{background:#F7F4EE;color:#17232E}
 .lp-w{max-width:1200px;margin:0 auto;padding:0 24px}
-.lp-hd{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0}
-.lp-hd .logo{color:#fff;font-size:22px}.lp-nav{display:flex;gap:26px;font-size:15px}.lp-nav a{color:#B7C4D1;text-decoration:none}.lp-nav a:hover{color:#fff}
-.lp-out{padding:10px 20px;font-weight:500;color:#fff;border:1px solid #2C4157;border-radius:999px;text-decoration:none}.lp-out:hover{border-color:#3DDBB0;color:#fff}
-.lp-hero{text-align:center;padding:60px 0 0;display:flex;flex-direction:column;align-items:center;gap:22px}
-.lp-kick{font-size:14px;color:#3DDBB0;font-weight:500}
-.lp-hero h1{margin:0;font-size:clamp(38px,7vw,68px);line-height:1.18;font-weight:700;max-width:900px}.lp-hero h1 em{font-style:normal;color:#3DDBB0}
-.lp-hero p{margin:0;font-size:clamp(17px,2.2vw,20px);line-height:1.75;color:#B7C4D1;max-width:640px;font-weight:300}
-.lp-cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
-.lp-b1{padding:15px 32px;font-size:17px;font-weight:600;color:#0B1B2B;background:#3DDBB0;border-radius:999px;text-decoration:none}.lp-b1:hover{background:#7BEBCB;color:#0B1B2B}
-.lp-b2{padding:15px 28px;font-size:17px;font-weight:500;color:#fff;border:1px solid #2C4157;border-radius:999px;text-decoration:none}.lp-b2:hover{border-color:#3DDBB0;color:#fff}
-.lp-flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;width:100%;max-width:1000px;margin-top:26px;transform:translateY(48px)}
-.lp-step{background:#132A40;border:1px solid #22405C;border-radius:24px;padding:22px;text-align:right;display:flex;flex-direction:column;gap:8px}
-.lp-step:nth-child(2){background:#fff;color:#0B1B2B;border-color:#fff;box-shadow:0 20px 50px rgba(0,0,0,.25)}.lp-step:nth-child(3){background:#3DDBB0;color:#0B1B2B;border-color:#3DDBB0}
-.lp-step span{font-size:13px;font-weight:600;color:#8FA3B6}.lp-step:nth-child(2) span{color:#0A7B67}.lp-step:nth-child(3) span{color:#0B4A3D}
-.lp-step b{font-size:17px;font-weight:600;line-height:1.55}.lp-step small{font-size:13.5px;color:#5B6B7C;line-height:1.6}.lp-step:nth-child(3) small{color:#0B4A3D}.lp-step:first-child b{font-weight:400;color:#E8EEF4}
-.lp-sec{padding:100px 0 30px}.lp-sec h2{font-size:clamp(28px,4vw,40px);font-weight:700;line-height:1.3;margin:0 0 30px;max-width:720px}
-.bento{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.bx{border-radius:24px;padding:26px;display:flex;flex-direction:column;gap:12px;background:#F3F5F8;min-height:220px}.bx h3{margin:0;font-size:20px;font-weight:600}.bx p{margin:0;color:#42566A;line-height:1.75}
-.bx.big{grid-column:span 2;background:#EFFBF7}.bx.big .ico{color:#0A7B67}.bx.dk{grid-column:span 2;background:#0B1B2B;color:#fff}.bx.dk p{color:#B7C4D1}.bx.dk .ico{color:#3DDBB0}
-.lp-roles{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:26px 0;border-top:1px solid #E2E8EF;border-bottom:1px solid #E2E8EF}
-.lp-roles b{font-weight:600;margin-inline-end:6px}.lp-roles span{padding:8px 16px;border-radius:999px;background:#F3F5F8;font-size:14.5px}
-.promo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.pr{border:1px solid #E2E8EF;border-radius:24px;padding:26px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}.pr .tag{font-size:13px;color:#0A7B67;font-weight:600}.pr h3{margin:0;font-size:21px;font-weight:600}.pr p{margin:0 0 6px;color:#42566A;line-height:1.75}
-.pr a{color:#0B1B2B;font-weight:600;text-decoration:none;border-bottom:2px solid #3DDBB0;padding-bottom:2px}
-.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:1000px}
-.pl{border:1px solid #E2E8EF;border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:14px}.pl .nm{font-size:17px;font-weight:600}.pl .pc{font-size:52px;font-weight:700;line-height:1}.pl .pc small{font-size:16px;font-weight:400;color:#5B6B7C}.pl p{margin:0;color:#5B6B7C;font-size:14px}
-.pl a{margin-top:auto;text-align:center;padding:13px;border-radius:999px;border:1px solid #C9D3DE;color:#0B1B2B;text-decoration:none;font-weight:600}.pl a:hover{border-color:#0B1B2B}
-.pl.best{background:#0B1B2B;color:#fff;border-color:#0B1B2B}.pl.best .pc small,.pl.best p{color:#B7C4D1}.pl.best a{background:#3DDBB0;border-color:#3DDBB0}.pl.best a:hover{background:#7BEBCB}
-.pl .bdg{font-size:12.5px;font-weight:600;background:#3DDBB0;color:#0B1B2B;border-radius:999px;padding:3px 12px}
-.lp-ft{padding:30px 0;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;color:#B7C4D1;font-size:14px}.lp-ft a{color:#B7C4D1;margin-inline-start:18px}.lp-ft a:hover{color:#3DDBB0}
-.svc{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:1100px;margin:30px 0 0;text-align:right;transform:translateY(60px)}
-.sv{border-radius:28px;padding:26px;display:flex;flex-direction:column;gap:16px}.sv.t{background:#fff;color:#0B1B2B;box-shadow:0 20px 50px rgba(0,0,0,.25)}.sv.s{background:#3DDBB0;color:#0B1B2B}
-.sv-h{display:flex;gap:12px;align-items:center}.sv-h b{display:block;font-size:22px;font-weight:700}.sv-h small{display:block;font-size:13.5px;color:#42566A}.sv.s .sv-h small{color:#0B4A3D}
-.sv-ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#EFFBF7;color:#0A7B67;flex:none}.sv.s .sv-ic{background:#0B1B2B;color:#3DDBB0}
-.sv ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}.sv li{display:flex;gap:10px;align-items:flex-start;font-size:15.5px;line-height:1.65}.sv li svg{flex:none;margin-top:4px;color:#0A7B67}.sv.s li svg{color:#0B1B2B}
-.sv .lp-b1{align-self:flex-start;margin-top:auto}.sv .lp-b1.dk{background:#0B1B2B;color:#fff}.sv .lp-b1.dk:hover{background:#132A40}
-.how{background:#0B1B2B;border-radius:28px;padding:30px;margin-bottom:60px;color:#fff}.how h2{color:#fff;margin-bottom:6px !important;font-size:24px !important}.lp-flow.in{transform:none;margin-top:16px;max-width:none}
-@media(max-width:900px){.svc{grid-template-columns:1fr;transform:translateY(40px)}.lp-nav{display:none}.lp-flow{grid-template-columns:1fr;transform:translateY(40px)}.bento{grid-template-columns:1fr 1fr}.bx.big,.bx.dk{grid-column:span 2}.plans,.promo{grid-template-columns:1fr}}
-@media(max-width:560px){.lp-w{padding:0 18px}.lp-hero{padding-top:36px}.bento{grid-template-columns:1fr}.bx.big,.bx.dk{grid-column:auto}.bx{min-height:0}.lp-sec{padding-top:80px}.lp-b1,.lp-b2{width:100%;text-align:center}.lp-cta{width:100%}}
+.lp-top{position:sticky;top:0;z-index:40;background:rgba(247,244,238,.86);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid transparent}
+.lp-hd{display:flex;align-items:center;justify-content:space-between;gap:16px;height:72px}
+.lp-hd .logo{color:#17232E;font-size:21px;font-weight:600}.lp-nav{display:flex;gap:28px;font-size:15px}.lp-nav a{color:#5F6B74;text-decoration:none}.lp-nav a:hover{color:#17232E}
+.lp-hd-a{display:flex;gap:10px;align-items:center}
+.lp-out{padding:9px 18px;font-weight:500;color:#17232E;text-decoration:none;border-radius:999px}.lp-out:hover{background:#EDE8DD}
+.lp-in{padding:9px 18px;font-weight:500;color:#fff;background:#17232E;border-radius:999px;text-decoration:none}.lp-in:hover{background:#0E7C66;color:#fff}
+.lp-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:48px;align-items:center;padding:56px 0 40px}
+.lp-txt{display:flex;flex-direction:column;gap:22px;align-items:flex-start}
+.lp-kick{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;color:#0B6A57;background:#E3F1EA;border-radius:999px;padding:6px 14px;font-weight:500}
+.lp-kick i{width:7px;height:7px;border-radius:50%;background:#0E7C66}
+.lp-hero h1{margin:0;font-size:clamp(36px,5.6vw,62px);line-height:1.22;font-weight:300;letter-spacing:0}.lp-hero h1 b{font-weight:500;color:#0E7C66}
+.lp-hero p{margin:0;font-size:clamp(16.5px,1.8vw,19px);line-height:1.85;color:#5F6B74;max-width:540px;font-weight:300}
+.lp-cta{display:flex;gap:10px;flex-wrap:wrap}
+.lp-b1{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;font-size:16.5px;font-weight:500;color:#fff;background:#17232E;border-radius:999px;text-decoration:none;transition:background .15s}.lp-b1:hover{background:#0E7C66;color:#fff}
+.lp-b1.g{background:#0E7C66}.lp-b1.g:hover{background:#0B6553}
+.lp-b2{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;font-size:16.5px;font-weight:500;color:#17232E;background:#fff;border:1px solid #E7E1D5;border-radius:999px;text-decoration:none}.lp-b2:hover{border-color:#17232E;color:#17232E}
+.lp-trust{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:#5F6B74}.lp-trust span{display:inline-flex;gap:6px;align-items:center}.lp-trust svg{color:#0E7C66}
+.lp-art{position:relative;border-radius:32px;padding:44px 34px;min-height:470px;background:radial-gradient(120% 90% at 85% 10%,#CFE9DD 0%,rgba(207,233,221,0) 60%),radial-gradient(90% 80% at 10% 95%,#F3E3C8 0%,rgba(243,227,200,0) 60%),#EEF2EA;overflow:hidden;display:grid;place-items:center}
+.lp-art:before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(23,35,46,.07) 1px,transparent 1px);background-size:18px 18px;mask-image:linear-gradient(180deg,#000,transparent 85%);-webkit-mask-image:linear-gradient(180deg,#000,transparent 85%)}
+.mk{position:relative;width:100%;max-width:400px;background:#fff;border-radius:24px;box-shadow:0 30px 70px rgba(23,35,46,.16),0 0 0 1px rgba(23,35,46,.05);padding:18px;display:grid;gap:14px}
+.mk-h{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#5F6B74}.mk-h b{display:flex;gap:8px;align-items:center;color:#17232E;font-weight:600;font-size:14px}
+.mk-in{border:1px solid #E7E1D5;border-radius:16px;padding:12px 14px;font-size:14.5px;background:#FBFAF7;display:flex;gap:6px;align-items:center;min-height:50px}
+.mk-ty{white-space:nowrap;overflow:hidden;animation:ty 9s steps(34) infinite}.mk-cr{width:2px;height:18px;background:#0E7C66;animation:bl 1s step-end infinite;flex:none}
+.mk-st{display:flex;gap:8px;align-items:center;font-size:12.5px;color:#0B6A57;font-weight:500;animation:fd1 9s infinite}
+.mk-out{border-radius:18px;background:#F7F4EE;padding:14px;display:grid;gap:10px;animation:fd2 9s infinite}
+.mk-out .t{font-size:15px;font-weight:600;line-height:1.6}
+.mk-tag{justify-self:start;display:inline-flex;gap:6px;align-items:center;font-size:12px;background:#E3F1EA;color:#0B6A57;border-radius:999px;padding:4px 10px;font-weight:500}
+.mk-l{display:grid;gap:7px}.mk-l i{display:block;height:7px;border-radius:9px;background:#E7E1D5}.mk-l i:nth-child(2){width:86%}.mk-l i:nth-child(3){width:64%}
+.mk-ok{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:#5F6B74}.mk-ok b{color:#0B6A57;font-weight:500;display:inline-flex;gap:5px;align-items:center}
+.mk-f{position:absolute;bottom:26px;inset-inline-start:22px;background:#fff;border-radius:18px;padding:12px 14px;display:flex;gap:10px;align-items:center;box-shadow:0 16px 40px rgba(23,35,46,.14);font-size:13px;animation:fl 6s ease-in-out infinite}
+.mk-f .ic{width:38px;height:38px;border-radius:12px;background:#F5EBDB;color:#8A5300;display:grid;place-items:center}.mk-f b{display:block;font-weight:600;font-size:13.5px}.mk-f small{color:#5F6B74}
+.mk-q{position:absolute;top:24px;inset-inline-end:22px;background:#17232E;color:#fff;border-radius:16px;padding:10px 12px;display:flex;gap:8px;align-items:center;font-size:12.5px;box-shadow:0 16px 40px rgba(23,35,46,.2);animation:fl 7s ease-in-out infinite reverse}
+@keyframes ty{0%{max-width:0}30%,100%{max-width:100%}}@keyframes bl{50%{opacity:0}}
+@keyframes fd1{0%,30%{opacity:0}36%,100%{opacity:1}}@keyframes fd2{0%,38%{opacity:0;transform:translateY(10px)}46%,92%{opacity:1;transform:none}100%{opacity:0}}
+@keyframes fl{50%{transform:translateY(-8px)}}
+.mk-ty,.mk-st,.mk-out{animation-delay:-4.6s}
+@media(prefers-reduced-motion:reduce){.mk-ty,.mk-cr,.mk-st,.mk-out,.mk-f,.mk-q{animation:none}}
+.lp-roles{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;justify-content:center;padding:28px 0 8px;color:#5F6B74;font-size:14px}
+.lp-roles span{padding:7px 15px;border-radius:999px;border:1px solid #E7E1D5;background:#fff;color:#17232E;font-size:14px}
+.lp-sec{padding:96px 0 20px}.lp-eb{font-size:13.5px;color:#0B6A57;font-weight:500;margin-bottom:10px}
+.lp-sec h2{font-size:clamp(28px,3.8vw,42px);font-weight:300;line-height:1.3;margin:0 0 14px;max-width:760px}.lp-sec h2 b{font-weight:500}
+.lp-lead{color:#5F6B74;font-size:17px;line-height:1.8;max-width:640px;margin:0 0 34px;font-weight:300}
+.svc{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.sv{border-radius:28px;padding:30px;display:flex;flex-direction:column;gap:18px;background:#fff;border:1px solid #E7E1D5}.sv.s{background:radial-gradient(100% 80% at 100% 0%,#DDEFE6 0%,rgba(221,239,230,0) 70%),#fff}
+.sv-h{display:flex;gap:14px;align-items:center}.sv-h b{display:block;font-size:22px;font-weight:500}.sv-h small{display:block;font-size:13.5px;color:#5F6B74}
+.sv-ic{width:50px;height:50px;border-radius:16px;display:grid;place-items:center;background:#E3F1EA;color:#0B6A57;flex:none}.sv.s .sv-ic{background:#F5EBDB;color:#8A5300}
+.sv ul{list-style:none;margin:0;padding:0;display:grid;gap:12px}.sv li{display:flex;gap:10px;align-items:flex-start;font-size:15.5px;line-height:1.7;color:#2C3A45}.sv li svg{flex:none;margin-top:4px;color:#0E7C66}
+.sv .lp-b1{align-self:flex-start;margin-top:auto}
+.bento{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.bx{border-radius:26px;padding:28px;display:flex;flex-direction:column;gap:12px;background:#fff;border:1px solid #E7E1D5;min-height:220px}.bx h3{margin:0;font-size:19px;font-weight:500}.bx p{margin:0;color:#5F6B74;line-height:1.8;font-weight:300}
+.bx .bi{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:#F7F4EE;color:#0B6A57}
+.bx.big{grid-column:span 2;background:radial-gradient(90% 100% at 0% 100%,#F5EBDB 0%,rgba(245,235,219,0) 70%),#fff}
+.bx.dk{background:#17232E;color:#fff;border-color:#17232E}.bx.dk p{color:#B9C2C8}.bx.dk .bi{background:rgba(255,255,255,.08);color:#7FD8BF}
+.promo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.pr{border-radius:26px;padding:30px;display:flex;flex-direction:column;gap:10px;align-items:flex-start;background:#EEF2EA}.pr:nth-child(2){background:#F5EDE0}.pr .tag{font-size:13px;color:#0B6A57;font-weight:500}.pr h3{margin:0;font-size:22px;font-weight:500}.pr p{margin:0 0 8px;color:#4A5862;line-height:1.8;font-weight:300}
+.pr a{color:#17232E;font-weight:500;text-decoration:none;display:inline-flex;gap:6px;align-items:center}.pr a:hover{color:#0E7C66}
+.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;max-width:1020px}
+.pl{background:#fff;border:1px solid #E7E1D5;border-radius:26px;padding:30px;display:flex;flex-direction:column;gap:14px}.pl .nm{font-size:16px;font-weight:500;color:#5F6B74}.pl .pc{font-size:50px;font-weight:300;line-height:1}.pl .pc small{font-size:15px;color:#5F6B74}.pl p{margin:0;color:#5F6B74;font-size:14px}
+.pl a{margin-top:auto;text-align:center;padding:13px;border-radius:999px;border:1px solid #D6CEBF;color:#17232E;text-decoration:none;font-weight:500}.pl a:hover{border-color:#17232E}
+.pl.best{border:1.5px solid #0E7C66;box-shadow:0 20px 50px rgba(14,124,102,.12)}.pl.best a{background:#0E7C66;border-color:#0E7C66;color:#fff}.pl.best a:hover{background:#0B6553}
+.pl .bdg{font-size:12px;font-weight:500;background:#E3F1EA;color:#0B6A57;border-radius:999px;padding:4px 12px}
+.lp-end{margin:40px 0 70px;border-radius:32px;padding:56px 32px;text-align:center;background:radial-gradient(70% 120% at 50% 0%,#D5ECE1 0%,rgba(213,236,225,0) 70%),#EEF2EA;display:flex;flex-direction:column;gap:18px;align-items:center}
+.lp-end h2{margin:0;font-size:clamp(26px,3.6vw,38px);font-weight:300}.lp-end p{margin:0;color:#5F6B74}
+.lp-ft{border-top:1px solid #E7E1D5}.lp-ft .lp-w{padding-top:26px;padding-bottom:30px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;color:#5F6B74;font-size:14px}.lp-ft a{color:#5F6B74;margin-inline-start:18px;text-decoration:none}.lp-ft a:hover{color:#17232E}
+.note{color:#5F6B74;font-size:13.5px;margin:14px 0 0}
+@media(max-width:960px){.lp-hero{grid-template-columns:1fr;gap:34px;padding-top:30px}.lp-nav{display:none}.svc,.promo,.plans{grid-template-columns:1fr}.bento{grid-template-columns:1fr 1fr}.bx.big{grid-column:span 2}}
+@media(max-width:560px){.lp-w{padding:0 18px}.lp-out{display:none}.lp-art{padding:64px 14px 74px;min-height:0;border-radius:26px}.bento{grid-template-columns:1fr}.bx.big{grid-column:auto}.bx{min-height:0}.lp-sec{padding-top:70px}.lp-cta,.lp-cta a{width:100%;justify-content:center}.sv,.bx,.pr,.pl{padding:24px}.mk-f{inset-inline-start:12px;bottom:14px}.mk-q{inset-inline-end:12px;top:14px}}
 </style>`;
 function landing(storeUrl, trialDays, plans = [], base = '') {
-  const ic = (n) => MI.ico(n, 34);
+  const bi = (n) => `<span class="bi">${MI.ico(n, 24)}</span>`;
   const btn = { month: 'اشترك شهرياً', term: 'اشترك للفصل', year: 'اشترك سنوياً' };
+  const li = (arr) => arr.map((x) => `<li>${MI.ico('check', 18)}<span>${x}</span></li>`).join('');
   return shell({
     title: 'معياري | ملف الإنجاز الوظيفي للمعلم والمعلمة',
     bodyClass: 'lp',
     extraHead: shareMeta({ base, url: `${base}/`, title: 'معياري | ملف الإنجاز الوظيفي للمعلم والمعلمة', desc: `وثّق شواهدك على عناصر تقييم الأداء الوظيفي لوظيفتك من جوالك، والمساعد الذكي يصيغها بلغة رسمية، وملفك الكامل يتجهّز تلقائياً. جرّبه ${trialDays} أيام مجاناً.` }) + LANDING_CSS,
     body: `
-<div class="lp-dark"><div class="lp-w">
-  <header class="lp-hd"><a class="logo" href="/">${MI.logo(34)}معياري</a>
-    <nav class="lp-nav" aria-label="القائمة الرئيسية"><a href="#features">المزايا</a><a href="#pricing">الباقات</a><a href="/school">للمدارس</a><a href="/exam-maker">صانع الاختبارات</a></nav>
-    <a class="lp-out" href="/app">تسجيل الدخول</a></header>
+<div class="lp-top"><div class="lp-w lp-hd"><a class="logo" href="/">${MI.logo(32)}معياري</a>
+  <nav class="lp-nav" aria-label="القائمة الرئيسية"><a href="#services">الخدمات</a><a href="#features">المزايا</a><a href="#pricing">الباقات</a><a href="/school">للمدارس</a><a href="/exam-maker">صانع الاختبارات</a></nav>
+  <span class="lp-hd-a"><a class="lp-out" href="/app">تسجيل الدخول</a><a class="lp-in" href="/app#/register">ابدأ مجاناً</a></span></div></div>
+<main>
+<div class="lp-w">
   <section class="lp-hero">
-    <span class="lp-kick">أدوات المعلم وقائد المدرسة في مكان واحد</span>
-    <h1>ملف إنجازك <em>يكتب نفسه</em> وأنت تدرّس</h1>
-    <p>صوّر الشاهد واكتب عنه كلمتين. معياري يصيغه بلغة رسمية، ويرتبه على عناصر تقييم وظيفتك، ويجهّز ملفك للطباعة.</p>
-    <div class="lp-cta"><a class="lp-b1" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a><a class="lp-b2" href="#services">وش يقدم لك معياري؟</a></div>
-    <div class="svc" id="services">
+    <div class="lp-txt">
+      <span class="lp-kick"><i></i>أدوات المعلم وقائد المدرسة في مكان واحد</span>
+      <h1>ملف إنجازك <b>يكتب نفسه</b> وأنت تدرّس</h1>
+      <p>اكتب عن الشاهد كلمتين وأرفق صورته. معياري يصيغه بلغة رسمية، ويربطه بعنصر التقييم المناسب لوظيفتك، ويجهّز ملفك للطباعة.</p>
+      <div class="lp-cta"><a class="lp-b1 g" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a><a class="lp-b2" href="#services">وش يقدم لك معياري؟</a></div>
+      <div class="lp-trust"><span>${MI.ico('check', 16)}بدون بطاقة دفع</span><span>${MI.ico('check', 16)}من الجوال والكمبيوتر بدون تحميل</span><span>${MI.ico('check', 16)}مبني على الدليل الإرشادي</span></div>
+    </div>
+    <div class="lp-art" role="img" aria-label="مثال توضيحي: تكتب فكرة الشاهد ومعياري يصيغه ويربطه بعنصر التقييم">
+      <div class="mk-q">${MI.ico('sparkle', 16)}صياغة بالذكاء الاصطناعي</div>
+      <div class="mk" aria-hidden="true">
+        <div class="mk-h"><b>${MI.logo(22)}شاهد جديد</b><span>مثال</span></div>
+        <div class="mk-in"><span class="mk-ty">طبّقت التعلم التعاوني في درس الكسور</span><span class="mk-cr"></span></div>
+        <div class="mk-st">${MI.ico('sparkle', 15)}معياري يصيغ الشاهد</div>
+        <div class="mk-out">
+          <div class="t">توظيف استراتيجية التعلم التعاوني في تدريس الكسور</div>
+          <span class="mk-tag">${MI.ico('target', 14)}التنويع في استراتيجيات التدريس</span>
+          <div class="mk-l"><i></i><i></i><i></i></div>
+          <div class="mk-ok"><span>الأهداف والوصف وآلية التنفيذ</span><b>${MI.ico('check', 14)}أُضيف لملفك</b></div>
+        </div>
+      </div>
+      <div class="mk-f" aria-hidden="true"><span class="ic">${MI.ico('doc', 20)}</span><span><b>ملف الإنجاز PDF</b><small>غلاف وفهرس وشواهد</small></span></div>
+    </div>
+  </section>
+  <section class="lp-roles" aria-label="الوظائف المدعومة">لكل وظيفة تعليمية:${Object.values(ROLES).map((r) => `<span>${esc(r.name)}</span>`).join('')}</section>
+
+  <section class="lp-sec" id="services">
+    <div class="lp-eb">الخدمات</div>
+    <h2>وش يقدم لك <b>معياري</b>؟</h2>
+    <p class="lp-lead">قسمين واضحين: واحد للمعلم والمعلمة وكل الوظائف التعليمية، وواحد لقائد المدرسة.</p>
+    <div class="svc">
       <div class="sv t"><div class="sv-h"><span class="sv-ic">${MI.ico('user', 24)}</span><div><b>للمعلم والمعلمة</b><small>وكل الوظائف التعليمية</small></div></div>
-        <ul>${['ملف الإنجاز الوظيفي على عناصر تقييم وظيفتك وأوزانها، PDF جاهز للطباعة', 'صياغة الشواهد بالذكاء الاصطناعي من كلمتين', 'التقييم الذاتي بسلّم التقدير الرسمي ومعرفة تقديرك المتوقع', 'السجلات اليومية: الانتظار والمناوبة والتعاميم واللجان والتواصل مع أولياء الأمور والمبادرات', 'صانع الاختبارات بجدول المواصفات', 'مساعد المعلم: سجل المادة والخطة الأسبوعية وتحليل النتائج والخطط العلاجية'].map((x) => `<li>${MI.ico('check', 18)}<span>${x}</span></li>`).join('')}</ul>
-        <a class="lp-b1" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a></div>
+        <ul>${li(['ملف الإنجاز الوظيفي على عناصر تقييم وظيفتك وأوزانها، PDF جاهز للطباعة', 'صياغة الشواهد بالذكاء الاصطناعي من كلمتين', 'التقييم الذاتي بسلّم التقدير الرسمي ومعرفة تقديرك المتوقع', 'السجلات اليومية: الانتظار والمناوبة والتعاميم واللجان والتواصل مع أولياء الأمور والمبادرات', 'صانع الاختبارات بجدول المواصفات', 'مساعد المعلم: سجل المادة والخطة الأسبوعية وتحليل النتائج والخطط العلاجية'])}</ul>
+        <a class="lp-b1 g" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a></div>
       <div class="sv s"><div class="sv-h"><span class="sv-ic">${MI.ico('school', 24)}</span><div><b>لقائد المدرسة</b><small>معياري للمدرسة</small></div></div>
-        <ul>${['قراءة تقرير التقويم الذاتي من منصة تميز وإعداد خطة التحسين من المؤشر الأضعف', 'قراءة تقرير نافس وإعداد الخطة العلاجية لكل مادة وصف', 'الخطة التشغيلية: التوجهات وتحليل الواقع والأهداف والبرامج ومتابعة التنفيذ', 'ملف شواهد التقويم المدرسي', 'لوحة المدرسة: حضور الفصول وغياب المنسوبين وحصص الانتظار', 'إسناد مهام الخطة للمعلمين ومتابعة تنفيذها'].map((x) => `<li>${MI.ico('check', 18)}<span>${x}</span></li>`).join('')}</ul>
-        <a class="lp-b1 dk" href="/school">جرّبها لمدرستك</a></div>
+        <ul>${li(['قراءة تقرير التقويم الذاتي من منصة تميز وإعداد خطة التحسين من المؤشر الأضعف', 'قراءة تقرير نافس وإعداد الخطة العلاجية لكل مادة وصف', 'الخطة التشغيلية: التوجهات وتحليل الواقع والأهداف والبرامج ومتابعة التنفيذ', 'ملف شواهد التقويم المدرسي', 'لوحة المدرسة: حضور الفصول وغياب المنسوبين وحصص الانتظار', 'إسناد مهام الخطة للمعلمين ومتابعة تنفيذها'])}</ul>
+        <a class="lp-b1" href="/school">جرّبها لمدرستك</a></div>
     </div>
   </section>
-</div></div>
-<main class="lp-w">
-  <section class="lp-sec" id="features" style="padding-top:110px">
-    <div class="how"><h2>كيف يصيغ معياري شاهدك؟</h2>
-    <div class="lp-flow in" aria-label="مثال على طريقة العمل">
-      <div class="lp-step"><span>تكتب</span><b>طبّقت التعلم التعاوني في درس الكسور</b></div>
-      <div class="lp-step"><span>يطلع لك</span><b>توظيف استراتيجية التعلم التعاوني في تدريس الكسور</b><small>الأهداف والوصف وآلية التنفيذ مصاغة بلغة رسمية، وتقدر تعدّلها.</small></div>
-      <div class="lp-step"><span>ويُربط بـ</span><b>التنويع في استراتيجيات التدريس</b><small>العنصر المناسب من عناصر تقييم وظيفتك، ويدخل ملفك مباشرة.</small></div>
-    </div>
-    </div>
-    <h2>كل شي يطلبه منك التقييم، جاهز قبل ما يُطلب</h2>
+
+  <section class="lp-sec" id="features">
+    <div class="lp-eb">المزايا</div>
+    <h2>كل شي يطلبه منك التقييم، <b>جاهز قبل ما يُطلب</b></h2>
+    <p class="lp-lead">عناصر التقييم وأوزانها لكل وظيفة من نماذج الدليل الإرشادي لإدارة الأداء الوظيفي لشاغلي الوظائف التعليمية (الإصدار الثاني).</p>
     <div class="bento">
-      <div class="bx big">${ic('doc')}<h3>ملف PDF بترويسة الوزارة</h3><p>غلاف وفهرس وكل عنصر بشواهده، أو تقرير لعنصر واحد أو لشاهد واحد إذا طلبه المدير.</p></div>
-      <div class="bx">${ic('qr')}<h3>رمز تحقق QR</h3><p>على كل تقرير وكل شاهد، يثبت إنه موثّق في معياري.</p></div>
-      <div class="bx">${ic('calendar')}<h3>سجلاتك اليومية</h3><p>الانتظار والمناوبة والتعاميم واللجان والتواصل مع الأسر، وكل سجل يتحول لشاهد بضغطة.</p></div>
-      <div class="bx">${ic('sparkle')}<h3>مساعد يصيغ الشاهد</h3><p>اكتب الفكرة بكلمتين، ويجهّز العنوان والأهداف والوصف ويقترح العنصر المناسب.</p></div>
-      <div class="bx">${ic('target')}<h3>تقييم ذاتي بسلّم التقدير</h3><p>قيّم نفسك بأوصاف المستويات الرسمية، واعرف وش ينقصك للمستوى الأعلى.</p></div>
-      <div class="bx dk">${ic('link')}<h3>صفحة باسمك</h3><p>رابط واحد ترسله لفريق التقويم بدل الملفات والمجلدات، أو تحطه QR على باب الفصل.</p></div>
+      <div class="bx big">${bi('doc')}<h3>ملف PDF بترويسة الوزارة</h3><p>غلاف وفهرس وكل عنصر بشواهده، أو تقرير لعنصر واحد أو لشاهد واحد إذا طلبه المدير.</p></div>
+      <div class="bx">${bi('sparkle')}<h3>مساعد يصيغ الشاهد</h3><p>اكتب الفكرة بكلمتين، ويجهّز العنوان والأهداف والوصف ويقترح العنصر المناسب.</p></div>
+      <div class="bx">${bi('calendar')}<h3>سجلاتك اليومية</h3><p>الانتظار والمناوبة والتعاميم واللجان والتواصل مع الأسر، وكل سجل يتحول لشاهد بضغطة.</p></div>
+      <div class="bx">${bi('target')}<h3>تقييم ذاتي بسلّم التقدير</h3><p>قيّم نفسك بأوصاف المستويات الرسمية، واعرف وش ينقصك للمستوى الأعلى.</p></div>
+      <div class="bx">${bi('qr')}<h3>رمز تحقق QR</h3><p>على كل تقرير وكل شاهد، يثبت إنه موثّق في معياري.</p></div>
+      <div class="bx dk" style="grid-column:1/-1">${bi('link')}<h3>صفحة باسمك</h3><p>رابط واحد ترسله لفريق التقويم بدل الملفات والمجلدات، أو تحطه QR على باب الفصل.</p></div>
     </div>
   </section>
-  <section class="lp-roles" aria-label="الوظائف المدعومة"><b>لكل وظيفة تعليمية:</b>${Object.values(ROLES).map((r) => `<span>${esc(r.name)}</span>`).join('')}</section>
-  <p style="color:#5B6B7C;font-size:13.5px;margin:12px 0 0">عناصر التقييم وأوزانها لكل وظيفة من نماذج الدليل الإرشادي لإدارة الأداء الوظيفي لشاغلي الوظائف التعليمية (الإصدار الثاني).</p>
-  <section class="lp-sec" style="padding-top:70px">
+
+  <section class="lp-sec">
     <div class="promo">
-      <div class="pr"><span class="tag">للمدارس</span><h3>معياري للمدرسة</h3><p>ارفع تقرير التقويم الذاتي من منصة تميز، وتطلع لك خطة التحسين مرتبة من المؤشر الأضعف، جاهزة Word وPDF.</p><a href="/school">جرّبها لمدرستك</a></div>
-      <div class="pr"><span class="tag">للمعلم</span><h3>صانع الاختبارات بجدول المواصفات</h3><p>الجدول على المعرفة والتطبيق والاستدلال، والأسئلة تُكتب حسبه، ونموذجان ومفتاح وورقة تظليل.</p><a href="/exam-maker">اعرف أكثر</a></div>
+      <div class="pr"><span class="tag">للمدارس</span><h3>معياري للمدرسة</h3><p>ارفع تقرير التقويم الذاتي من منصة تميز، وتطلع لك خطة التحسين مرتبة من المؤشر الأضعف، جاهزة Word وPDF.</p><a href="/school">جرّبها لمدرستك ${MI.ico('arrow', 16)}</a></div>
+      <div class="pr"><span class="tag">للمعلم</span><h3>صانع الاختبارات بجدول المواصفات</h3><p>الجدول على المعرفة والتطبيق والاستدلال، والأسئلة تُكتب حسبه، ونموذجان ومفتاح وورقة تظليل.</p><a href="/exam-maker">اعرف أكثر ${MI.ico('arrow', 16)}</a></div>
     </div>
   </section>
-  <section class="lp-sec" id="pricing" style="padding-bottom:90px">
-    <h2 style="margin-bottom:8px">سعر كوب قهوة</h2>
-    <p style="color:#5B6B7C;margin:0 0 28px;font-size:17px">جرّب ${trialDays} أيام مجاناً، وبعدها اختر الباقة اللي تناسبك.</p>
+
+  <section class="lp-sec" id="pricing">
+    <div class="lp-eb">الباقات</div>
+    <h2>سعر <b>كوب قهوة</b></h2>
+    <p class="lp-lead">جرّب ${trialDays} أيام مجاناً، وبعدها اختر الباقة اللي تناسبك.</p>
     <div class="plans">${plans.map((p) => `<div class="pl${p.best ? ' best' : ''}">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="nm">${esc(p.name)}</span>${p.best ? `<span class="bdg">الأوفر${p.saving ? ` · وفّر ${p.saving}%` : ''}</span>` : ''}</div>
       <div class="pc">${p.price} <small>ريال / ${esc(p.per)}</small></div><p>${esc(p.note)}</p>
       <a href="${esc(storeUrl)}">${btn[p.id] || 'اشترك'}</a></div>`).join('')}</div>
-    <p style="color:#5B6B7C;font-size:13.5px;margin-top:16px">إذا انتهى اشتراكك، تبقى شواهدك محفوظة وصفحتك ظاهرة، وتتوقف الإضافة والطباعة فقط إلى أن تجدد.</p>
+    <p class="note">إذا انتهى اشتراكك، تبقى شواهدك محفوظة وصفحتك ظاهرة، وتتوقف الإضافة والطباعة فقط إلى أن تجدد.</p>
   </section>
+
+  <section class="lp-end"><h2>ابدأ ملف إنجازك اليوم</h2><p>${trialDays} أيام مجاناً، بدون بطاقة دفع.</p><a class="lp-b1 g" href="/app#/register">أنشئ حسابك</a></section>
+</div>
 </main>
-<footer class="lp-dark"><div class="lp-w lp-ft"><span>معياري · من متجر معيار للمنتجات التعليمية الرقمية</span><span><a href="/privacy">الخصوصية والشروط</a><a href="${esc(storeUrl)}">المتجر</a></span></div></footer>`,
+<footer class="lp-ft"><div class="lp-w"><span>معياري · من متجر معيار للمنتجات التعليمية الرقمية</span><span><a href="/privacy">الخصوصية والشروط</a><a href="${esc(storeUrl)}">المتجر</a></span></div></footer>`,
   });
 }
 
@@ -182,7 +235,7 @@ async function publicPage(u, evs, base, isOwner) {
     color: u.theme,
     help: false,
     extraHead: `${shareMeta({ base, url: `${base}/p/${u.slug}`, title: `ملف إنجاز ${u.full_name}`, desc: `ملف الإنجاز الوظيفي لـ${u.full_name}: ${evs.length} شاهد موثّق على عناصر تقييم الأداء الوظيفي.` })}<style>
-      .hero{background:var(--navy);color:#fff;padding:36px 0 70px;border-radius:0 0 32px 32px}.hero .btn{background:rgba(255,255,255,.12);color:#fff}
+      .hero{background:#17232E;color:#fff;padding:36px 0 70px;border-radius:0 0 32px 32px}.hero .btn{background:rgba(255,255,255,.16);color:#fff}
       .hero h1{font-size:clamp(24px,5vw,36px)} .hero .muted{color:rgba(255,255,255,.85)}
       .prof{margin-top:-50px;display:grid;gap:16px} @media(min-width:760px){.prof{grid-template-columns:1fr 240px}}
       .std{margin:26px 0 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap} .std h2{margin:0;font-size:20px}
