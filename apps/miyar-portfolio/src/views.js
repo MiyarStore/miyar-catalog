@@ -100,6 +100,13 @@ const LANDING_CSS = `<style>
 .sv ul{list-style:none;margin:0;padding:0;display:grid;gap:12px}.sv li{display:flex;gap:10px;align-items:flex-start;font-size:15.5px;line-height:1.7;color:#2C3A45}.sv li svg{flex:none;margin-top:4px;color:#0E7C66}
 .sv .lp-b1{align-self:flex-start;margin-top:auto}
 .tg-h{display:flex;gap:14px;align-items:center;margin-bottom:16px}.tg-h b{display:block;font-size:21px;font-weight:500}.tg-h small{display:block;font-size:13.5px;color:#5F6B74;line-height:1.7}.sv-ic.s{background:#F5EBDB;color:#8A5300}
+.tools-big{display:grid;gap:14px;margin-bottom:14px}
+.tl.big{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:26px;padding:30px;background:radial-gradient(80% 100% at 100% 0%,#E3F1EA 0%,rgba(227,241,234,0) 70%),#fff}.tl.big:hover{transform:none}
+.tl-a{display:flex;flex-direction:column;gap:12px;align-items:flex-start}.tl.big h3{font-size:23px}.tl.big p{font-size:15.5px}
+.tl-steps{margin:4px 0 2px;padding:0;list-style:none;counter-reset:st;display:grid;gap:8px;width:100%}.tl-steps li{counter-increment:st;display:flex;gap:10px;align-items:center;font-size:14.5px;color:#2C3A45}
+.tl-steps li:before{content:counter(st);flex:none;width:26px;height:26px;border-radius:50%;background:#0E7C66;color:#fff;display:grid;place-items:center;font-size:13px;font-weight:500}
+.tl-b{background:#F7F4EE;border-radius:20px;padding:22px}.tl-b b{display:block;font-weight:500;font-size:16px;margin-bottom:12px}.tl-b ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}.tl-b li{display:flex;gap:9px;align-items:flex-start;font-size:14.5px;line-height:1.7;color:#2C3A45}.tl-b li svg{flex:none;margin-top:4px;color:#0E7C66}
+.tl.big .lp-b1{margin-top:6px}
 .tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .tl{background:#fff;border:1px solid #E7E1D5;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:10px;text-decoration:none;color:#17232E;transition:border-color .15s,box-shadow .15s,transform .15s}
 .tl:hover{border-color:#0E7C66;box-shadow:0 16px 40px rgba(14,124,102,.1);transform:translateY(-2px);color:#17232E}
@@ -124,8 +131,8 @@ const LANDING_CSS = `<style>
 .lp-end h2{margin:0;font-size:clamp(26px,3.6vw,38px);font-weight:300}.lp-end p{margin:0;color:#5F6B74}
 .lp-ft{border-top:1px solid #E7E1D5}.lp-ft .lp-w{padding-top:26px;padding-bottom:30px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;color:#5F6B74;font-size:14px}.lp-ft a{color:#5F6B74;margin-inline-start:18px;text-decoration:none}.lp-ft a:hover{color:#17232E}
 .note{color:#5F6B74;font-size:13.5px;margin:14px 0 0}
-@media(max-width:960px){.tools{grid-template-columns:1fr 1fr}.lp-hero{grid-template-columns:1fr;gap:34px;padding-top:30px}.lp-nav{display:none}.svc,.promo,.plans{grid-template-columns:1fr}.bento{grid-template-columns:1fr 1fr}.bx.big{grid-column:span 2}}
-@media(max-width:560px){.tools{grid-template-columns:1fr}.tl{padding:20px}.lp-w{padding:0 18px}.lp-out{display:none}.lp-art{padding:64px 14px 74px;min-height:0;border-radius:26px}.bento{grid-template-columns:1fr}.bx.big{grid-column:auto}.bx{min-height:0}.lp-sec{padding-top:70px}.lp-cta,.lp-cta a{width:100%;justify-content:center}.sv,.bx,.pr,.pl{padding:24px}.mk-f{inset-inline-start:12px;bottom:14px}.mk-q{inset-inline-end:12px;top:14px}}
+@media(max-width:960px){.tools{grid-template-columns:1fr 1fr}.tl.big{grid-template-columns:1fr}.lp-hero{grid-template-columns:1fr;gap:34px;padding-top:30px}.lp-nav{display:none}.svc,.promo,.plans{grid-template-columns:1fr}.bento{grid-template-columns:1fr 1fr}.bx.big{grid-column:span 2}}
+@media(max-width:560px){.tools{grid-template-columns:1fr}.tl{padding:20px}.tl.big{padding:20px}.tl.big .lp-b1{width:100%;justify-content:center}.lp-w{padding:0 18px}.lp-out{display:none}.lp-art{padding:64px 14px 74px;min-height:0;border-radius:26px}.bento{grid-template-columns:1fr}.bx.big{grid-column:auto}.bx{min-height:0}.lp-sec{padding-top:70px}.lp-cta,.lp-cta a{width:100%;justify-content:center}.sv,.bx,.pr,.pl{padding:24px}.mk-f{inset-inline-start:12px;bottom:14px}.mk-q{inset-inline-end:12px;top:14px}}
 </style>`;
 const TEACHER_TOOLS = [
   { ic: 'doc', t: 'ملف الإنجاز الوظيفي', d: 'شواهدك مرتبة على عناصر تقييم وظيفتك وأوزانها، وملف PDF بغلاف وفهرس جاهز للطباعة.', href: '/app#/', go: 'افتح ملفك' },
@@ -138,8 +145,14 @@ const TEACHER_TOOLS = [
 function schoolTools() {
   const pr = (id) => { const p = SCHOOL_PACKAGES.find((x) => x.id === id); return p ? `${p.price} ريال سنوياً` : ''; };
   return [
-    { ic: 'trend', t: 'خطة التحسين من تقرير التقويم الذاتي', d: 'ارفع تقرير التقويم الذاتي من منصة تميز، وتطلع لك خطة التحسين مرتبة من المؤشر الأضعف، Word وPDF.', free: 'مجاناً: تحليل تقريرك وأول مؤشرات خطتك', price: pr('school_improve'), href: '/school#/report', go: 'ارفع تقريرك' },
-    { ic: 'target', t: 'الخطة العلاجية لنافس', d: 'أدخل أرقام بطاقة نافس، وتطلع لك خطة علاجية لكل مادة ومجال وصف.', free: 'مجاناً: التحليل كامل وأول 3 مجالات', price: pr('school_nafis'), href: '/school#/nafis', go: 'ابدأ خطة نافس' },
+    { big: true, ic: 'trend', t: 'تحليل تقرير التقويم الذاتي وخطة التحسين', d: 'ترفع تقرير التقويم المدرسي من منصة تميز، ومعياري يحلله مؤشر مؤشر، ويطلع لك وش تسوي بالضبط عشان ترفع كل مؤشر ضعيف.',
+      steps: ['ترفع تقرير التقويم الذاتي (PDF) أو تدخل النسب', 'معياري يقرأ نسبة كل مؤشر من مؤشرات التقويم ومستواه', 'تطلع لك خطة التحسين مرتبة من المؤشر الأضعف'],
+      gets: ['تحليل لكل مؤشر: نسبته ومستواه والمستهدف له', 'هدف لكل مؤشر، وتوصية التقرير الرسمية نفسها', '4 إجراءات تنفيذية لكل مؤشر مع توقيتها خلال العام', 'المسؤول عن التنفيذ، ومؤشر قياس، والشواهد المطلوبة', 'متابعة التنفيذ وتوزيع الإجراءات على المعلمين، وتقرير إنجاز', 'الخطة Word قابلة للتعديل وPDF'],
+      free: 'مجاناً: تحليل تقريرك وأول مؤشرات خطتك', price: pr('school_improve'), href: '/school#/report', go: 'ارفع تقرير التقويم الذاتي' },
+    { big: true, ic: 'target', t: 'تحليل تقرير نافس والخطة العلاجية', d: 'ترفع بطاقة الأداء المدرسي (نتائج نافس) من منصة تميز، ومعياري يحلل كل مادة ومجال، ويعطيك الإجراءات اللي تحسّن نتائج طلابك.',
+      steps: ['ترفع بطاقة نافس (PDF أو صورة) لكل صف، أو تدخل الأرقام', 'معياري يقارن إتقان مدرستك بالإدارة والمملكة في كل مجال', 'تطلع لك خطة علاجية لكل مادة ومجال وصف'],
+      gets: ['تصنيف كل مجال: أولوية عاجلة، أو يحتاج تحسيناً، أو نقطة قوة', 'الفجوة بين مدرستك ومتوسط المملكة، ومستهدف مرحلي واقعي', 'إجراءات علاجية لكل مجال مع توقيتها', 'المعلم المسؤول عن كل مجال، وطريقة قياس التحسن', 'ملخص تنفيذي للقائد وإجراءات على مستوى المدرسة', 'الخطة Word وPDF، ومتابعة تنفيذها'],
+      free: 'مجاناً: التحليل كامل وأول 3 مجالات من الخطة', price: pr('school_nafis'), href: '/school#/nafis', go: 'ارفع بطاقة نافس' },
     { ic: 'folder', t: 'ملف شواهد التقويم المدرسي', d: 'رتّب شواهد مدرستك تحت كل مؤشر، واعرف النواقص قبل الزيارة، وسلّم المقيّم الملف برابط وباركود.', free: 'مجاناً: أول شواهد ومعاينة الفهرس', price: pr('school_evidence'), href: '/school#/evidence', go: 'رتّب شواهدك' },
     { ic: 'screen', t: 'لوحة المدرسة الذكية', d: 'حضور الفصول وغياب المنسوبين وحصص الانتظار، رصد من جوال المعلم وعرض على شاشة المدرسة.', free: 'مجاناً: معاينة اللوحة', price: pr('school_dashboard'), href: '/school#/board', go: 'شوف اللوحة' },
     { ic: 'flag', t: 'الخطة التشغيلية', d: 'التوجهات وتحليل الواقع والأهداف والبرامج والإجراءات، تنبني من تقريرك وخطة التحسين ونافس.', free: 'مجاناً: معاينة', price: 'ضمن الباقة الشاملة', href: '/school#/ops', go: 'افتح الخطة التشغيلية' },
@@ -150,7 +163,12 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
   const SCHOOL_TOOLS = schoolTools();
   const bundle = SCHOOL_PACKAGES.find((x) => x.id === 'school_bundle');
   const minPlan = plans.length ? Math.min(...plans.map((p) => p.price)) : '';
-  const tool = (x) => `<a class="tl" href="${x.href}"><span class="tl-ic">${MI.ico(x.ic, 24)}</span><h3>${x.t}</h3><p>${x.d}</p>${x.free || x.price ? `<div class="tl-m">${x.free ? `<span>${x.free}</span>` : ''}${x.price ? `<span>${x.price}</span>` : ''}</div>` : ''}<span class="tl-go">${x.go} ${MI.ico('arrow', 16)}</span></a>`;
+  const meta = (x) => (x.free || x.price ? `<div class="tl-m">${x.free ? `<span>${x.free}</span>` : ''}${x.price ? `<span>${x.price}</span>` : ''}</div>` : '');
+  const tool = (x) => (x.big
+    ? `<div class="tl big"><div class="tl-a"><span class="tl-ic">${MI.ico(x.ic, 26)}</span><h3>${x.t}</h3><p>${x.d}</p>
+        <ol class="tl-steps">${x.steps.map((t) => `<li>${t}</li>`).join('')}</ol>${meta(x)}<a class="lp-b1 g" href="${x.href}">${x.go} ${MI.ico('arrow', 16)}</a></div>
+        <div class="tl-b"><b>وش يطلع لك؟</b><ul>${x.gets.map((t) => `<li>${MI.ico('check', 17)}<span>${t}</span></li>`).join('')}</ul></div></div>`
+    : `<a class="tl" href="${x.href}"><span class="tl-ic">${MI.ico(x.ic, 24)}</span><h3>${x.t}</h3><p>${x.d}</p>${meta(x)}<span class="tl-go">${x.go} ${MI.ico('arrow', 16)}</span></a>`);
   const bi = (n) => `<span class="bi">${MI.ico(n, 24)}</span>`;
   const btn = { month: 'اشترك شهرياً', term: 'اشترك للفصل', year: 'اشترك سنوياً' };
   const li = (arr) => arr.map((x) => `<li>${MI.ico('check', 18)}<span>${x}</span></li>`).join('');
@@ -196,8 +214,9 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
     <p class="lp-lead">كل أداة باسمها ووش تسوي لك. اضغط عليها، وتدخل عليها على طول بعد إنشاء حسابك.</p>
     <div class="tg-h"><span class="sv-ic">${MI.ico('user', 22)}</span><div><b>أدوات المعلم والمعلمة</b><small>وكل الوظائف التعليمية · كل الأدوات مجاناً ${trialDays} أيام، وبعدها اشتراك واحد من ${minPlan} ريال</small></div></div>
     <div class="tools">${TEACHER_TOOLS.map(tool).join('')}</div>
-    <div class="tg-h" style="margin-top:44px"><span class="sv-ic s">${MI.ico('school', 22)}</span><div><b>أدوات قائد المدرسة</b><small>معياري للمدرسة · كل أداة لها باقة سنوية، أو الباقة الشاملة ${bundle ? `${bundle.price} ريال` : ''}</small></div></div>
-    <div class="tools">${SCHOOL_TOOLS.map(tool).join('')}</div>
+    <div class="tg-h" style="margin-top:44px"><span class="sv-ic s">${MI.ico('school', 22)}</span><div><b>أدوات قائد المدرسة</b><small>تحليل تقرير التقويم الذاتي وتقرير نافس، وخطط التحسين والعلاج الجاهزة · كل أداة لها باقة سنوية، أو الباقة الشاملة ${bundle ? `${bundle.price} ريال` : ''}</small></div></div>
+    <div class="tools-big">${SCHOOL_TOOLS.filter((x) => x.big).map(tool).join('')}</div>
+    <div class="tools">${SCHOOL_TOOLS.filter((x) => !x.big).map(tool).join('')}</div>
     <p class="note">تقدر تجرّب أي أداة قبل ما تشترك. الاشتراك بكود تفعيل من <a href="${esc(storeUrl)}" style="color:inherit">متجر معيار</a> يوصلك فوراً.</p>
   </section>
 
