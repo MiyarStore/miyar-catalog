@@ -144,7 +144,7 @@ function dashboard() {
   <div class="head"><div><h2 style="margin:0">عناصر تقييم الأداء الوظيفي</h2><div class="muted" style="font-size:13px">${esc(((S.roles.find((r) => r.key === S.me.role) || {}).model) || '')}، حسب الدليل الإرشادي لإدارة الأداء الوظيفي · <a href="#/profile">تغيير الوظيفة</a></div></div></div>
   <div class="stds">${S.standards.map((s) => `<a class="card std-card ${counts[s.id] ? 'done' : ''}" href="#/std/${s.id}">
     <div class="ic">${s.icon}</div><h3>${s.no}. ${esc(s.name)}</h3><div class="muted" style="font-size:12.5px">${esc(s.hint)}</div>
-    <div class="meta"><span>الوزن ${s.weight}%</span><span>${counts[s.id] ? `✅ ${counts[s.id]} شاهد` : 'لا يوجد شاهد'}</span></div></a>`).join('')}</div>`;
+    <div class="meta"><span>الوزن ${s.weight}%${RT()[s.id] ? ` · 🎯 ${RT()[s.id]}/5` : ''}</span><span>${counts[s.id] ? `✅ ${counts[s.id]} شاهد` : 'لا يوجد شاهد'}</span></div></a>`).join('')}</div>`;
   $('#aiq').onsubmit = (e) => { e.preventDefault(); sessionStorage.setItem('miyar-idea', e.target.idea.value); location.hash = '#/new'; };
   $('#copy').onclick = () => navigator.clipboard.writeText(pub).then(() => toast('تم نسخ الرابط'));
 }

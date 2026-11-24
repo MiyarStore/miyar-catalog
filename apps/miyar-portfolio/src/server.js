@@ -391,6 +391,9 @@ require('./exam/routes').mountExam(app, { auth, active, printGuard, uploadsDir: 
 
 app.get('/privacy', (req, res) => res.send(views.privacyPage(STORE_URL, baseUrl(req))));
 app.get('/terms', (req, res) => res.redirect('/privacy#terms'));
+// أيقونة المتصفح (حرف «م» بلون الهوية)
+const FAVICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0f766e"/><text x="32" y="45" font-size="38" font-family="Tahoma,Arial" font-weight="700" fill="#fff" text-anchor="middle">م</text></svg>';
+app.get(['/favicon.ico', '/favicon.svg'], (req, res) => { res.type('image/svg+xml').set('Cache-Control', 'public, max-age=604800').send(FAVICON); });
 app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS, PLANS, baseUrl(req))));
 app.get('/exam-maker', (req, res) => res.send(views.examLanding(TRIAL_DAYS, baseUrl(req))));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
