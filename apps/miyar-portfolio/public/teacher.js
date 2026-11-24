@@ -58,7 +58,7 @@ const TERM_OPTS = (cur) => ['الفصل الدراسي الأول', 'الفصل 
 function regionToggle(form) { const on = !!form.region.value; for (const n of ['start', 'weeks']) { const f = form[n] && form[n].closest('.field'); if (f) f.style.display = on ? 'none' : ''; } }
 
 // ---------- السجل ----------
-const TABS = [['setup', '⚙️ البيانات'], ['plan', '🗓️ الخطة'], ['prep', '✍️ التحضير'], ['tests', '📝 الاختبارات'], ['analysis', '📊 التحليل والعلاج'], ['compare', '📈 القبلي والبعدي'], ['follow', '👥 المتابعة'], ['parents', '💬 أولياء الأمور'], ['export', '🖨️ التصدير والشواهد']];
+const TABS = [['setup', '⚙️ البيانات'], ['plan', '🗓️ الخطة'], ['prep', '✍️ التحضير'], ['att', '✅ الحضور والسلوك'], ['tests', '📝 الاختبارات'], ['analysis', '📊 التحليل والعلاج'], ['compare', '📈 القبلي والبعدي'], ['follow', '👥 المتابعة'], ['parents', '💬 أولياء الأمور'], ['export', '🖨️ التصدير والشواهد']];
 async function recView(id, tab = 'setup', q) {
   if (!id) return recList();
   if (!RC.rec || RC.rec.id !== Number(id)) { view.innerHTML = '<p class="muted">جاري التحميل...</p>'; try { await recLoad(id); } catch (e) { toast(e.message); location.hash = '#/rec'; return; } }
@@ -69,7 +69,7 @@ async function recView(id, tab = 'setup', q) {
     ${steps.some((s) => !s[1]) ? `<div class="card" style="margin-bottom:10px"><b>خطوات البداية</b><ul class="steps-rec" style="margin-top:8px">${steps.map((s, i) => `<li class="${s[1] ? 'ok' : ''}"><b class="n">${s[1] ? '✓' : i + 1}</b>${s[0]}${typeof s[1] === 'number' && s[1] ? ` <span class="muted">(${s[1]})</span>` : ''}</li>`).join('')}</ul></div>` : ''}
     <nav class="rtabs">${TABS.map(([k, t]) => `<a href="#/rec/${r.id}/${k}" class="${tab === k ? 'on' : ''}">${t}</a>`).join('')}</nav><div id="rt"></div>`;
   document.querySelector('.rtabs a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
-  const fn = { setup: tSetup, plan: tPlan, prep: tPrep, tests: tTests, analysis: tAnalysis, compare: tCompare, follow: tFollow, parents: tParents, export: tExport }[tab] || tSetup;
+  const fn = { setup: tSetup, plan: tPlan, prep: tPrep, att: tAtt, tests: tTests, analysis: tAnalysis, compare: tCompare, follow: tFollow, parents: tParents, export: tExport }[tab] || tSetup;
   fn($('#rt'), q || new URLSearchParams());
 }
 const rerender = () => route();
@@ -211,6 +211,52 @@ function prepEdit(el, id) {
   };
   $('#pre').onclick = async (e) => { if (!confirm('يكتب التحضير من جديد ويستبدل تعديلاتك. نكمل؟')) return; e.target.disabled = true; try { Object.assign(RC, await api(`/api/rec/${r.id}/prep/${id}`, { method: 'POST', body: {} })); prepEdit(el, id); toast('تمت إعادة الكتابة'); } catch (err) { toast(err.message); e.target.disabled = false; } };
   $('#pdel').onclick = async () => { if (!confirm('حذف تحضير هذا الدرس؟')) return; try { Object.assign(RC, await api(`/api/rec/${r.id}/prep/${id}`, { method: 'PUT', body: { remove: true } })); location.hash = back; } catch (err) { toast(err.message); } };
+}
+
+// ---------- الحضور والسلوك ----------
+const ATT_BTN = [['', 'حاضر', '✓'], ['a', 'غائب', 'غ'], ['l', 'متأخر', 'ت'], ['e', 'مستأذن', 'س']];
+function tAtt(el, q) {
+  const r = RC.rec, A = RC.calc.att;
+  if (!r.students.length) { el.innerHTML = `<div class="card center"><p>أضف أسماء الطلاب من «البيانات» أول.</p><a class="btn" href="#/rec/${r.id}/setup">إضافة الطلاب</a></div>`; return; }
+  const today = new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+  const classDays = [...new Set(RC.calc.plan.weeks.flatMap((w) => w.slots.filter((s) => s.date && !s.holiday && s.date <= today).map((s) => s.date)))].sort().slice(-6);
+  const ds = q.get('d') || (classDays.includes(today) ? today : classDays[classDays.length - 1] || today);
+  const row = r.att[ds] || {};
+  const taken = !!r.att[ds];
+  const sum = (id) => A.rows.find((x) => x.id === id) || {};
+  el.innerHTML = `<div class="stats"><div class="card stat"><b>${A.rate == null ? '-' : A.rate + '%'}</b>نسبة الحضور</div><div class="card stat"><b>${A.days.length}</b>أيام مرصودة</div><div class="card stat"><b style="color:${A.alerts.length ? '#b91c1c' : ''}">${A.alerts.length}</b>غابوا ${A.ABSENT_ALERT} مرات فأكثر</div></div>
+  <div class="card" style="margin-bottom:10px"><div class="head" style="margin:0 0 8px;flex-wrap:wrap;gap:8px"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><b>رصد يوم</b> <input type="date" id="ad" value="${ds}" style="width:auto">
+    ${classDays.map((x) => `<a class="btn sm ${x === ds ? '' : 'ghost'}" href="#/rec/${r.id}/att?d=${x}">${fdate(x)}</a>`).join('')}</div>
+    <div style="display:flex;gap:6px"><button class="btn soft sm" id="aall">✓ الكل حاضر</button><a class="btn ghost sm" target="_blank" href="/rec/${r.id}/print?k=attendance">🖨️ الكشف</a></div></div>
+    <p class="muted" style="font-size:12.5px;margin:0 0 8px">${taken ? '✅ مرصود. اضغط على الحالة لتغييرها، ويتحفظ مباشرة.' : 'اضغط على الطالب الغائب أو المتأخر فقط، والباقي حاضر. أول ضغطة ترصد اليوم.'}</p>
+    <div style="overflow:auto"><table class="etable"><tr><th>الطالب</th><th>اليوم</th><th style="white-space:nowrap">غ / ت / +</th><th>سلوك</th></tr>
+    ${r.students.map((s) => { const v = row[s.id] || ''; const sm = sum(s.id); return `<tr><td>${esc(s.name)}${sm.absent >= A.ABSENT_ALERT ? ' <span class="gtag" style="background:#b91c1c">تنبيه غياب</span>' : ''}</td>
+      <td style="white-space:nowrap">${ATT_BTN.map(([c, t, sh]) => `<button class="btn sm ${v === c ? (c === 'a' ? 'danger' : c ? 'soft' : '') : 'ghost'}" data-a="${s.id}:${c}" title="${t}">${sh}</button>`).join(' ')}</td>
+      <td class="muted" style="font-size:12.5px;white-space:nowrap">${sm.absent || 0} / ${sm.late || 0} / ${sm.pos || 0}</td>
+      <td style="white-space:nowrap"><button class="btn ghost sm" data-b="${s.id}:p" title="ملاحظة إيجابية">⭐</button> <button class="btn ghost sm" data-b="${s.id}:n" title="ملاحظة سلوكية">⚠️</button></td></tr>`; }).join('')}</table></div></div>
+  ${A.alerts.length ? `<div class="card" style="margin-bottom:10px;border-inline-start:5px solid #b91c1c"><h3 style="margin-top:0">تنبيهات الغياب</h3>${A.alerts.map((x) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0"><span>${esc(x.name)} <span class="muted">(${x.absent} غياب)</span></span><button class="btn sm" data-m="${x.id}:absences">💬 رسالة لولي الأمر</button></div>`).join('')}</div>` : ''}
+  ${r.beh.length ? `<div class="card"><h3 style="margin-top:0">آخر الملاحظات السلوكية</h3>${[...r.beh].reverse().slice(0, 12).map((b) => { const st = r.students.find((x) => x.id === b.s) || {}; return `<div style="display:flex;justify-content:space-between;gap:8px;margin:5px 0;font-size:13.5px"><span>${b.t === 'p' ? '⭐' : '⚠️'} <b>${esc(st.name || '')}</b> ${esc(b.note)} <span class="muted">${fdate(b.date)}</span></span><span style="white-space:nowrap"><button class="btn ghost sm" data-m="${b.s}:${b.t === 'p' ? 'good' : 'conduct'}:${b.id}">💬</button> <button class="btn ghost sm" data-x="${b.id}">✕</button></span></div>`; }).join('')}</div>` : ''}`;
+  $('#ad').onchange = (e) => { location.hash = `#/rec/${r.id}/att?d=${e.target.value}`; };
+  const saveAtt = async (next) => { const att = { ...r.att, [ds]: next }; try { await recSave({ att }, true); tAtt(el, q); } catch (err) { toast(err.message); } };
+  el.onclick = async (e) => {
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.id === 'aall') { await saveAtt({}); toast('تم رصد الكل حاضر ✅'); return; }
+    if (t.dataset.a) { const [sid, c] = t.dataset.a.split(':'); const next = { ...row }; if (c) next[sid] = c; else delete next[sid]; return saveAtt(next); }
+    if (t.dataset.b) {
+      const [sid, k] = t.dataset.b.split(':'); const st = r.students.find((x) => x.id === sid);
+      const note = prompt(`${k === 'p' ? 'ملاحظة إيجابية' : 'ملاحظة سلوكية'} على ${st.name}:`, k === 'p' ? 'مشاركة متميزة' : '');
+      if (note == null) return;
+      try { await recSave({ beh: [...r.beh, { id: Math.random().toString(36).slice(2, 8), s: sid, t: k, date: ds, note }] }, true); toast('تم ✅'); tAtt(el, q); } catch (err) { toast(err.message); }
+      return;
+    }
+    if (t.dataset.x) { try { await recSave({ beh: r.beh.filter((b) => b.id !== t.dataset.x) }, true); tAtt(el, q); } catch (err) { toast(err.message); } return; }
+    if (t.dataset.m) {
+      const [student, kind, bid] = t.dataset.m.split(':'); const b = bid && r.beh.find((x) => x.id === bid);
+      const w = window.open('', '_blank');
+      try { const d = await api(`/api/rec/${r.id}/message`, { method: 'POST', body: { student, kind, note: b ? b.note : '', log: true } }); RC.rec.messages.push({ student, kind, at: Date.now() }); if (w) w.location = d.wa; else location.href = d.wa; }
+      catch (err) { if (w) w.close(); toast(err.message); }
+    }
+  };
 }
 
 function tTests(el, q) {
@@ -377,7 +423,7 @@ function tExport(el) {
   const P = (k, t, extra = '') => `<a class="btn soft sm" target="_blank" href="/rec/${r.id}/print?k=${k}${extra}">${t}</a>`;
   el.innerHTML = `<div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">🖨️ السجل كامل</h3><p class="muted" style="margin-top:0">غلاف وفهرس، والطلاب والجدول، والخطة الفصلية، وكل الخطط الأسبوعية، وكل اختبار بورقته ومفتاحه وتحليله وخططه العلاجية، والمقارنة، وسجل المتابعة، وتقرير سير المادة. كله بترويسة الوزارة وجاهز لزيارة المشرف.</p>
     <a class="btn" target="_blank" href="/rec/${r.id}/print">🖨️ افتح السجل كامل (PDF)</a></div>
-  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">أجزاء منفصلة</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${P('students', 'الطلاب والجدول')}${P('term', 'الخطة الفصلية')}${P('week', 'خطة هذا الأسبوع', `&week=${RC.calc.plan.current}`)}${P('weeks', 'كل الخطط الأسبوعية')}${last ? P('analysis', 'آخر تحليل', `&test=${last.id}`) + P('remedial', 'آخر خطط علاجية', `&test=${last.id}`) : ''}${P('prepweek', 'تحضير هذا الأسبوع', `&week=${RC.calc.plan.current}`)}${P('preps', 'كل التحضير')}${P('followup', 'سجل المتابعة')}${P('progress', 'سير المادة')}</div></div>
+  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">أجزاء منفصلة</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${P('students', 'الطلاب والجدول')}${P('term', 'الخطة الفصلية')}${P('week', 'خطة هذا الأسبوع', `&week=${RC.calc.plan.current}`)}${P('weeks', 'كل الخطط الأسبوعية')}${last ? P('analysis', 'آخر تحليل', `&test=${last.id}`) + P('remedial', 'آخر خطط علاجية', `&test=${last.id}`) : ''}${P('prepweek', 'تحضير هذا الأسبوع', `&week=${RC.calc.plan.current}`)}${P('preps', 'كل التحضير')}${P('followup', 'سجل المتابعة')}${P('attendance', 'كشف الحضور والسلوك')}${P('progress', 'سير المادة')}</div></div>
   <div class="card"><h3 style="margin-top:0">📁 شواهد ملف الإنجاز بضغطة</h3><p class="muted" style="margin-top:0">كل شاهد ينكتب تلقائياً ويتصنف على عنصره، ومعه رابط للتقرير يعرض الطلاب بأرقام بدون أسماء.</p>
     <table class="etable"><tr><th>الشاهد</th><th>العنصر</th><th></th></tr>
     ${[['plan', 'الخطة الفصلية والأسبوعية', 'إعداد وتنفيذ خطة التعلم', r.lessons.length], ['prep', 'تحضير الدروس', 'إعداد وتنفيذ خطة التعلم', Object.keys(r.preps || {}).length], ['tests', 'تنويع أدوات التقويم', 'تنوع أساليب التقويم', r.tests.length], ['analysis', `تحليل ${last ? esc(last.title) : 'الاختبار'}`, 'تحليل نتائج المتعلمين وتشخيص مستوياتهم', !!last], ['remedial', 'الخطط العلاجية والإثرائية', 'تحسين نتائج المتعلمين', !!last], ['compare', 'قياس أثر الخطة (قبلي وبعدي)', 'تحسين نتائج المتعلمين', list.length >= 2], ['parents', 'التواصل مع أولياء الأمور', 'التفاعل مع أولياء الأمور', r.messages.length]]

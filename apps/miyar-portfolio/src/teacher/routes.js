@@ -87,7 +87,9 @@ function mountTeacher(app, { auth, active, printGuard, addEvidence, baseUrl }) {
     const t = r.tests.find((x) => x.id === b.test);
     const a = t ? R.analyze(r, t) : null; const row = a ? a.rows.find((x) => x.id === s.id) : null;
     const c = r.tests.length >= 2 ? R.compare(r) : null; const cr = c ? c.rows.find((x) => x.id === s.id) : null;
-    const text = R.parentMessage(r, s, b.kind, { test: t && t.title, weak: row ? row.weak : [], pct: row ? row.pct : null, gain: cr && cr.gain > 0 ? cr.gain : null });
+    const at = R.attendance(r).rows.find((x) => x.id === s.id);
+    const hd = (ds) => { try { return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', { day: 'numeric', month: 'long', timeZone: 'UTC' }).format(new Date(`${ds}T00:00:00Z`)); } catch { return ds; } };
+    const text = R.parentMessage(r, s, b.kind, { test: t && t.title, weak: row ? row.weak : [], pct: row ? row.pct : null, gain: cr && cr.gain > 0 ? cr.gain : null, count: at ? at.absent : 0, last: at && at.lastAbsent ? hd(at.lastAbsent) : '', note: String(b.note || '').slice(0, 150) });
     if (b.log) { r.messages.push({ student: s.id, kind: String(b.kind || 'weak'), at: Date.now() }); R.save(req.user.id, r.id, r); }
     res.json({ text, wa: s.phone ? R.waLink(s.phone, text) : `https://wa.me/?text=${encodeURIComponent(text)}` });
   });

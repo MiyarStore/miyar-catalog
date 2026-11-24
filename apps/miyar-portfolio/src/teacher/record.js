@@ -21,7 +21,9 @@ const GROUPS = [
   { key: 'support', name: 'يحتاج دعماً مكثفاً', min: 0, color: '#b91c1c', plan: 'علاجية مكثفة وخطة دعم فردي' },
 ];
 const groupOf = (p) => (p == null ? null : GROUPS.find((g) => p >= g.min));
-const SKILL_OK = 70; // المهارة متقنة على مستوى الشعبة إذا متوسطها 70% فأكثر
+const SKILL_OK = 70;
+const ATT = { a: 'غائب', l: 'متأخر', e: 'مستأذن' };
+const ABSENT_ALERT = 3; // تنبيه بعد 3 غيابات في المادة // المهارة متقنة على مستوى الشعبة إذا متوسطها 70% فأكثر
 
 const clip = (v, n) => String(v ?? '').slice(0, n);
 const num = (v) => { if (v === '' || v == null) return null; const n = Number(String(v).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))); return Number.isFinite(n) ? n : null; };
@@ -63,7 +65,7 @@ function blank(b = {}, user = {}) {
     subject: clip(b.subject || user.subject, 60), grade: clip(b.grade, 40), section: clip(b.section, 20), stage: clip(b.stage || user.stage, 40),
     term: clip(b.term || 'الفصل الدراسي الأول', 40), year: clip(b.year || user.year || '1448 هـ', 20),
     region: CAL.regionKey(b.region), extra: [], start: parseDay(b.start) != null ? b.start : '', weeks: Math.min(Math.max(Number(b.weeks) || 18, 4), 24), off: [],
-    slots: [], students: [], lessons: [], skills: [], tests: [], remedial_done: {}, messages: [], template: '', per_hint: 0, preps: {},
+    slots: [], students: [], lessons: [], skills: [], tests: [], remedial_done: {}, messages: [], template: '', per_hint: 0, preps: {}, att: {}, beh: [],
   };
 }
 // تحقق من البيانات اللي ترسلها الواجهة (كل الحفظ يمر من هنا)
@@ -98,6 +100,14 @@ function clean(d) {
   o.remedial_done = {};
   for (const [k, v] of Object.entries(d.remedial_done || {})) if (/^[\w:-]{1,60}$/.test(k) && v) o.remedial_done[k] = Number(v) || Date.now();
   o.preps = PREP.cleanPreps(d.preps, new Set(o.lessons.map((l) => l.id)));
+  // الحضور: لكل تاريخ، الطلاب غير الحاضرين فقط (a غائب، l متأخر، e مستأذن)
+  o.att = {};
+  for (const [ds, row] of Object.entries(d.att || {}).slice(-220)) {
+    if (parseDay(ds) == null || !row || typeof row !== 'object') continue;
+    const r = {}; for (const [sid, c] of Object.entries(row)) if (sids.has(sid) && ATT[c]) r[sid] = c;
+    o.att[ds] = r;
+  }
+  o.beh = (Array.isArray(d.beh) ? d.beh : []).slice(-1500).filter((b) => b && sids.has(b.s) && (b.t === 'p' || b.t === 'n')).map((b) => ({ id: clip(b.id, 12) || uid(), s: b.s, t: b.t, date: parseDay(b.date) != null ? b.date : ymd(todayKSA()), note: clip(b.note, 200).trim() }));
   o.messages = (Array.isArray(d.messages) ? d.messages : []).slice(-200).map((m) => ({ student: clip(m.student, 12), kind: clip(m.kind, 20), at: Number(m.at) || Date.now() }));
   return o;
 }
@@ -283,6 +293,9 @@ function parentMessage(d, student, kind, ctx = {}) {
     weak: `السلام عليكم ورحمة الله، ولي أمر الطالب ${student.name} المحترم.\nنفيدكم بأن مستوى ${nm} في مادة ${subj}${ctx.test ? ` في ${ctx.test}` : ''} يحتاج إلى متابعة${weak ? `، خاصة في: ${weak}` : ''}.\nبدأنا معه خطة علاجية في المدرسة، ونأمل متابعته في البيت ومراجعة الدروس معه. ونسعد بتواصلكم.\nمعلم المادة`,
     excellent: `السلام عليكم ورحمة الله، ولي أمر الطالب ${student.name} المحترم.\nيسعدنا إبلاغكم بتميز ${nm} في مادة ${subj}${ctx.test ? ` في ${ctx.test}` : ''}${ctx.pct != null ? ` بنسبة ${ctx.pct}%` : ''}. نشكر لكم متابعتكم، ونتمنى له دوام التوفيق.\nمعلم المادة`,
     improved: `السلام عليكم ورحمة الله، ولي أمر الطالب ${student.name} المحترم.\nنبشركم بتحسن مستوى ${nm} في مادة ${subj}${ctx.gain ? ` بمقدار ${ctx.gain} درجة مئوية` : ''} مقارنة بالاختبار السابق. شكراً لتعاونكم، ونتطلع لاستمرار هذا التقدم.\nمعلم المادة`,
+    absences: `السلام عليكم ورحمة الله، ولي أمر الطالب ${student.name} المحترم.\nنفيدكم بأن ${nm} تغيّب عن حصص مادة ${subj} ${ctx.count || ''} ${ctx.count > 2 && ctx.count < 11 ? 'مرات' : 'مرة'}${ctx.last ? `، آخرها بتاريخ ${ctx.last}` : ''}. الغياب يؤثر على تحصيله، نأمل متابعته والتواصل معنا.\nمعلم المادة`,
+    good: `السلام عليكم ورحمة الله، ولي أمر الطالب ${student.name} المحترم.\nيسعدنا إبلاغكم بتميز ${nm} في سلوكه ومشاركته في حصص مادة ${subj}${ctx.note ? ` (${ctx.note})` : ''}. نشكر لكم حسن التربية والمتابعة.\nمعلم المادة`,
+    conduct: `السلام عليكم ورحمة الله، ولي أمر الطالب ${student.name} المحترم.\nنود إشعاركم بملاحظة على ${nm} في حصة مادة ${subj}${ctx.note ? `: ${ctx.note}` : ''}. نثق في تعاونكم معنا لما فيه مصلحته، ونسعد بتواصلكم.\nمعلم المادة`,
     absent: `السلام عليكم ورحمة الله، ولي أمر الطالب ${student.name} المحترم.\nنفيدكم بغياب ${nm} عن ${ctx.test || 'اختبار مادة ' + subj}. نأمل التواصل لتحديد موعد التعويض.\nمعلم المادة`,
   };
   return t[kind] || t.weak;
@@ -381,6 +394,19 @@ function save(uid, id, data) {
 const remove = (uid, id) => db.prepare('DELETE FROM teacher_records WHERE id = ? AND user_id = ?').run(Number(id), uid);
 
 // كل المحسوبات اللي تحتاجها الواجهة دفعة وحدة
+// ---------- الحضور والسلوك ----------
+function attendance(d) {
+  const days = Object.keys(d.att).sort();
+  const rows = d.students.map((s) => {
+    const c = { a: 0, l: 0, e: 0 }; let last = null;
+    for (const ds of days) { const v = d.att[ds][s.id]; if (v) { c[v]++; if (v === 'a') last = ds; } }
+    const bs = d.beh.filter((b) => b.s === s.id);
+    return { id: s.id, name: s.name, phone: s.phone, absent: c.a, late: c.l, excused: c.e, lastAbsent: last, pos: bs.filter((b) => b.t === 'p').length, neg: bs.filter((b) => b.t === 'n').length,
+      rate: days.length ? Math.round(((days.length - c.a - c.e) / days.length) * 100) : null };
+  });
+  return { days, rows, alerts: rows.filter((r) => r.absent >= ABSENT_ALERT), ABSENT_ALERT,
+    rate: rows.length && days.length ? Math.round(rows.reduce((a, r) => a + r.rate, 0) / rows.length) : null };
+}
 // مواعيد كل درس في الخطة: الأسبوع واليوم والحصة والتاريخ (للتحضير)
 function schedule(d, p = plan(d)) {
   const out = {};
@@ -395,7 +421,7 @@ function schedule(d, p = plan(d)) {
 function full(d) {
   const p = plan(d);
   const tests = sortedTests(d).map((t) => { const a = analyze(d, t); return { ...a, plans: remedial(d, a), individual: individual(d, a) }; });
-  return { plan: p, schedule: schedule(d, p), progress: progress(d, p), tests, compare: d.tests.length >= 2 ? compare(d) : null, followup: followup(d) };
+  return { plan: p, att: attendance(d), schedule: schedule(d, p), progress: progress(d, p), tests, compare: d.tests.length >= 2 ? compare(d) : null, followup: followup(d) };
 }
 
-module.exports = { schedule, DAYS, KINDS, GROUPS, SKILL_OK, parseStudents, parseLessons, parseSkills, blank, clean, plan, progress, analyze, remedial, individual, compare, followup, parentMessage, waLink, evidenceFrom, list, get, byToken, save, remove, full, sortedTests, uid };
+module.exports = { ATT, attendance, schedule, DAYS, KINDS, GROUPS, SKILL_OK, parseStudents, parseLessons, parseSkills, blank, clean, plan, progress, analyze, remedial, individual, compare, followup, parentMessage, waLink, evidenceFrom, list, get, byToken, save, remove, full, sortedTests, uid };

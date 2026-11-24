@@ -74,7 +74,7 @@ function build({ u, d, kind = 'all', test, week, lesson, anon = false, back = '/
 
   const cover = () => page(`<div class="cover">${lh}<div style="margin-top:30mm"><h1>سجل إعداد الدروس ومتابعة الطلاب</h1><div class="sub">${esc(cls)}</div>
     <table class="info" style="max-width:120mm;margin:0 auto">${[['المعلم', u.full_name], ['المدرسة', u.school], ['المرحلة', d.stage], ['الفصل الدراسي', d.term], ['العام الدراسي', d.year], ['عدد الطلاب', d.students.length], ['الحصص الأسبوعية', f.plan.per]].filter(([, v]) => v !== '' && v != null).map(([k, v]) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`).join('')}</table>
-    <h2 class="sec" style="margin-top:20mm">المحتويات</h2><ol style="text-align:right;max-width:120mm;margin:0 auto;line-height:2">${['بيانات الطلاب', 'جدول الحصص', 'الخطة الفصلية (توزيع المنهج)', 'الخطط الأسبوعية', 'الاختبارات وتحليل النتائج', 'الخطط العلاجية والإثرائية', 'خطط الدعم الفردي', 'مقارنة القبلي بالبعدي', 'سجل متابعة مهارات الطالب', 'تقرير سير المادة'].map((x) => `<li>${x}</li>`).join('')}</ol></div></div>`);
+    <h2 class="sec" style="margin-top:20mm">المحتويات</h2><ol style="text-align:right;max-width:120mm;margin:0 auto;line-height:2">${['بيانات الطلاب', 'جدول الحصص', 'الخطة الفصلية (توزيع المنهج)', 'الخطط الأسبوعية', 'تحضير الدروس', 'الاختبارات وتحليل النتائج', 'الخطط العلاجية والإثرائية', 'خطط الدعم الفردي', 'مقارنة القبلي بالبعدي', 'سجل متابعة مهارات الطالب', 'كشف الحضور والسلوك', 'تقرير سير المادة'].map((x) => `<li>${x}</li>`).join('')}</ol></div></div>`);
 
   const students = () => page(`${head('بيانات الطلاب')}<table><thead><tr><th>م</th><th>اسم الطالب</th><th>ملاحظات</th></tr></thead><tbody>${d.students.map((s, i) => `<tr><td>${i + 1}</td><td>${esc(nm(s.id, s.name))}</td><td>${anon ? '' : esc(s.note)}</td></tr>`).join('')}</tbody></table>
     <h2 class="sec">جدول الحصص</h2><table><thead><tr><th>اليوم</th><th>الحصص</th></tr></thead><tbody>${R.DAYS.map((dn, i) => { const ps = d.slots.filter((s) => s.day === i).map((s) => s.period); return ps.length ? `<tr><td>${dn}</td><td>${ps.map((p) => `الحصة ${p}`).join('، ')}</td></tr>` : ''; }).join('')}</tbody></table>`);
@@ -105,6 +105,17 @@ function build({ u, d, kind = 'all', test, week, lesson, anon = false, back = '/
     ${p.values ? `<tr><th>القيم والربط بالحياة</th><td>${esc(p.values)}</td></tr>` : ''}${p.notes ? `<tr><th>ملاحظات</th><td>${esc(p.notes)}</td></tr>` : ''}</table>${sign}`);
   };
   const prepsOf = (ids) => ids.map((id) => d.lessons.find((l) => l.id === id)).filter((l) => l && d.preps[l.id]).map(prepPage).join('');
+  // كشف الحضور: ملخص لكل طالب، وجدول الأيام المرصودة (آخر 20 يوم في الصفحة)
+  const attPage = () => {
+    const A = f.att; if (!A.days.length) return '';
+    const days = A.days.slice(-20); const sym = { a: 'غ', l: 'ت', e: 'س' };
+    return page(`${head('كشف الحضور والسلوك', `${A.days.length} يوماً مرصوداً`)}
+    <div class="kpis"><div class="kpi"><b>${A.rate == null ? '-' : A.rate + '%'}</b>نسبة الحضور</div><div class="kpi"><b>${A.rows.reduce((a, r) => a + r.absent, 0)}</b>حالات غياب</div><div class="kpi"><b>${A.rows.reduce((a, r) => a + r.late, 0)}</b>حالات تأخر</div><div class="kpi"><b>${A.alerts.length}</b>طلاب غابوا ${A.ABSENT_ALERT} مرات فأكثر</div></div>
+    <table style="font-size:11px"><thead><tr><th>الطالب</th>${days.map((ds) => `<th>${dShort(ds)}</th>`).join('')}<th>غ</th><th>ت</th><th>س</th><th>+</th><th>-</th></tr></thead><tbody>
+    ${A.rows.map((r) => `<tr><td>${esc(nm(r.id, r.name))}</td>${days.map((ds) => { const v = d.att[ds][r.id]; return `<td class="center" style="color:${v === 'a' ? '#b91c1c' : v === 'l' ? '#b45309' : '#5b6b69'}">${v ? sym[v] : '•'}</td>`; }).join('')}<td class="center">${r.absent}</td><td class="center">${r.late}</td><td class="center">${r.excused}</td><td class="center">${r.pos}</td><td class="center">${r.neg}</td></tr>`).join('')}</tbody></table>
+    <p class="muted" style="font-size:11px">• حاضر، غ غائب، ت متأخر، س مستأذن، + ملاحظة إيجابية، - ملاحظة سلوكية.</p>
+    ${d.beh.length && !anon ? `<h2 class="sec">سجل الملاحظات السلوكية</h2><table><thead><tr><th>التاريخ</th><th>الطالب</th><th>النوع</th><th>الملاحظة</th></tr></thead><tbody>${[...d.beh].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 60).map((b) => `<tr><td>${dShort(b.date)}</td><td>${esc(nm(b.s, ''))}</td><td>${b.t === 'p' ? 'إيجابية' : 'سلوكية'}</td><td>${esc(b.note)}</td></tr>`).join('')}</tbody></table>` : ''}${sign}`);
+  };
   const weekPage = (w) => `<div class="wk">${head(`الخطة الأسبوعية: الأسبوع ${w.n}`, w.from ? `${dAr(w.from)} - ${dAr(w.to)}` : '')}<table><thead><tr><th>اليوم</th><th>التاريخ</th><th>الحصة</th><th>الوحدة</th><th>الدرس / الإجراء</th><th>الواجب / التقويم</th><th>ملاحظات</th></tr></thead><tbody>${w.off ? `<tr class="off"><td colspan="7" class="center">${esc((w.holidays || []).join('، ') || 'إجازة / أسبوع اختبارات')}</td></tr>` : w.slots.map((s) => s.holiday ? `<tr class="off"><td>${R.DAYS[s.day]}</td><td>${dShort(s.date)}</td><td>${s.period}</td><td colspan="4" class="center">${esc(s.holiday)}</td></tr>` : `<tr><td>${R.DAYS[s.day]}</td><td>${dShort(s.date)}</td><td>${s.period}</td><td>${esc(s.item ? s.item.unit : '')}</td><td>${s.item ? esc(s.item.title) : '-'}</td><td>${esc(hwOf(s.item))}</td><td></td></tr>`).join('')}</tbody></table>${sign}</div>`;
   const weeks = (only) => (only ? [f.plan.weeks.find((w) => w.n === only) || f.plan.weeks[0]] : f.plan.weeks.filter((w) => !w.off && w.items.length)).map((w) => page(weekPage(w))).join('');
 
@@ -143,7 +154,7 @@ function build({ u, d, kind = 'all', test, week, lesson, anon = false, back = '/
     parts.push(cover(), students(), termPlan(), weeks(), prepsOf(d.lessons.map((l) => l.id)));
     for (const t of tests) { parts.push(paper(t)); if (t.n) parts.push(analysis(t), plans(t)); }
     if (f.compare) parts.push(comp(f.compare));
-    parts.push(follow(), prog());
+    parts.push(follow(), attPage(), prog());
   } else if (kind === 'students') parts.push(students());
   else if (kind === 'term') parts.push(termPlan());
   else if (kind === 'week') parts.push(weeks(Number(week) || f.plan.current));
@@ -153,6 +164,7 @@ function build({ u, d, kind = 'all', test, week, lesson, anon = false, back = '/
   else if (kind === 'remedial') { const t = pickTest(test); if (t && t.n) parts.push(plans(t)); }
   else if (kind === 'compare') { const c = R.compare(d, test, week); if (c) parts.push(comp(c)); }
   else if (kind === 'followup') parts.push(follow());
+  else if (kind === 'attendance') { const x = attPage(); if (x) parts.push(x); }
   else if (kind === 'prep') { const x = prepsOf([String(lesson || '')]); if (x) parts.push(x); }
   else if (kind === 'prepweek') { const w = f.plan.weeks.find((x) => x.n === (Number(week) || f.plan.current)); const x = w ? prepsOf([...new Set(w.items.filter((i) => i.type === 'lesson').map((i) => i.id))]) : ''; if (x) parts.push(x); }
   else if (kind === 'preps') { const x = prepsOf(d.lessons.map((l) => l.id)); if (x) parts.push(x); }
