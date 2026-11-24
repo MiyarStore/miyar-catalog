@@ -19,8 +19,13 @@ test('تقويم مكة والمدينة وجدة والطائف يبدأ بعد
   assert.equal(CAL.holidayOn('general', '2027-05-03'), null);
 });
 test('الإجازات الإضافية تضاف حسب إدارة التعليم، واليوم الوطني', () => {
-  assert.equal(CAL.holidayOn('general', '2026-10-25'), null);
-  assert.equal(CAL.holidayOn('general', '2026-10-25', undefined, ['2026-10-25']).name, 'إجازة إضافية');
+  // الإجازات الإضافية: 4 أيام متفرقة لبقية المناطق، ويوم واحد للغربية
+  for (const d of ['2026-10-25', '2026-11-29', '2027-01-07', '2027-04-11']) assert.equal(CAL.holidayOn('general', d).name, 'إجازة إضافية');
+  assert.equal(CAL.holidayOn('west', '2026-10-25').name, 'إجازة إضافية');
+  for (const d of ['2026-11-29', '2027-01-07', '2027-04-11']) assert.equal(CAL.holidayOn('west', d), null);
+  // يوم يضيفه المعلم لمنطقته
+  assert.equal(CAL.holidayOn('general', '2026-10-26'), null);
+  assert.equal(CAL.holidayOn('general', '2026-10-26', undefined, ['2026-10-26']).name, 'إجازة إضافية');
   assert.equal(CAL.summary('west', 'الفصل الدراسي الثاني').schoolDays, 93); // يطابق توزيع أسابيع الفصل الثاني للغربية
   assert.equal(CAL.holidayOn('general', '2026-09-23').name, 'إجازة اليوم الوطني');
   assert.equal(CAL.holidayOn('general', '2026-09-22'), null);
