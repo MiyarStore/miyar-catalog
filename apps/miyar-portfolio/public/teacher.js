@@ -58,7 +58,7 @@ const TERM_OPTS = (cur) => ['الفصل الدراسي الأول', 'الفصل 
 function regionToggle(form) { const on = !!form.region.value; for (const n of ['start', 'weeks']) { const f = form[n] && form[n].closest('.field'); if (f) f.style.display = on ? 'none' : ''; } }
 
 // ---------- السجل ----------
-const TABS = [['setup', '⚙️ البيانات'], ['plan', '🗓️ الخطة'], ['tests', '📝 الاختبارات'], ['analysis', '📊 التحليل والعلاج'], ['compare', '📈 القبلي والبعدي'], ['follow', '👥 المتابعة'], ['parents', '💬 أولياء الأمور'], ['export', '🖨️ التصدير والشواهد']];
+const TABS = [['setup', '⚙️ البيانات'], ['plan', '🗓️ الخطة'], ['prep', '✍️ التحضير'], ['tests', '📝 الاختبارات'], ['analysis', '📊 التحليل والعلاج'], ['compare', '📈 القبلي والبعدي'], ['follow', '👥 المتابعة'], ['parents', '💬 أولياء الأمور'], ['export', '🖨️ التصدير والشواهد']];
 async function recView(id, tab = 'setup', q) {
   if (!id) return recList();
   if (!RC.rec || RC.rec.id !== Number(id)) { view.innerHTML = '<p class="muted">جاري التحميل...</p>'; try { await recLoad(id); } catch (e) { toast(e.message); location.hash = '#/rec'; return; } }
@@ -69,7 +69,7 @@ async function recView(id, tab = 'setup', q) {
     ${steps.some((s) => !s[1]) ? `<div class="card" style="margin-bottom:10px"><b>خطوات البداية</b><ul class="steps-rec" style="margin-top:8px">${steps.map((s, i) => `<li class="${s[1] ? 'ok' : ''}"><b class="n">${s[1] ? '✓' : i + 1}</b>${s[0]}${typeof s[1] === 'number' && s[1] ? ` <span class="muted">(${s[1]})</span>` : ''}</li>`).join('')}</ul></div>` : ''}
     <nav class="rtabs">${TABS.map(([k, t]) => `<a href="#/rec/${r.id}/${k}" class="${tab === k ? 'on' : ''}">${t}</a>`).join('')}</nav><div id="rt"></div>`;
   document.querySelector('.rtabs a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
-  const fn = { setup: tSetup, plan: tPlan, tests: tTests, analysis: tAnalysis, compare: tCompare, follow: tFollow, parents: tParents, export: tExport }[tab] || tSetup;
+  const fn = { setup: tSetup, plan: tPlan, prep: tPrep, tests: tTests, analysis: tAnalysis, compare: tCompare, follow: tFollow, parents: tParents, export: tExport }[tab] || tSetup;
   fn($('#rt'), q || new URLSearchParams());
 }
 const rerender = () => route();
@@ -83,6 +83,9 @@ function tSetup(el) {
     <div class="field"><label>التقويم الدراسي</label><select name="region">${REGION_OPTS(r.region)}</select></div>
     <div class="field"><label>بداية الدراسة (أول يوم)</label><input type="date" name="start" value="${esc(r.start)}"></div><div class="field"><label>عدد الأسابيع</label><input type="number" name="weeks" min="4" max="24" value="${r.weeks}"></div>
     <div class="field"><label>أسابيع اختبارات أو إجازات إضافية <span class="muted">(أرقام، مثل 18)</span></label><input name="off" value="${esc(r.off.join('، '))}"></div></div>
+    <div class="field" id="exf" ${r.region ? '' : 'style="display:none"'}><label>إجازات إضافية أعلنتها إدارة تعليمك <span class="muted">(التقويم الرسمي يترك الإجازات الإضافية لكل منطقة)</span></label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${[...(r.extra || []), '', ''].map((x) => `<input type="date" name="extra" value="${esc(x)}" style="width:auto">`).join('')}
+      ${(S.extras || []).map((x) => `<button type="button" class="btn ghost sm" data-ex="${x.key}">عبّي إجازات ${esc(x.name)}</button>`).join('')}</div></div>
     ${RC.calc.plan.calendar ? `<p class="muted" style="font-size:13px;margin:0 0 10px">📅 ${esc(RC.calc.plan.calendar.regionName)}: يبدأ ${fdate(RC.calc.plan.calendar.start)} وينتهي ${fdate(RC.calc.plan.calendar.end)}، ${RC.calc.plan.calendar.weeks} أسبوعاً و${RC.calc.plan.calendar.schoolDays} يوماً دراسياً. الإجازات تنحسب تلقائياً، والحصص اللي تطيح في يوم إجازة ما يتوزع عليها شيء.</p>` : ''}
     <h3>جدول حصص الشعبة</h3><p class="muted" style="margin-top:0;font-size:13px">علّم حصص هذي الشعبة في الأسبوع، والخطة تتوزع عليها.${r.per_hint ? ` <b>المعتاد لهذي المادة ${r.per_hint} حصص في الأسبوع.</b>` : ''}</p>
     <div style="overflow:auto"><table class="tt"><tr><th></th>${[1, 2, 3, 4, 5, 6, 7, 8].map((p) => `<th>${p}</th>`).join('')}</tr>${DAYS_AR.map((d, i) => `<tr><th>${d}</th>${[1, 2, 3, 4, 5, 6, 7, 8].map((p) => `<td><label><input type="checkbox" name="slot" value="${i}:${p}" ${r.slots.some((s) => s.day === i && s.period === p) ? 'checked' : ''}></label></td>`).join('')}</tr>`).join('')}</table></div>
@@ -106,10 +109,12 @@ function tSetup(el) {
     ${r.skills.length ? `<div style="margin-top:10px"><table class="etable">${r.skills.map((s, i) => `<tr data-i="${i}"><td style="width:30px">${i + 1}</td><td><input data-k="name" value="${esc(s.name)}"></td><td style="width:40px"><button class="btn ghost sm" data-del="${i}">×</button></td></tr>`).join('')}</table></div><button class="btn sm" id="kts" style="margin-top:8px">💾 حفظ المهارات</button>` : ''}</div>
   <details class="card" style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">حذف السجل</summary><p class="muted">يحذف السجل وكل درجاته. الشواهد اللي أضفتها لملف الإنجاز تبقى.</p><button class="btn danger" id="rdel">حذف السجل نهائياً</button></details>`;
 
-  regionToggle($('#sf')); $('#sf').region.onchange = () => regionToggle($('#sf'));
+  regionToggle($('#sf')); $('#sf').region.onchange = () => { regionToggle($('#sf')); $('#exf').style.display = $('#sf').region.value ? '' : 'none'; };
+  el.querySelectorAll('[data-ex]').forEach((b) => { b.onclick = () => { const x = (S.extras || []).find((e) => e.key === b.dataset.ex); const box = b.parentElement; box.querySelectorAll('input[name=extra]').forEach((i) => i.remove()); [...x.days, ''].forEach((d) => { const i = document.createElement('input'); i.type = 'date'; i.name = 'extra'; i.value = d; i.style.width = 'auto'; box.insertBefore(i, box.querySelector('button')); }); toast('تمت التعبئة، اضغط حفظ'); }; });
   $('#sf').onsubmit = async (e) => {
     e.preventDefault(); const f = new FormData(e.target); const b = Object.fromEntries(f);
     b.off = String(b.off || '').split(/[^0-9٠-٩]+/).map((x) => Number(x.replace(/[٠-٩]/g, (c) => '٠١٢٣٤٥٦٧٨٩'.indexOf(c)))).filter(Boolean);
+    b.extra = f.getAll('extra').filter(Boolean);
     b.slots = f.getAll('slot').map((v) => { const [day, period] = v.split(':').map(Number); return { day, period }; });
     delete b.slot;
     try { await recSave(b); rerender(); } catch (err) { toast(err.message); }
@@ -148,6 +153,66 @@ function tPlan(el) {
 }
 
 // ---- الاختبارات ----
+// ---------- تحضير الدروس ----------
+const PF = [['objectives', 'الأهداف السلوكية', 'كل هدف في سطر، يبدأ بـ«أن»'], ['vocab', 'المفردات والمصطلحات', 'كل مفردة في سطر'], ['strategies', 'استراتيجيات التدريس', 'كل استراتيجية في سطر'], ['resources', 'مصادر التعلم والوسائل', 'كل مصدر في سطر']];
+function tPrep(el, q) {
+  const r = RC.rec, p = RC.calc.plan, sch = RC.calc.schedule || {};
+  const preps = r.preps || {};
+  if (!r.lessons.length) { el.innerHTML = `<div class="card center"><p>أضف دروس المقرر من «البيانات» أو اختر مادة جاهزة، وبعدها تحضّر كل درس بضغطة.</p><a class="btn" href="#/rec/${r.id}/setup">إضافة الدروس</a></div>`; return; }
+  const edit = q.get('edit');
+  if (edit) return prepEdit(el, edit);
+  const wn = Number(q.get('week')) || p.current;
+  const wk = p.weeks.find((w) => w.n === wn) || p.weeks[0];
+  const ids = [...new Set(wk.items.filter((x) => x.type === 'lesson').map((x) => x.id))];
+  const done = Object.keys(preps).length;
+  const when = (id) => (sch[id] || []).filter((x) => x.week === wk.n).map((x) => `${DAYS_AR[x.day]} ${fdate(x.date)} · ح${x.period}`).join('، ');
+  el.innerHTML = `<div class="stats"><div class="card stat"><b>${done}/${r.lessons.length}</b>دروس محضّرة</div><div class="card stat"><b>${ids.filter((id) => preps[id]).length}/${ids.length}</b>تحضير الأسبوع ${wk.n}</div></div>
+  <p class="muted" style="font-size:13px;margin-top:0">التحضير مربوط بخطتك الأسبوعية: كل درس يطلع بيومه وحصته وتاريخه، والواجب يظهر تلقائياً في الخطة الأسبوعية المطبوعة. ${RC.ai ? 'المساعد يكتب التحضير من أهداف الوحدة ومهارة الدرس ونتائج آخر اختبار للشعبة، وأنت تراجعه وتعدّله.' : 'يتعبى التحضير بقالب تربوي جاهز، وأنت تعدّله.'}</p>
+  <div class="wkpick" style="display:flex;gap:6px;overflow:auto;padding-bottom:6px;margin-bottom:10px">${p.weeks.map((w) => `<a href="#/rec/${r.id}/prep?week=${w.n}" class="btn sm ${w.n === wk.n ? '' : 'ghost'}" style="white-space:nowrap" title="${w.off ? esc((w.holidays || []).join('، ') || 'إجازة') : ''}">${w.off ? '🏖️ ' : ''}أسبوع ${w.n}${w.n === p.current ? ' •' : ''}</a>`).join('')}</div>
+  <div class="head" style="margin:0 0 8px"><h3 style="margin:0">الأسبوع ${wk.n}${wk.from ? ` <span class="muted" style="font-size:13px;font-weight:400">${fdate(wk.from)} - ${fdate(wk.to)}</span>` : ''}</h3>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${ids.length ? `<button class="btn sm" id="pall">✨ حضّر دروس الأسبوع</button><a class="btn soft sm" target="_blank" href="/rec/${r.id}/print?k=prepweek&week=${wk.n}">🖨️ تحضير الأسبوع</a>` : ''}${done ? '<button class="btn ghost sm" data-ev="prep">📁 أضف لملف إنجازي</button>' : ''}</div></div>
+  ${wk.off ? `<div class="card center muted">${esc((wk.holidays || []).join('، ') || 'إجازة / اختبارات')}</div>` : ''}
+  ${(wk.holidays || []).length && !wk.off ? `<p class="muted" style="font-size:13px">🏖️ في هذا الأسبوع: ${esc(wk.holidays.join('، '))}</p>` : ''}
+  ${ids.map((id) => { const l = r.lessons.find((x) => x.id === id); const pp = preps[id]; return `<div class="card" style="margin-bottom:8px;border-inline-start:5px solid ${pp ? 'var(--brand)' : 'var(--line)'}">
+    <div class="head" style="margin:0"><div><b>${esc(l.title)}</b> <span class="muted" style="font-size:12.5px">${esc(l.unit || '')}${l.page ? ` · ص ${l.page}` : ''}</span><div class="muted" style="font-size:12.5px">${when(id) || '-'}</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${pp ? `<a class="btn soft sm" href="#/rec/${r.id}/prep?edit=${id}&week=${wk.n}">✏️ عرض وتعديل</a><a class="btn ghost sm" target="_blank" href="/rec/${r.id}/print?k=prep&lesson=${id}">🖨️</a>` : `<button class="btn sm" data-gen="${id}">✨ حضّر</button>`}</div></div>
+    ${pp ? `<div style="font-size:13px;margin-top:6px">${pp.objectives.slice(0, 2).map((o) => `<div>🎯 ${esc(o)}</div>`).join('')}${pp.homework ? `<div class="muted">📝 الواجب: ${esc(pp.homework)}</div>` : ''}</div>` : ''}</div>`; }).join('') || (wk.off ? '' : '<p class="muted">ما فيه دروس في هذا الأسبوع.</p>')}
+  ${p.overflow.length ? `<p class="muted" style="font-size:13px">دروس ما دخلت الخطة (${p.overflow.length}) تقدر تحضّرها بعد ما تعدّل الحصص.</p>` : ''}`;
+  const gen = async (id, btn) => { if (btn) { btn.disabled = true; btn.textContent = '...جاري'; } const d = await api(`/api/rec/${r.id}/prep/${id}`, { method: 'POST', body: {} }); Object.assign(RC, d); return d.source; };
+  el.onclick = async (e) => {
+    const t = e.target;
+    if (t.dataset.gen) { try { const src = await gen(t.dataset.gen, t); toast(src === 'ai' ? 'تم التحضير بالمساعد ✨ راجعه وعدّله' : 'تم التحضير بالقالب، عدّله حسب درسك'); location.hash = `#/rec/${r.id}/prep?edit=${t.dataset.gen}&week=${wk.n}`; } catch (err) { toast(err.message); tPrep(el, q); } }
+    else if (t.id === 'pall') { t.disabled = true; let n = 0; for (const id of ids.filter((x) => !preps[x])) { t.textContent = `...جاري (${++n})`; try { await gen(id); } catch (err) { toast(err.message); break; } } toast('تم تحضير دروس الأسبوع ✅'); tPrep(el, q); }
+    else if (t.dataset.ev) addEv(t.dataset.ev, {}, t);
+  };
+}
+function prepEdit(el, id) {
+  const r = RC.rec; const l = r.lessons.find((x) => x.id === id); const p = (r.preps || {})[id];
+  const back = `#/rec/${r.id}/prep${new URLSearchParams(location.hash.split('?')[1] || '').get('week') ? `?week=${new URLSearchParams(location.hash.split('?')[1]).get('week')}` : ''}`;
+  if (!l || !p) { location.hash = back; return; }
+  const ta = (n, v, rows = 3, ph = '') => `<textarea name="${n}" rows="${rows}" placeholder="${esc(ph)}">${esc(Array.isArray(v) ? v.join('\n') : v || '')}</textarea>`;
+  el.innerHTML = `<a href="${back}" class="muted" style="text-decoration:none">→ رجوع لتحضير الأسبوع</a>
+  <form id="pe" class="card" style="margin-top:8px"><div class="head" style="margin:0 0 6px"><h3 style="margin:0">تحضير: ${esc(l.title)}</h3><span class="muted" style="font-size:12.5px">${p.source === 'ai' ? '✨ كتبه المساعد' : p.source === 'template' ? 'قالب جاهز' : 'معدّل'}</span></div>
+    <div class="grid g2">${PF.map(([k, t, ph]) => `<div class="field"><label>${t}</label>${ta(k, p[k], 4, ph)}</div>`).join('')}</div>
+    <h3>سير الدرس</h3>
+    <div class="field"><label>التهيئة (5 دقائق)</label>${ta('intro', p.steps.intro, 2)}</div>
+    <div class="field"><label>العرض (خطوة في كل سطر)</label>${ta('present', p.steps.present, 5)}</div>
+    <div class="grid g2"><div class="field"><label>التقويم البنائي</label>${ta('formative', p.steps.formative, 3)}</div><div class="field"><label>الغلق</label>${ta('close', p.steps.close, 3)}</div>
+    <div class="field"><label>التقويم الختامي</label>${ta('assessment', p.assessment, 3)}</div><div class="field"><label>الواجب</label>${ta('homework', p.homework, 3)}</div>
+    <div class="field"><label>نشاط علاجي</label>${ta('support', p.support, 3)}</div><div class="field"><label>نشاط إثرائي</label>${ta('enrich', p.enrich, 3)}</div>
+    <div class="field"><label>القيم والربط بالحياة</label>${ta('values', p.values, 2)}</div><div class="field"><label>ملاحظات</label>${ta('notes', p.notes, 2)}</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn">💾 حفظ</button><a class="btn soft" target="_blank" href="/rec/${r.id}/print?k=prep&lesson=${id}">🖨️ طباعة</a><button type="button" class="btn ghost" id="pre">✨ أعد الكتابة</button><button type="button" class="btn ghost danger" id="pdel">حذف التحضير</button></div></form>`;
+  const f = $('#pe');
+  const lines = (v) => String(v || '').split('\n').map((x) => x.trim()).filter(Boolean);
+  f.onsubmit = async (e) => {
+    e.preventDefault(); const b = Object.fromEntries(new FormData(f));
+    const body = { objectives: lines(b.objectives), vocab: lines(b.vocab), strategies: lines(b.strategies), resources: lines(b.resources), steps: { intro: b.intro, present: lines(b.present), formative: lines(b.formative), close: b.close }, assessment: lines(b.assessment), homework: b.homework, support: b.support, enrich: b.enrich, values: b.values, notes: b.notes };
+    try { Object.assign(RC, await api(`/api/rec/${r.id}/prep/${id}`, { method: 'PUT', body })); toast('تم الحفظ ✅'); location.hash = back; } catch (err) { toast(err.message); }
+  };
+  $('#pre').onclick = async (e) => { if (!confirm('يكتب التحضير من جديد ويستبدل تعديلاتك. نكمل؟')) return; e.target.disabled = true; try { Object.assign(RC, await api(`/api/rec/${r.id}/prep/${id}`, { method: 'POST', body: {} })); prepEdit(el, id); toast('تمت إعادة الكتابة'); } catch (err) { toast(err.message); e.target.disabled = false; } };
+  $('#pdel').onclick = async () => { if (!confirm('حذف تحضير هذا الدرس؟')) return; try { Object.assign(RC, await api(`/api/rec/${r.id}/prep/${id}`, { method: 'PUT', body: { remove: true } })); location.hash = back; } catch (err) { toast(err.message); } };
+}
+
 function tTests(el, q) {
   const r = RC.rec;
   const tid = q.get('t');
@@ -312,10 +377,10 @@ function tExport(el) {
   const P = (k, t, extra = '') => `<a class="btn soft sm" target="_blank" href="/rec/${r.id}/print?k=${k}${extra}">${t}</a>`;
   el.innerHTML = `<div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">🖨️ السجل كامل</h3><p class="muted" style="margin-top:0">غلاف وفهرس، والطلاب والجدول، والخطة الفصلية، وكل الخطط الأسبوعية، وكل اختبار بورقته ومفتاحه وتحليله وخططه العلاجية، والمقارنة، وسجل المتابعة، وتقرير سير المادة. كله بترويسة الوزارة وجاهز لزيارة المشرف.</p>
     <a class="btn" target="_blank" href="/rec/${r.id}/print">🖨️ افتح السجل كامل (PDF)</a></div>
-  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">أجزاء منفصلة</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${P('students', 'الطلاب والجدول')}${P('term', 'الخطة الفصلية')}${P('week', 'خطة هذا الأسبوع', `&week=${RC.calc.plan.current}`)}${P('weeks', 'كل الخطط الأسبوعية')}${last ? P('analysis', 'آخر تحليل', `&test=${last.id}`) + P('remedial', 'آخر خطط علاجية', `&test=${last.id}`) : ''}${P('followup', 'سجل المتابعة')}${P('progress', 'سير المادة')}</div></div>
+  <div class="card" style="margin-bottom:12px"><h3 style="margin-top:0">أجزاء منفصلة</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${P('students', 'الطلاب والجدول')}${P('term', 'الخطة الفصلية')}${P('week', 'خطة هذا الأسبوع', `&week=${RC.calc.plan.current}`)}${P('weeks', 'كل الخطط الأسبوعية')}${last ? P('analysis', 'آخر تحليل', `&test=${last.id}`) + P('remedial', 'آخر خطط علاجية', `&test=${last.id}`) : ''}${P('prepweek', 'تحضير هذا الأسبوع', `&week=${RC.calc.plan.current}`)}${P('preps', 'كل التحضير')}${P('followup', 'سجل المتابعة')}${P('progress', 'سير المادة')}</div></div>
   <div class="card"><h3 style="margin-top:0">📁 شواهد ملف الإنجاز بضغطة</h3><p class="muted" style="margin-top:0">كل شاهد ينكتب تلقائياً ويتصنف على عنصره، ومعه رابط للتقرير يعرض الطلاب بأرقام بدون أسماء.</p>
     <table class="etable"><tr><th>الشاهد</th><th>العنصر</th><th></th></tr>
-    ${[['plan', 'الخطة الفصلية والأسبوعية', 'إعداد وتنفيذ خطة التعلم', r.lessons.length], ['tests', 'تنويع أدوات التقويم', 'تنوع أساليب التقويم', r.tests.length], ['analysis', `تحليل ${last ? esc(last.title) : 'الاختبار'}`, 'تحليل نتائج المتعلمين وتشخيص مستوياتهم', !!last], ['remedial', 'الخطط العلاجية والإثرائية', 'تحسين نتائج المتعلمين', !!last], ['compare', 'قياس أثر الخطة (قبلي وبعدي)', 'تحسين نتائج المتعلمين', list.length >= 2], ['parents', 'التواصل مع أولياء الأمور', 'التفاعل مع أولياء الأمور', r.messages.length]]
+    ${[['plan', 'الخطة الفصلية والأسبوعية', 'إعداد وتنفيذ خطة التعلم', r.lessons.length], ['prep', 'تحضير الدروس', 'إعداد وتنفيذ خطة التعلم', Object.keys(r.preps || {}).length], ['tests', 'تنويع أدوات التقويم', 'تنوع أساليب التقويم', r.tests.length], ['analysis', `تحليل ${last ? esc(last.title) : 'الاختبار'}`, 'تحليل نتائج المتعلمين وتشخيص مستوياتهم', !!last], ['remedial', 'الخطط العلاجية والإثرائية', 'تحسين نتائج المتعلمين', !!last], ['compare', 'قياس أثر الخطة (قبلي وبعدي)', 'تحسين نتائج المتعلمين', list.length >= 2], ['parents', 'التواصل مع أولياء الأمور', 'التفاعل مع أولياء الأمور', r.messages.length]]
       .map(([k, t, s, ok]) => `<tr><td>${t}</td><td class="muted" style="font-size:13px">${s}</td><td>${ok ? `<button class="btn sm" data-ev="${k}">أضف</button>` : '<span class="muted" style="font-size:12px">يحتاج بيانات</span>'}</td></tr>`).join('')}</table></div>`;
   el.onclick = (e) => { const k = e.target.dataset.ev; if (!k) return; const ex = k === 'analysis' || k === 'remedial' ? { test: last.id } : {}; addEv(k, ex, e.target); };
 }

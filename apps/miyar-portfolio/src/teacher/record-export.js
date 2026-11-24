@@ -45,6 +45,7 @@ th { background: #0f766e; color: #fff; font-weight: 600; } tr:nth-child(even) td
 .tag { display: inline-block; padding: 1px 8px; border-radius: 99px; color: #fff; font-size: 11.5px; }
 .cover { text-align: center; min-height: 250mm; display: flex; flex-direction: column; justify-content: center; } .cover h1 { font-size: 34px; } .cover .sub { font-size: 18px; margin: 6px 0 24px; }
 .muted { color: #5b6b69; } .center { text-align: center; } .wk { break-inside: avoid; margin-bottom: 10px; } .off td { color: #9aa8a6; }
+.prep th { width: 24mm; background: #f1f7f6; color: #0f3b37; font-weight: 700; } .prep td ul, .prep td ol { margin: 0; padding-inline-start: 18px; } .prep .tag { display: inline-block; background: #e6f2f0; border-radius: 6px; padding: 1px 7px; margin: 2px; font-size: 11.5px; }
 .q { break-inside: avoid; margin: 0 0 10px; } .q ol { margin: 4px 0; padding-inline-start: 22px; list-style: arabic-indic; } .q ol { list-style-type: arabic-indic; }
 .sign { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 26px; text-align: center; } .sign div { border-top: 1px dashed #9aa8a6; padding-top: 6px; }
 .btn { display: inline-flex; gap: 6px; align-items: center; background: #0f766e; color: #fff; border: 0; padding: 7px 14px; border-radius: 9px; font: inherit; cursor: pointer; text-decoration: none; font-size: 13px; } .btn.ghost { background: #eef5f4; color: #0f766e; }
@@ -57,7 +58,7 @@ function shell(title, body) {
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet"><style>${CSS}</style></head><body>${body}</body></html>`;
 }
 
-function build({ u, d, kind = 'all', test, week, anon = false, back = '/app#/rec' }) {
+function build({ u, d, kind = 'all', test, week, lesson, anon = false, back = '/app#/rec' }) {
   const f = R.full(d);
   const names = anon ? Object.fromEntries(d.students.map((s, i) => [s.id, `طالب ${i + 1}`])) : Object.fromEntries(d.students.map((s) => [s.id, s.name]));
   const nm = (id, fallback) => names[id] || fallback;
@@ -81,7 +82,30 @@ function build({ u, d, kind = 'all', test, week, anon = false, back = '/app#/rec
   const termPlan = () => page(`${head('الخطة الفصلية (توزيع المنهج)', `${f.plan.total} أسبوعاً${f.plan.calendar ? ` · ${esc(f.plan.calendar.regionName)}` : ''}`)}<table><thead><tr><th>الأسبوع</th><th>من - إلى</th><th>الدروس والإجراءات</th><th>الحصص</th></tr></thead><tbody>${f.plan.weeks.map((w) => `<tr class="${w.off ? 'off' : ''}"><td>${w.n}</td><td>${w.from ? `${dShort(w.from)} - ${dShort(w.to)}` : '-'}</td><td>${w.off ? esc((w.holidays || []).join('، ') || 'إجازة / اختبارات') : ((w.holidays || []).length ? `<i>${esc(w.holidays.join('، '))}</i><br>` : '') + w.items.map((x) => `${x.type === 'lesson' ? '' : '★ '}${esc(x.title)}${x.cont ? ' (تكملة)' : ''}`).join('<br>') || '-'}</td><td>${w.off ? '' : w.items.reduce((a, x) => a + x.periods, 0)}</td></tr>`).join('')}</tbody></table>
     ${f.plan.overflow.length ? `<p class="muted">دروس ما دخلت في الخطة لعدم كفاية الحصص: ${f.plan.overflow.map((l) => esc(l.title)).join('، ')}</p>` : ''}${sign}`);
 
-  const weekPage = (w) => `<div class="wk">${head(`الخطة الأسبوعية: الأسبوع ${w.n}`, w.from ? `${dAr(w.from)} - ${dAr(w.to)}` : '')}<table><thead><tr><th>اليوم</th><th>التاريخ</th><th>الحصة</th><th>الوحدة</th><th>الدرس / الإجراء</th><th>الواجب / التقويم</th><th>ملاحظات</th></tr></thead><tbody>${w.off ? `<tr class="off"><td colspan="7" class="center">${esc((w.holidays || []).join('، ') || 'إجازة / أسبوع اختبارات')}</td></tr>` : w.slots.map((s) => s.holiday ? `<tr class="off"><td>${R.DAYS[s.day]}</td><td>${dShort(s.date)}</td><td>${s.period}</td><td colspan="4" class="center">${esc(s.holiday)}</td></tr>` : `<tr><td>${R.DAYS[s.day]}</td><td>${dShort(s.date)}</td><td>${s.period}</td><td>${esc(s.item ? s.item.unit : '')}</td><td>${s.item ? esc(s.item.title) : '-'}</td><td></td><td></td></tr>`).join('')}</tbody></table>${sign}</div>`;
+  // الواجب من تحضير الدرس يظهر في الخطة الأسبوعية
+  const hwOf = (it) => { if (!it || it.type !== 'lesson') return ''; const l = d.lessons.find((x) => x.title === it.title); const p = l && d.preps[l.id]; return p ? p.homework : ''; };
+  const li = (a) => (a.length ? `<ul>${a.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '-');
+  const prepPage = (l) => {
+    const p = d.preps[l.id]; if (!p) return '';
+    const when = (f.schedule[l.id] || []).map((x) => `${R.DAYS[x.day]} ${dShort(x.date)} (ح${x.period})`).join('، ');
+    const sk = (d.skills.find((x) => x.id === l.skill) || {}).name;
+    return page(`${head(`تحضير درس: ${l.title}`, when ? esc(when) : '')}
+    <table class="info"><tr><th>الوحدة</th><td>${esc(l.unit || '-')}</td><th>الصفحة</th><td>${l.page || '-'}</td></tr><tr><th>عدد الحصص</th><td>${l.periods}</td><th>المهارة</th><td>${esc(sk || '-')}</td></tr></table>
+    <table class="prep"><tr><th>الأهداف</th><td>${p.objectives.length ? `<ol>${p.objectives.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : '-'}</td></tr>
+    <tr><th>المفردات</th><td>${p.vocab.map((x) => `<span class="tag">${esc(x)}</span>`).join('') || '-'}</td></tr>
+    <tr><th>الاستراتيجيات</th><td>${p.strategies.map((x) => `<span class="tag">${esc(x)}</span>`).join('') || '-'}</td></tr>
+    <tr><th>مصادر التعلم</th><td>${p.resources.map((x) => `<span class="tag">${esc(x)}</span>`).join('') || '-'}</td></tr></table>
+    <h2 class="sec">سير الدرس</h2><table class="prep"><thead><tr><th>المرحلة</th><th>الإجراءات</th><th style="width:16mm">الزمن</th></tr></thead><tbody>
+    <tr><th>التهيئة</th><td>${esc(p.steps.intro || '-')}</td><td class="center">5 د</td></tr>
+    <tr><th>العرض</th><td>${p.steps.present.length ? `<ol>${p.steps.present.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>` : '-'}</td><td class="center">25 د</td></tr>
+    <tr><th>التقويم البنائي</th><td>${li(p.steps.formative)}</td><td class="center">10 د</td></tr>
+    <tr><th>الغلق</th><td>${esc(p.steps.close || '-')}</td><td class="center">5 د</td></tr></tbody></table>
+    <table class="prep"><tr><th>التقويم الختامي</th><td>${li(p.assessment)}</td></tr><tr><th>الواجب</th><td>${esc(p.homework || '-')}</td></tr>
+    <tr><th>علاجي</th><td>${esc(p.support || '-')}</td></tr><tr><th>إثرائي</th><td>${esc(p.enrich || '-')}</td></tr>
+    ${p.values ? `<tr><th>القيم والربط بالحياة</th><td>${esc(p.values)}</td></tr>` : ''}${p.notes ? `<tr><th>ملاحظات</th><td>${esc(p.notes)}</td></tr>` : ''}</table>${sign}`);
+  };
+  const prepsOf = (ids) => ids.map((id) => d.lessons.find((l) => l.id === id)).filter((l) => l && d.preps[l.id]).map(prepPage).join('');
+  const weekPage = (w) => `<div class="wk">${head(`الخطة الأسبوعية: الأسبوع ${w.n}`, w.from ? `${dAr(w.from)} - ${dAr(w.to)}` : '')}<table><thead><tr><th>اليوم</th><th>التاريخ</th><th>الحصة</th><th>الوحدة</th><th>الدرس / الإجراء</th><th>الواجب / التقويم</th><th>ملاحظات</th></tr></thead><tbody>${w.off ? `<tr class="off"><td colspan="7" class="center">${esc((w.holidays || []).join('، ') || 'إجازة / أسبوع اختبارات')}</td></tr>` : w.slots.map((s) => s.holiday ? `<tr class="off"><td>${R.DAYS[s.day]}</td><td>${dShort(s.date)}</td><td>${s.period}</td><td colspan="4" class="center">${esc(s.holiday)}</td></tr>` : `<tr><td>${R.DAYS[s.day]}</td><td>${dShort(s.date)}</td><td>${s.period}</td><td>${esc(s.item ? s.item.unit : '')}</td><td>${s.item ? esc(s.item.title) : '-'}</td><td>${esc(hwOf(s.item))}</td><td></td></tr>`).join('')}</tbody></table>${sign}</div>`;
   const weeks = (only) => (only ? [f.plan.weeks.find((w) => w.n === only) || f.plan.weeks[0]] : f.plan.weeks.filter((w) => !w.off && w.items.length)).map((w) => page(weekPage(w))).join('');
 
   const paper = (t) => { const T = d.tests.find((x) => x.id === t.id); return page(`${head(T.title, T.date ? dAr(T.date) : '')}<table class="info"><tr><th>اسم الطالب</th><td></td><th>الدرجة</th><td>&nbsp;&nbsp;&nbsp; / ${t.max}</td></tr></table>
@@ -116,7 +140,7 @@ function build({ u, d, kind = 'all', test, week, anon = false, back = '/app#/rec
     <h3>الإجراءات العلاجية المنفذة</h3><ul>${tests.flatMap((t) => t.plans.filter((x) => x.done).map((x) => `<li>خطة ${esc(x.type)} لفئة «${esc(x.name)}» بعد ${esc(t.title)}</li>`)).join('') || '<li class="muted">لا يوجد بعد</li>'}</ul>${sign}`); };
 
   if (kind === 'all') {
-    parts.push(cover(), students(), termPlan(), weeks());
+    parts.push(cover(), students(), termPlan(), weeks(), prepsOf(d.lessons.map((l) => l.id)));
     for (const t of tests) { parts.push(paper(t)); if (t.n) parts.push(analysis(t), plans(t)); }
     if (f.compare) parts.push(comp(f.compare));
     parts.push(follow(), prog());
@@ -129,6 +153,9 @@ function build({ u, d, kind = 'all', test, week, anon = false, back = '/app#/rec
   else if (kind === 'remedial') { const t = pickTest(test); if (t && t.n) parts.push(plans(t)); }
   else if (kind === 'compare') { const c = R.compare(d, test, week); if (c) parts.push(comp(c)); }
   else if (kind === 'followup') parts.push(follow());
+  else if (kind === 'prep') { const x = prepsOf([String(lesson || '')]); if (x) parts.push(x); }
+  else if (kind === 'prepweek') { const w = f.plan.weeks.find((x) => x.n === (Number(week) || f.plan.current)); const x = w ? prepsOf([...new Set(w.items.filter((i) => i.type === 'lesson').map((i) => i.id))]) : ''; if (x) parts.push(x); }
+  else if (kind === 'preps') { const x = prepsOf(d.lessons.map((l) => l.id)); if (x) parts.push(x); }
   else if (kind === 'progress') parts.push(prog());
   if (!parts.length) parts.push(page('<p class="center muted" style="padding:40mm 0">ما فيه بيانات كافية لهذا التقرير بعد.</p>'));
   const bar = anon ? '' : `<div class="toolbar"><a class="btn ghost" href="${esc(back)}">→ رجوع</a><button class="btn" onclick="print()">🖨️ طباعة / حفظ PDF</button><span class="muted" style="font-size:12px">اختر «حفظ كـ PDF» من نافذة الطباعة</span></div>`;

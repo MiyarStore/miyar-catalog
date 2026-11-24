@@ -18,8 +18,10 @@ test('تقويم مكة والمدينة وجدة والطائف يبدأ بعد
   assert.equal(CAL.holidayOn('west', '2027-05-03').name, 'إجازة عيد الأضحى');
   assert.equal(CAL.holidayOn('general', '2027-05-03'), null);
 });
-test('الإجازات الإضافية واليوم الوطني', () => {
-  assert.equal(CAL.holidayOn('general', '2026-10-25').name, 'إجازة إضافية');
+test('الإجازات الإضافية تضاف حسب إدارة التعليم، واليوم الوطني', () => {
+  assert.equal(CAL.holidayOn('general', '2026-10-25'), null);
+  assert.equal(CAL.holidayOn('general', '2026-10-25', undefined, ['2026-10-25']).name, 'إجازة إضافية');
+  assert.equal(CAL.summary('west', 'الفصل الدراسي الثاني').schoolDays, 93); // يطابق توزيع أسابيع الفصل الثاني للغربية
   assert.equal(CAL.holidayOn('general', '2026-09-23').name, 'إجازة اليوم الوطني');
   assert.equal(CAL.holidayOn('general', '2026-09-22'), null);
   assert.match(CAL.hijri('2026-08-23'), /10 ربيع الأول 1448/);
@@ -35,4 +37,20 @@ test('الخطة تتجاوز حصص أيام الإجازة', () => {
   assert.equal(nd.items.reduce((a, x) => a + x.periods, 0), 1);
   const autumn = p.weeks.find((w) => w.from === '2026-11-22');
   assert.ok(autumn.off);
+});
+
+test('تحضير الدروس: القالب والتنظيف والربط بالخطة', () => {
+  const PREP = require('../src/teacher/prep');
+  const t = PREP.template({ title: 'الكسور', skill: 'مقارنة الكسور', page: 30 });
+  assert.ok(t.objectives[0].startsWith('أن '));
+  assert.equal(t.source, 'template');
+  const d = R.clean({ subject: 'رياضيات', term: 'الفصل الدراسي الأول', region: 'general', slots: [{ day: 0, period: 1 }],
+    lessons: [{ id: 'a1', title: 'الكسور', periods: 1 }], preps: { a1: t, zz: t } });
+  assert.deepEqual(Object.keys(d.preps), ['a1']); // تحضير لدرس محذوف ينشال
+  const f = R.full(d);
+  assert.equal(f.schedule.a1[0].date, '2026-08-30'); // الأسبوع الأول للتهيئة والتشخيصي
+  const { build } = require('../src/teacher/record-export');
+  const html = build({ u: { full_name: 'م', gender: 'm' }, d, kind: 'prep', lesson: 'a1' });
+  assert.match(html, /تحضير درس: الكسور/);
+  assert.match(html, /سير الدرس/);
 });

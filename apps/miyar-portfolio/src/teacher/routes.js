@@ -3,10 +3,11 @@ const R = require('./record');
 const { build } = require('./record-export');
 const { generateTest, testAi } = require('./ai');
 const TPL = require('./templates');
+const PREP = require('./prep');
 
 function mountTeacher(app, { auth, active, printGuard, addEvidence, baseUrl }) {
   const summary = (r) => ({ id: r.id, subject: r.subject, grade: r.grade, section: r.section, term: r.term, students: r.students.length, lessons: r.lessons.length, tests: r.tests.length, updated_at: r.updated_at, progress: R.progress(r).pct });
-  const out = (r) => ({ rec: r, calc: R.full(r), ai: testAi() });
+  const out = (r) => ({ rec: r, calc: R.full(r), ai: testAi() || PREP.prepAi() });
   const mine = (req, res) => { const r = R.get(req.user.id, req.params.id); if (!r) res.status(404).json({ error: 'السجل غير موجود' }); return r; };
 
   app.get('/api/rec', auth, (req, res) => res.json({ list: R.list(req.user.id).map(summary), ai: testAi(), templates: TPL.list() }));
@@ -54,6 +55,30 @@ function mountTeacher(app, { auth, active, printGuard, addEvidence, baseUrl }) {
     const list = items && items.length ? items.map((it) => ({ skill: skills[it.skill].id, max: 1, text: it.text, choices: it.choices, answer: it.answer })) : skills.flatMap((s) => Array.from({ length: n }, () => ({ skill: s.id, max: 1, text: '', choices: [], answer: '' })));
     res.json({ items: list, source: items && items.length ? 'ai' : 'template' });
   });
+  // تحضير درس: يكتبه المساعد (أو القالب) ويحفظه، والمعلم يعدّل ويحفظ
+  const ctxOf = (r, l, no) => {
+    const last = R.sortedTests(r).reverse().map((t) => R.analyze(r, t)).find((a) => a.n);
+    return { subject: r.subject, grade: r.grade, stage: r.stage, unit: l.unit, title: l.title, page: l.page, periods: l.periods, no,
+      skill: (r.skills.find((s) => s.id === l.skill) || {}).name || '', unitObjectives: r.template ? TPL.unitObjectives(r.template, l.unit) : [],
+      weak: last ? last.skills.filter((s) => !s.ok).map((s) => s.name).slice(0, 4) : [] };
+  };
+  app.post('/api/rec/:id/prep/:lid', auth, active, async (req, res) => {
+    const r = mine(req, res); if (!r) return;
+    const i = r.lessons.findIndex((l) => l.id === req.params.lid); if (i < 0) return res.status(404).json({ error: 'الدرس غير موجود' });
+    const day = new Date().toISOString().slice(0, 10); const k = `p:${req.user.id}:${day}`;
+    let p = null;
+    if (PREP.prepAi() && (aiUse.get(k) || 0) < 60) { aiUse.set(k, (aiUse.get(k) || 0) + 1); p = await PREP.generate(ctxOf(r, r.lessons[i], i)); }
+    if (!p) p = PREP.template(ctxOf(r, r.lessons[i], i));
+    r.preps = { ...r.preps, [req.params.lid]: p };
+    res.json({ ...out(R.save(req.user.id, r.id, r)), source: p.source });
+  });
+  app.put('/api/rec/:id/prep/:lid', auth, active, (req, res) => {
+    const r = mine(req, res); if (!r) return;
+    if (!r.lessons.some((l) => l.id === req.params.lid)) return res.status(404).json({ error: 'الدرس غير موجود' });
+    const preps = { ...r.preps };
+    if (req.body && req.body.remove) delete preps[req.params.lid]; else preps[req.params.lid] = PREP.cleanPrep({ ...(req.body || {}), source: (r.preps[req.params.lid] || {}).source || 'manual', updated_at: Date.now() });
+    res.json(out(R.save(req.user.id, r.id, { ...r, preps })));
+  });
   // رسالة ولي الأمر
   app.post('/api/rec/:id/message', auth, active, (req, res) => {
     const r = mine(req, res); if (!r) return;
@@ -72,7 +97,7 @@ function mountTeacher(app, { auth, active, printGuard, addEvidence, baseUrl }) {
     const b = req.body || {};
     const e = R.evidenceFrom(r, b.kind, { test: b.test, pre: b.pre, post: b.post, gain: r.tests.length >= 2 ? (R.compare(r) || {}).gain : null });
     if (!e) return res.status(400).json({ error: 'ما فيه بيانات كافية لهذا الشاهد بعد' });
-    const k = { analysis: 'analysis', remedial: 'remedial', compare: 'compare', plan: 'term', tests: 'all', parents: 'followup' }[b.kind];
+    const k = { prep: 'preps', analysis: 'analysis', remedial: 'remedial', compare: 'compare', plan: 'term', tests: 'all', parents: 'followup' }[b.kind];
     const q = new URLSearchParams({ k }); if (b.test) q.set('test', b.test);
     e.links = [`${baseUrl(req)}/rs/${r.share_token}?${q}`];
     const ev = addEvidence(req.user.id, e);
@@ -82,7 +107,7 @@ function mountTeacher(app, { auth, active, printGuard, addEvidence, baseUrl }) {
   app.get('/rec/:id/print', (req, res) => {
     const u = printGuard(req, res); if (!u) return;
     const r = R.get(u.id, req.params.id); if (!r) return res.status(404).send('السجل غير موجود');
-    res.send(build({ u, d: r, kind: String(req.query.k || 'all'), test: req.query.test, week: req.query.week, back: `/app#/rec/${r.id}` }));
+    res.send(build({ u, d: r, kind: String(req.query.k || 'all'), test: req.query.test, week: req.query.week, lesson: req.query.lesson, back: `/app#/rec/${r.id}` }));
   });
   // نسخة المقيّم: بدون أسماء الطلاب
   const { db } = require('../db');

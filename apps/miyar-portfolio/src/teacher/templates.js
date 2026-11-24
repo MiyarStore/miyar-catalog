@@ -44,4 +44,10 @@ function examLessons(id, uid) {
   }
   return { subject: t.course, stage: t.stage, term: (t.term || '').replace(/\s*\d{4}هـ?$/, ''), lessons };
 }
-module.exports = { list, apply, examLessons };
+// أهداف الوحدة من الكتاب لدرس معين (للتحضير)
+function unitObjectives(id, unitLabel) {
+  const t = all().find((x) => x.id === id); if (!t) return [];
+  const u = t.units.find((x) => `الوحدة ${x.unit}: ${x.title}` === unitLabel);
+  return u ? (u.objectives || []).slice(0, 10) : [];
+}
+module.exports = { list, apply, examLessons, unitObjectives };

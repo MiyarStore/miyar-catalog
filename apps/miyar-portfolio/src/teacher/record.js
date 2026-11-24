@@ -4,6 +4,7 @@
 const crypto = require('crypto');
 const { db } = require('../db');
 const CAL = require('../calendar');
+const PREP = require('./prep');
 
 db.exec(`CREATE TABLE IF NOT EXISTS teacher_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -61,8 +62,8 @@ function blank(b = {}, user = {}) {
   return {
     subject: clip(b.subject || user.subject, 60), grade: clip(b.grade, 40), section: clip(b.section, 20), stage: clip(b.stage || user.stage, 40),
     term: clip(b.term || 'الفصل الدراسي الأول', 40), year: clip(b.year || user.year || '1448 هـ', 20),
-    region: CAL.regionKey(b.region), start: parseDay(b.start) != null ? b.start : '', weeks: Math.min(Math.max(Number(b.weeks) || 18, 4), 24), off: [],
-    slots: [], students: [], lessons: [], skills: [], tests: [], remedial_done: {}, messages: [], template: '', per_hint: 0,
+    region: CAL.regionKey(b.region), extra: [], start: parseDay(b.start) != null ? b.start : '', weeks: Math.min(Math.max(Number(b.weeks) || 18, 4), 24), off: [],
+    slots: [], students: [], lessons: [], skills: [], tests: [], remedial_done: {}, messages: [], template: '', per_hint: 0, preps: {},
   };
 }
 // تحقق من البيانات اللي ترسلها الواجهة (كل الحفظ يمر من هنا)
@@ -70,6 +71,7 @@ function clean(d) {
   const o = blank();
   for (const k of ['subject', 'grade', 'section', 'stage', 'term', 'year']) o[k] = clip(d[k], 60).trim();
   o.region = CAL.regionKey(d.region);
+  o.extra = [...new Set((Array.isArray(d.extra) ? d.extra : []).filter((x) => parseDay(x) != null))].sort().slice(0, 30);
   o.start = parseDay(d.start) != null ? d.start : '';
   o.template = clip(d.template, 40); o.per_hint = Math.min(Math.max(Number(d.per_hint) || 0, 0), 12);
   o.weeks = Math.min(Math.max(Number(d.weeks) || 18, 4), 24);
@@ -95,6 +97,7 @@ function clean(d) {
   });
   o.remedial_done = {};
   for (const [k, v] of Object.entries(d.remedial_done || {})) if (/^[\w:-]{1,60}$/.test(k) && v) o.remedial_done[k] = Number(v) || Date.now();
+  o.preps = PREP.cleanPreps(d.preps, new Set(o.lessons.map((l) => l.id)));
   o.messages = (Array.isArray(d.messages) ? d.messages : []).slice(-200).map((m) => ({ student: clip(m.student, 12), kind: clip(m.kind, 20), at: Number(m.at) || Date.now() }));
   return o;
 }
@@ -106,8 +109,8 @@ function clean(d) {
 // ونتجاوز الحصص اللي تطيح في يوم إجازة (مثل اليوم الوطني أو الإجازات الإضافية).
 function calendarOf(d) {
   if (!d.region) return null;
-  const ws = CAL.weeks(d.region, d.term);
-  return ws.length ? { ws, sum: CAL.summary(d.region, d.term) } : null;
+  const ws = CAL.weeks(d.region, d.term, undefined, d.extra || []);
+  return ws.length ? { ws, sum: CAL.summary(d.region, d.term, undefined, d.extra || []) } : null;
 }
 function plan(d) {
   const cal = calendarOf(d);
@@ -320,6 +323,17 @@ function evidenceFrom(d, kind, opts = {}) {
       impact: c.skills.length ? `أكبر تحسن في: ${[...c.skills].sort((a, b) => b.gain - a.gain).slice(0, 2).map((s) => `${s.name} (${s.gain > 0 ? '+' : ''}${s.gain})`).join('، ')}.` : '',
     };
   }
+  if (kind === 'prep') {
+    const ids = Object.keys(d.preps);
+    if (!ids.length) return null;
+    return {
+      standard_id: 6, title: `تحضير دروس مادة ${cls}`, ev_date: new Date().toISOString().slice(0, 10),
+      goals: ['إعداد خطة تنفيذ لكل درس بأهداف سلوكية قابلة للقياس', 'تنويع استراتيجيات التدريس ومراعاة الفروق الفردية'],
+      description: `تحضير ${ids.length} درساً من دروس المقرر مرتبطة بالخطة الأسبوعية، لكل درس: الأهداف والمفردات ومصادر التعلم والاستراتيجيات وسير الدرس والتقويم والتمايز.`,
+      steps: '1. تحديد أهداف الدرس من نواتج التعلم\n2. اختيار استراتيجيات التعلم النشط ومصادر التعلم\n3. تصميم سير الدرس والتقويم البنائي\n4. إعداد أنشطة علاجية وإثرائية',
+      impact: 'وضوح سير الحصص وارتباطها بالخطة، ومراعاة مستويات الطلاب في كل درس.',
+    };
+  }
   if (kind === 'plan') {
     const p = plan(d);
     return {
@@ -367,10 +381,21 @@ function save(uid, id, data) {
 const remove = (uid, id) => db.prepare('DELETE FROM teacher_records WHERE id = ? AND user_id = ?').run(Number(id), uid);
 
 // كل المحسوبات اللي تحتاجها الواجهة دفعة وحدة
+// مواعيد كل درس في الخطة: الأسبوع واليوم والحصة والتاريخ (للتحضير)
+function schedule(d, p = plan(d)) {
+  const out = {};
+  for (const w of p.weeks) for (const s of w.slots) {
+    if (!s.item || s.item.type !== 'lesson') continue;
+    const it = w.items.find((x) => x.type === 'lesson' && x.title === s.item.title);
+    if (!it) continue;
+    (out[it.id] = out[it.id] || []).push({ week: w.n, day: s.day, period: s.period, date: s.date });
+  }
+  return out;
+}
 function full(d) {
   const p = plan(d);
   const tests = sortedTests(d).map((t) => { const a = analyze(d, t); return { ...a, plans: remedial(d, a), individual: individual(d, a) }; });
-  return { plan: p, progress: progress(d, p), tests, compare: d.tests.length >= 2 ? compare(d) : null, followup: followup(d) };
+  return { plan: p, schedule: schedule(d, p), progress: progress(d, p), tests, compare: d.tests.length >= 2 ? compare(d) : null, followup: followup(d) };
 }
 
-module.exports = { DAYS, KINDS, GROUPS, SKILL_OK, parseStudents, parseLessons, parseSkills, blank, clean, plan, progress, analyze, remedial, individual, compare, followup, parentMessage, waLink, evidenceFrom, list, get, byToken, save, remove, full, sortedTests, uid };
+module.exports = { schedule, DAYS, KINDS, GROUPS, SKILL_OK, parseStudents, parseLessons, parseSkills, blank, clean, plan, progress, analyze, remedial, individual, compare, followup, parentMessage, waLink, evidenceFrom, list, get, byToken, save, remove, full, sortedTests, uid };

@@ -350,7 +350,7 @@ async function adminView() {
 async function loadEvs() { S.evs = (await api('/api/evidences')).evidences; }
 async function load() {
   const d = await api('/api/me');
-  Object.assign(S, { me: d.user, standards: d.standards, roles: d.roles || [], calendars: d.calendars || [], ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
+  Object.assign(S, { me: d.user, standards: d.standards, roles: d.roles || [], calendars: d.calendars || [], extras: d.extras || [], ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
   applyColor();
   await loadEvs();
   await loadTasks();
