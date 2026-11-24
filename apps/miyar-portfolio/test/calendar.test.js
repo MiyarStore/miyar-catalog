@@ -59,3 +59,21 @@ test('تحضير الدروس: القالب والتنظيف والربط بال
   assert.match(html, /تحضير درس: الكسور/);
   assert.match(html, /سير الدرس/);
 });
+
+test('إجراءات الغياب حسب قواعد السلوك والمواظبة', () => {
+  const slots = [{ day: 0, period: 1 }, { day: 1, period: 1 }, { day: 2, period: 1 }, { day: 3, period: 1 }, { day: 4, period: 1 }];
+  const days = ['2026-09-06', '2026-09-07', '2026-09-08', '2026-09-09', '2026-09-10'];
+  const mk = (marks) => R.clean({ subject: 'لغتي', term: 'الفصل الدراسي الأول', region: 'general', slots, students: [{ id: 's1', name: 'أحمد' }, { id: 's2', name: 'سالم' }],
+    att: Object.fromEntries(days.map((ds, i) => [ds, marks[i] ? { s1: marks[i] } : {}])) });
+  // 3 أيام متصلة: تحويل للموجه
+  let A = R.attendance(mk(['a', 'a', 'a', '', '']));
+  const r = A.rows.find((x) => x.id === 's1');
+  assert.equal(r.streak, 3); assert.equal(r.step.code, 'refer'); assert.ok(A.base > 80);
+  assert.equal(A.rows.find((x) => x.id === 's2').step, null);
+  // الاستئذان ما يقطع الاتصال ولا ينحسب غياب
+  A = R.attendance(mk(['a', 'e', 'a', '', '']));
+  assert.equal(A.rows[0].absent, 2); assert.equal(A.rows[0].streak, 2); assert.equal(A.rows[0].step, null);
+  // متفرقة أقل من 5: لا إجراء
+  A = R.attendance(mk(['a', '', 'a', '', 'a']));
+  assert.equal(A.rows[0].step, null);
+});

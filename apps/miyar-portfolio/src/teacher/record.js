@@ -23,7 +23,7 @@ const GROUPS = [
 const groupOf = (p) => (p == null ? null : GROUPS.find((g) => p >= g.min));
 const SKILL_OK = 70;
 const ATT = { a: 'غائب', l: 'متأخر', e: 'مستأذن' };
-const ABSENT_ALERT = 3; // تنبيه بعد 3 غيابات في المادة // المهارة متقنة على مستوى الشعبة إذا متوسطها 70% فأكثر
+const ABSENT_ALERT = 3; // 3 غيابات متصلة (أو 5 متفرقة) = تحويل للموجه حسب قواعد السلوك والمواظبة // المهارة متقنة على مستوى الشعبة إذا متوسطها 70% فأكثر
 
 const clip = (v, n) => String(v ?? '').slice(0, n);
 const num = (v) => { if (v === '' || v == null) return null; const n = Number(String(v).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))); return Number.isFinite(n) ? n : null; };
@@ -395,16 +395,32 @@ const remove = (uid, id) => db.prepare('DELETE FROM teacher_records WHERE id = ?
 
 // كل المحسوبات اللي تحتاجها الواجهة دفعة وحدة
 // ---------- الحضور والسلوك ----------
-function attendance(d) {
+// إجراءات الغياب حسب «قواعد تنظيم السلوك والمواظبة» (الإجراءات الواجب اتخاذها حيال غياب طلاب المرحلتين المتوسطة والثانوية):
+// 3 أيام متصلة أو 5 منفصلة: تحويل للموجه الطلابي. ثم نسب الغياب بدون عذر من الأيام الفعلية للدراسة: 10% و15% و20% و25%.
+// في سجل المادة نحسبها على حصص المادة في الفصل، فهي مؤشر مبكر للمعلم، والإجراء الرسمي على غياب اليوم الكامل.
+const ABS_STEPS = [
+  { code: 'p25', pct: 25, name: 'غياب 25% فأكثر', action: 'الرفع لإدارة التعليم وتحويله لطالب منتسب وفق ضوابط القبول والانتساب' },
+  { code: 'p20', pct: 20, name: 'غياب 20%', action: 'استدعاء ولي الأمر والتحويل لإدارة التعليم (التوجيه والإرشاد) وإنذار ولي الأمر' },
+  { code: 'p15', pct: 15, name: 'غياب 15%', action: 'إنذار واستدعاء ولي الأمر وتعهد خطي والتحويل لوحدة الخدمات الإرشادية' },
+  { code: 'p10', pct: 10, name: 'غياب 10%', action: 'إنذار الطالب واستدعاء ولي الأمر خطياً' },
+];
+const REFER = { code: 'refer', name: '3 أيام متصلة أو 5 منفصلة', action: 'تحويل الطالب للموجه الطلابي لدراسة حالته' };
+function attendance(d, p) {
   const days = Object.keys(d.att).sort();
+  // حصص المادة في الفصل (من الخطة) للنسبة، وإذا ما فيه خطة بتواريخ نحسب على الأيام المرصودة
+  let classDays = 0;
+  try { p = p || plan(d); classDays = new Set(p.weeks.flatMap((w) => (w.slots || []).filter((x) => x.date && !x.holiday).map((x) => x.date))).size; } catch { classDays = 0; }
+  const base = Math.max(classDays, days.length);
   const rows = d.students.map((s) => {
-    const c = { a: 0, l: 0, e: 0 }; let last = null;
-    for (const ds of days) { const v = d.att[ds][s.id]; if (v) { c[v]++; if (v === 'a') last = ds; } }
+    const c = { a: 0, l: 0, e: 0 }; let last = null; let run = 0; let streak = 0;
+    for (const ds of days) { const v = d.att[ds][s.id]; if (v) { c[v]++; if (v === 'a') last = ds; } if (v === 'a') { run++; streak = Math.max(streak, run); } else if (v !== 'e') run = 0; }
     const bs = d.beh.filter((b) => b.s === s.id);
-    return { id: s.id, name: s.name, phone: s.phone, absent: c.a, late: c.l, excused: c.e, lastAbsent: last, pos: bs.filter((b) => b.t === 'p').length, neg: bs.filter((b) => b.t === 'n').length,
+    const pct = base ? Math.round((c.a / base) * 1000) / 10 : 0;
+    const st = ABS_STEPS.find((x) => c.a && pct >= x.pct) || (streak >= 3 || c.a >= 5 ? REFER : null);
+    return { id: s.id, name: s.name, phone: s.phone, absent: c.a, late: c.l, excused: c.e, lastAbsent: last, streak, absPct: pct, step: st, pos: bs.filter((b) => b.t === 'p').length, neg: bs.filter((b) => b.t === 'n').length,
       rate: days.length ? Math.round(((days.length - c.a - c.e) / days.length) * 100) : null };
   });
-  return { days, rows, alerts: rows.filter((r) => r.absent >= ABSENT_ALERT), ABSENT_ALERT,
+  return { days, rows, base, alerts: rows.filter((r) => r.step), ABSENT_ALERT, STEPS: [REFER, ...ABS_STEPS.slice().reverse()],
     rate: rows.length && days.length ? Math.round(rows.reduce((a, r) => a + r.rate, 0) / rows.length) : null };
 }
 // مواعيد كل درس في الخطة: الأسبوع واليوم والحصة والتاريخ (للتحضير)
@@ -421,7 +437,7 @@ function schedule(d, p = plan(d)) {
 function full(d) {
   const p = plan(d);
   const tests = sortedTests(d).map((t) => { const a = analyze(d, t); return { ...a, plans: remedial(d, a), individual: individual(d, a) }; });
-  return { plan: p, att: attendance(d), schedule: schedule(d, p), progress: progress(d, p), tests, compare: d.tests.length >= 2 ? compare(d) : null, followup: followup(d) };
+  return { plan: p, att: attendance(d, p), schedule: schedule(d, p), progress: progress(d, p), tests, compare: d.tests.length >= 2 ? compare(d) : null, followup: followup(d) };
 }
 
 module.exports = { ATT, attendance, schedule, DAYS, KINDS, GROUPS, SKILL_OK, parseStudents, parseLessons, parseSkills, blank, clean, plan, progress, analyze, remedial, individual, compare, followup, parentMessage, waLink, evidenceFrom, list, get, byToken, save, remove, full, sortedTests, uid };
