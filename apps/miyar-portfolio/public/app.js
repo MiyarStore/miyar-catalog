@@ -86,6 +86,35 @@ function authView(mode) {
   };
 }
 
+// ---------- التقييم الذاتي بسلّم التقدير الرسمي ----------
+const RT = () => { try { return JSON.parse(S.me.self_rating || '{}'); } catch { return {}; } };
+function selfCalc() {
+  const r = RT(); const rated = S.standards.filter((s) => r[s.id]);
+  const w = rated.reduce((a, s) => a + s.weight, 0);
+  const value = w ? Math.round((rated.reduce((a, s) => a + r[s.id] * s.weight, 0) / w) * 100) / 100 : 0;
+  const band = rated.length ? (S.bands || []).find((b) => b.score === Math.min(5, Math.max(1, Math.round(value)))) : null;
+  return { r, rated: rated.length, total: S.standards.length, value, band };
+}
+async function rate(id, score) {
+  const d = await api('/api/self-rating', { method: 'PUT', body: { id, score } });
+  S.me.self_rating = d.self_rating;
+}
+// مربعات المستويات الخمسة لعنصر واحد
+function rubricBox(s, compact) {
+  if (!s.levels) return '';
+  const cur = RT()[s.id] || 0;
+  return `<div class="card rub" data-id="${s.id}" style="margin-bottom:14px">${compact ? '' : `<div class="head" style="margin-bottom:6px"><h3 style="margin:0">🎯 قيّم نفسك في هذا العنصر</h3><a class="muted" style="font-size:12px" href="#/self">التقييم الذاتي كامل ←</a></div>`}
+    <div class="lv-grid ${compact && cur ? 'collapsed' : ''}">${s.levels.map((t, i) => `<button type="button" class="lv ${cur === i + 1 ? 'on' : ''}" data-s="${i + 1}"><b>${i + 1}</b><span>${esc(t)}</span></button>`).join('')}</div>${compact && cur ? '<button type="button" class="btn ghost sm lv-more" style="margin-top:8px">تغيير التقدير</button>' : ''}
+    ${cur && cur < 5 ? `<p class="next-lv">⬆️ للوصول للمستوى ${cur + 1}: ${esc(s.levels[cur])}</p>` : cur === 5 ? '<p class="next-lv">🌟 أعلى مستوى. تأكد إن شواهدك تثبته.</p>' : ''}</div>`;
+}
+function bindRubric(after) {
+  view.querySelectorAll('.lv-more').forEach((b) => { b.onclick = () => { b.previousElementSibling.classList.remove('collapsed'); b.remove(); }; });
+  view.querySelectorAll('.rub .lv').forEach((b) => { b.onclick = async () => {
+    const box = b.closest('.rub'); const id = Number(box.dataset.id); const sc = Number(b.dataset.s);
+    try { await rate(id, (RT()[id] || 0) === sc ? 0 : sc); after(); } catch (err) { toast(err.message); }
+  }; });
+}
+
 // ---------- الرئيسية ----------
 function dashboard() {
   const counts = Object.fromEntries(S.standards.map((s) => [s.id, S.evs.filter((e) => e.standard_id === s.id).length]));
@@ -106,6 +135,7 @@ function dashboard() {
     <div class="card stat"><b>${covered}/${S.standards.length}</b>عنصر مغطّى</div>
     <div class="card stat"><b>${score}%</b>من أوزان التقييم فيها شواهد<div class="bar" style="margin-top:6px"><i style="width:${score}%"></i></div></div>
   </div>
+  ${(() => { const c = selfCalc(); return S.standards.some((s) => s.levels) ? `<a class="card" href="#/self" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit"><div style="font-size:30px">🎯</div><div style="flex:1"><h3 style="margin:0">التقييم الذاتي بسلّم التقدير الرسمي</h3><div class="muted" style="font-size:13px">${c.rated ? `قدّرت ${c.rated} من ${c.total} عناصر · تقديرك المتوقع ${c.value} من 5${c.band ? ` (${esc(c.band.name)})` : ''}` : 'قيّم نفسك من 1 إلى 5 في كل عنصر بأوصاف الوزارة، واعرف تقديرك العام المتوقع وش ينقصك للمستوى الأعلى.'}</div></div><span class="btn sm">${c.rated ? 'افتح' : 'ابدأ'}</span></a>` : ''; })()}
   <div class="card" style="margin-bottom:18px">
     <div class="head" style="margin-bottom:8px"><h3 style="margin:0">🔗 صفحتك ورابط المشاركة</h3><span class="pill">${S.me.is_public ? 'منشورة' : 'مخفية'}</span></div>
     <div class="share"><code>${esc(pub)}</code><button class="btn soft sm" id="copy">نسخ الرابط</button><a class="btn soft sm" href="${esc(pub)}" target="_blank">فتح الصفحة</a>
@@ -119,6 +149,30 @@ function dashboard() {
   $('#copy').onclick = () => navigator.clipboard.writeText(pub).then(() => toast('تم نسخ الرابط'));
 }
 
+// ---------- صفحة التقييم الذاتي ----------
+function selfView() {
+  const c = selfCalc();
+  const counts = Object.fromEntries(S.standards.map((s) => [s.id, S.evs.filter((e) => e.standard_id === s.id).length]));
+  // الأولوية: أقل تقدير ثم أعلى وزن (أكبر أثر على التقدير العام)
+  const weak = S.standards.filter((s) => c.r[s.id] && c.r[s.id] <= 3).sort((a, b) => c.r[a.id] - c.r[b.id] || b.weight - a.weight).slice(0, 3);
+  const noEvAll = S.standards.filter((s) => c.r[s.id] >= 4 && !counts[s.id]);
+  const noEv = noEvAll.slice(0, 3);
+  view.innerHTML = `<div class="head"><div><a href="#/" class="muted" style="text-decoration:none">→ الرئيسية</a><h1 style="margin:4px 0 0">🎯 التقييم الذاتي</h1><div class="muted" style="font-size:13px">${esc(((S.roles.find((r) => r.key === S.me.role) || {}).model) || '')} · سلّم التقدير الخماسي وآلية الاحتساب من نماذج تقييم أداء شاغلي الوظائف التعليمية</div></div>
+    <a class="btn ghost" target="_blank" href="/print/self">🖨️ طباعة التقييم</a></div>
+  <div class="stats">
+    <div class="card stat"><b>${c.rated ? c.value : '-'}</b>التقدير العام المتوقع من 5<div class="bar" style="margin-top:6px"><i style="width:${c.value * 20}%"></i></div></div>
+    <div class="card stat"><b>${c.band ? esc(c.band.name) : '-'}</b>مستوى الأداء${c.band ? ` (${c.band.score})` : ''}</div>
+    <div class="card stat"><b>${c.rated}/${c.total}</b>عنصر مقدّر</div>
+  </div>
+  ${weak.length || noEv.length ? `<div class="card" style="margin-bottom:14px;border:2px solid var(--brand-2)"><h3 style="margin-top:0">💡 وين تركّز؟</h3><ul style="margin:0;padding-inline-start:20px;line-height:1.9">
+    ${weak.map((s) => `<li><b>${esc(s.name)}</b> (الوزن ${s.weight}%): أنت في المستوى ${c.r[s.id]}. للمستوى ${c.r[s.id] + 1}: ${esc(s.levels[c.r[s.id]])}</li>`).join('')}
+    ${noEv.map((s) => `<li>قدّرت نفسك ${c.r[s.id]} في <b>${esc(s.name)}</b> وما عندك شاهد يثبته. <a href="#/new?std=${s.id}">أضف شاهد</a></li>`).join('')}${noEvAll.length > 3 ? `<li class="muted">و${noEvAll.length - 3} عناصر ثانية قدّرتها 4 أو 5 بدون شواهد.</li>` : ''}</ul></div>` : ''}
+  <p class="muted" style="font-size:13px">اضغط المستوى اللي يوصف أداءك فعلاً في كل عنصر. الحفظ تلقائي، والضغط على نفس المستوى مرة ثانية يمسحه.</p>
+  ${S.standards.map((s) => `<div class="std-rub"><div class="head" style="margin:14px 0 6px"><h3 style="margin:0">${s.no}. ${esc(s.name)} <span class="muted" style="font-size:12px;font-weight:400">الوزن ${s.weight}% · ${counts[s.id] ? `${counts[s.id]} شاهد` : 'لا يوجد شاهد'}</span></h3><a class="muted" style="font-size:12px" href="#/std/${s.id}">الشواهد ←</a></div>${s.levels ? rubricBox(s, true) : `<div class="card muted" style="font-size:13px">سلّم التقدير لهذا العنصر يُضاف قريباً.</div>`}</div>`).join('')}
+  <p class="muted" style="font-size:12px">هذا تقدير ذاتي استرشادي يساعدك تجهّز شواهدك وتعرف وضعك قبل التقييم. التقييم المعتمد يجريه المدير المباشر.</p>`;
+  bindRubric(() => { const y = scrollY; selfView(); scrollTo(0, y); });
+}
+
 // ---------- عرض عنصر ----------
 function standardView(id) {
   const s = S.standards.find((x) => x.id === Number(id));
@@ -126,7 +180,9 @@ function standardView(id) {
   const items = S.evs.filter((e) => e.standard_id === s.id);
   view.innerHTML = `${banner()}<div class="head"><div><a href="#/" class="muted" style="text-decoration:none">→ العناصر</a><h1 style="margin:4px 0 0">${s.icon} ${esc(s.name)}</h1><div class="muted">الوزن ${s.weight}% · ${esc(s.hint)}</div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn" href="#/new?std=${s.id}">➕ إضافة شاهد</a>${items.length ? `<a class="btn ghost" target="_blank" href="/print/standard/${s.id}">🖨️ تقرير العنصر</a>` : ''}</div></div>
+    ${rubricBox(s)}
     <div class="ev-list">${items.map(evItem).join('') || `<div class="card" style="text-align:center"><p class="muted">ما فيه شواهد في هذا العنصر بعد.</p><a class="btn" href="#/new?std=${s.id}">أضف أول شاهد</a></div>`}</div>`;
+  bindRubric(() => standardView(id));
 }
 function evItem(e) {
   const img = e.files.find((f) => f.mime.startsWith('image/'));
@@ -350,7 +406,7 @@ async function adminView() {
 async function loadEvs() { S.evs = (await api('/api/evidences')).evidences; }
 async function load() {
   const d = await api('/api/me');
-  Object.assign(S, { me: d.user, standards: d.standards, roles: d.roles || [], calendars: d.calendars || [], extras: d.extras || [], ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
+  Object.assign(S, { me: d.user, standards: d.standards, bands: d.bands || [], roles: d.roles || [], calendars: d.calendars || [], extras: d.extras || [], ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
   applyColor();
   await loadEvs();
   await loadTasks();
@@ -368,6 +424,7 @@ async function route() {
   switch (parts[0]) {
     case 'login': case 'register': if (S.me) { location.hash = '#/'; return; } return authView(parts[0]);
     case 'std': return standardView(parts[1]);
+    case 'self': return selfView();
     case 'new': return editor(null, q);
     case 'edit': return editor(parts[1], q);
     case 'rec': return window.recView(parts[1], parts[2], q);

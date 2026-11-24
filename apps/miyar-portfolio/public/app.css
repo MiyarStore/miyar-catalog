@@ -75,3 +75,13 @@ table.t td, table.t th { padding: 8px; border-bottom: 1px solid var(--line); tex
 .consent > span { flex: 1; min-width: 0; font-weight: 400; }
 .privacy-note { font-size: 13px; line-height: 1.7; background: #fff8e6; color: #6b4e00; border-radius: 8px; padding: 8px 10px; margin: 8px 0; }
 [data-theme="dark"] .privacy-note { background: #3a3010; color: #f3dc9a; }
+/* التقييم الذاتي: مستويات سلّم التقدير */
+.lv-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.lv { display: flex; flex-direction: column; gap: 6px; align-items: stretch; text-align: right; font: inherit; font-size: 12.5px; line-height: 1.6; background: var(--card); color: inherit; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px; cursor: pointer; transition: border-color .15s, background .15s; }
+.lv b { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); font-size: 14px; }
+.lv:hover { border-color: var(--brand-2); }
+.lv.on { border-color: var(--brand); background: var(--brand-soft); box-shadow: 0 0 0 2px var(--brand) inset; }
+.lv.on b { background: var(--brand); color: #fff; }
+.next-lv { margin: 10px 0 0; font-size: 13px; background: var(--brand-soft); border-radius: 10px; padding: 8px 10px; }
+@media (max-width: 760px) { .lv-grid { grid-template-columns: 1fr; } .lv { flex-direction: row; align-items: flex-start; } .lv b { flex: none; } }
+.lv-grid.collapsed { grid-template-columns: 1fr; } .lv-grid.collapsed .lv:not(.on) { display: none; } .lv-grid.collapsed .lv.on { flex-direction: row; align-items: flex-start; } .lv-grid.collapsed .lv b { flex: none; }

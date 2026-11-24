@@ -15,6 +15,8 @@ const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 7);
 const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 40);
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 const { PLANS } = require('./plans');
+const RUB = require('./rubric');
+const SELF = require('./self-export');
 const CAL = require('./calendar');
 const STORE_URL = process.env.STORE_URL || 'https://miyar.store';
 const DAY = 86400000;
@@ -143,7 +145,7 @@ app.delete('/api/me', auth, (req, res) => {
 });
 
 app.get('/api/me', auth, (req, res) => {
-  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => s), roles: ROLE_LIST, calendars: CAL.options(), extras: CAL.extras(), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req) });
+  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => ({ ...s, levels: RUB.levelsOf(s.id) })), bands: RUB.BANDS, roles: ROLE_LIST, calendars: CAL.options(), extras: CAL.extras(), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req) });
 });
 
 const PROFILE_FIELDS = { full_name: 80, gender: 1, job_title: 40, subject: 60, school: 100, stage: 40, office: 80, principal: 80, bio: 400, year: 20, theme: 20 };
@@ -166,6 +168,22 @@ app.put('/api/me', auth, (req, res) => {
   }
   if (sets.length) db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...vals, req.user.id);
   res.json({ user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)) });
+});
+
+// التقييم الذاتي: يحفظ تقدير عنصر واحد (0 يمسحه)
+const ratingsOf = (u) => { try { return JSON.parse(u.self_rating || '{}'); } catch { return {}; } };
+app.put('/api/self-rating', auth, (req, res) => {
+  const b = req.body || {};
+  const r = ratingsOf(req.user);
+  if (b.all && typeof b.all === 'object') Object.assign(r, b.all); else r[String(Number(b.id))] = Number(b.score) || 0;
+  const clean = RUB.clean(r, req.user.role);
+  db.prepare('UPDATE users SET self_rating = ? WHERE id = ?').run(JSON.stringify(clean), req.user.id);
+  res.json({ self_rating: JSON.stringify(clean), calc: RUB.calc(req.user.role, clean) });
+});
+app.get('/print/self', (req, res) => {
+  const u = printGuard(req, res); if (!u) return;
+  const counts = {}; for (const e of userEvidences(u.id)) counts[e.standard_id] = (counts[e.standard_id] || 0) + 1;
+  res.send(SELF.build({ u, ratings: ratingsOf(u), counts }));
 });
 
 app.post('/api/password', auth, (req, res) => {

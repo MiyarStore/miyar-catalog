@@ -157,4 +157,6 @@ try { db.exec('ALTER TABLE schools ADD COLUMN team_token TEXT'); } catch {}
 try { db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'teacher'"); } catch {}
 // التقويم الدراسي للمعلم: general (بقية المناطق) أو west (مكة والمدينة وجدة والطائف)
 try { db.exec("ALTER TABLE users ADD COLUMN region TEXT NOT NULL DEFAULT ''"); } catch {}
+// التقييم الذاتي بسلّم التقدير الرسمي: {رقم العنصر: 1..5}
+try { db.exec("ALTER TABLE users ADD COLUMN self_rating TEXT NOT NULL DEFAULT '{}'"); } catch {}
 module.exports = { db, DATA_DIR };
