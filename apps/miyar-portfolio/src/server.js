@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const { db, DATA_DIR } = require('./db');
-const { STANDARDS, byId } = require('./standards');
+const { forRole, roleKey, roleName, ROLE_LIST, byId, anyById, mapTo } = require('./standards');
 const { draftEvidence, aiEnabled } = require('./ai');
 const views = require('./views');
 const { mountSchool } = require('./school/routes');
@@ -92,6 +92,7 @@ app.post('/api/register', (req, res) => {
   const password = String(req.body.password || '');
   const full_name = clip(req.body.full_name, 80).trim();
   const gender = req.body.gender === 'f' ? 'f' : 'm';
+  const role = roleKey(String(req.body.role || 'teacher'));
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'البريد الإلكتروني غير صحيح' });
   if (password.length < 6) return res.status(400).json({ error: 'كلمة المرور لازم تكون 6 أحرف على الأقل' });
   if (!full_name) return res.status(400).json({ error: 'اكتب اسمك' });
@@ -99,8 +100,8 @@ app.post('/api/register', (req, res) => {
   if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) return res.status(409).json({ error: 'هذا البريد مسجّل مسبقاً، سجّل دخولك' });
   const salt = crypto.randomBytes(16).toString('hex');
   const now = Date.now();
-  const info = db.prepare(`INSERT INTO users (email, pass_hash, salt, full_name, gender, job_title, slug, verify_code, trial_ends, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(email, hash(password, salt), salt, full_name, gender, gender === 'f' ? 'معلمة' : 'معلم',
+  const info = db.prepare(`INSERT INTO users (email, pass_hash, salt, full_name, gender, job_title, role, slug, verify_code, trial_ends, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(email, hash(password, salt), salt, full_name, gender, roleName(role, gender), role,
     'm' + rand(6).toLowerCase(), rand(10), now + TRIAL_DAYS * DAY, now);
   db.prepare('UPDATE users SET privacy_accepted_at = ? WHERE id = ?').run(now, info.lastInsertRowid);
   startSession(res, info.lastInsertRowid);
@@ -141,7 +142,7 @@ app.delete('/api/me', auth, (req, res) => {
 });
 
 app.get('/api/me', auth, (req, res) => {
-  res.json({ user: publicUser(req.user), standards: STANDARDS.map(({ keywords, ...s }) => s), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req) });
+  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => s), roles: ROLE_LIST, ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req) });
 });
 
 const PROFILE_FIELDS = { full_name: 80, gender: 1, job_title: 40, subject: 60, school: 100, stage: 40, office: 80, principal: 80, bio: 400, year: 20, theme: 20 };
@@ -152,6 +153,7 @@ app.put('/api/me', auth, (req, res) => {
   for (const [k, n] of Object.entries(PROFILE_FIELDS)) {
     if (b[k] !== undefined) { sets.push(`${k} = ?`); vals.push(clip(b[k], n).trim()); }
   }
+  if (b.role !== undefined) { sets.push('role = ?'); vals.push(roleKey(String(b.role))); }
   if (b.is_public !== undefined) { sets.push('is_public = ?'); vals.push(b.is_public ? 1 : 0); }
   if (b.slug !== undefined) {
     const slug = String(b.slug).trim().toLowerCase();
@@ -188,9 +190,9 @@ app.post('/api/redeem', auth, (req, res) => {
 });
 
 // ---------- الشواهد ----------
-function readEvidence(b) {
+function readEvidence(b, role) {
   const sid = Number(b.standard_id);
-  if (!byId(sid)) throw new Error('اختر عنصر التقييم');
+  if (!byId(sid, role)) throw new Error('اختر عنصر التقييم');
   const title = clip(b.title, 160).trim();
   if (!title) throw new Error('اكتب عنوان الشاهد');
   const goals = (Array.isArray(b.goals) ? b.goals : String(b.goals || '').split('\n')).map((g) => clip(g, 200).trim()).filter(Boolean).slice(0, 8);
@@ -205,7 +207,7 @@ app.get('/api/evidences', auth, (req, res) => res.json({ evidences: userEvidence
 
 app.post('/api/evidences', auth, active, (req, res) => {
   let e;
-  try { e = readEvidence(req.body); } catch (err) { return res.status(400).json({ error: err.message }); }
+  try { e = readEvidence(req.body, req.user.role); } catch (err) { return res.status(400).json({ error: err.message }); }
   const now = Date.now();
   const info = db.prepare(`INSERT INTO evidences (user_id, standard_id, title, goals, description, steps, impact, ev_date, links, verify_code, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(req.user.id, e.standard_id, e.title, e.goals, e.description, e.steps, e.impact, e.ev_date, e.links, rand(10), now, now);
@@ -216,7 +218,7 @@ app.put('/api/evidences/:id', auth, active, (req, res) => {
   const own = db.prepare('SELECT id FROM evidences WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
   if (!own) return res.status(404).json({ error: 'الشاهد غير موجود' });
   let e;
-  try { e = readEvidence(req.body); } catch (err) { return res.status(400).json({ error: err.message }); }
+  try { e = readEvidence(req.body, req.user.role); } catch (err) { return res.status(400).json({ error: err.message }); }
   db.prepare(`UPDATE evidences SET standard_id=?, title=?, goals=?, description=?, steps=?, impact=?, ev_date=?, links=?, updated_at=? WHERE id=?`)
     .run(e.standard_id, e.title, e.goals, e.description, e.steps, e.impact, e.ev_date, e.links, Date.now(), own.id);
   res.json({ evidence: evidenceRow(db.prepare('SELECT * FROM evidences WHERE id = ?').get(own.id)) });
@@ -277,7 +279,7 @@ app.post('/api/ai/draft', auth, active, async (req, res) => {
   const used = db.prepare('SELECT count FROM ai_usage WHERE user_id = ? AND day = ?').get(req.user.id, day)?.count || 0;
   if (used >= AI_DAILY_LIMIT) return res.status(429).json({ error: 'وصلت للحد اليومي للمساعد الذكي، جرّب بكرة' });
   db.prepare('INSERT INTO ai_usage (user_id, day, count) VALUES (?, ?, 1) ON CONFLICT(user_id, day) DO UPDATE SET count = count + 1').run(req.user.id, day);
-  const draft = await draftEvidence(idea, { subject: req.user.subject, stage: req.user.stage, gender: req.user.gender, standard_id: req.body.standard_id });
+  const draft = await draftEvidence(idea, { subject: req.user.subject, stage: req.user.stage, gender: req.user.gender, standard_id: req.body.standard_id, role: req.user.role });
   res.json({ draft });
 });
 
@@ -323,11 +325,11 @@ app.get('/p/:slug', async (req, res) => {
 
 app.get('/v/:code/:std?', (req, res) => {
   const code = String(req.params.code).toUpperCase();
-  const ev = db.prepare('SELECT e.*, u.full_name, u.job_title, u.school, u.slug, u.is_public FROM evidences e JOIN users u ON u.id = e.user_id WHERE e.verify_code = ?').get(code);
-  if (ev) return res.send(views.verifyPage({ kind: 'evidence', ev, std: byId(ev.standard_id), base: baseUrl(req) }));
+  const ev = db.prepare('SELECT e.*, u.full_name, u.job_title, u.school, u.slug, u.is_public, u.role FROM evidences e JOIN users u ON u.id = e.user_id WHERE e.verify_code = ?').get(code);
+  if (ev) return res.send(views.verifyPage({ kind: 'evidence', ev, std: anyById(ev.standard_id, ev.role), base: baseUrl(req) }));
   const u = db.prepare('SELECT * FROM users WHERE verify_code = ?').get(code);
   if (!u) return res.status(404).send(views.verifyPage({ kind: 'invalid' }));
-  const std = req.params.std ? byId(req.params.std) : null;
+  const std = req.params.std ? anyById(req.params.std, u.role) : null;
   const evs = userEvidences(u.id).filter((e) => !std || e.standard_id === std.id);
   res.send(views.verifyPage({ kind: std ? 'standard' : 'portfolio', u, std, count: evs.length, stdCount: new Set(evs.map((e) => e.standard_id)).size, base: baseUrl(req) }));
 });
@@ -344,7 +346,7 @@ app.get('/print/portfolio', async (req, res) => {
 });
 app.get('/print/standard/:std', async (req, res) => {
   const u = printGuard(req, res); if (!u) return;
-  const std = byId(req.params.std); if (!std) return res.status(404).send(views.notFound());
+  const std = anyById(req.params.std, u.role); if (!std) return res.status(404).send(views.notFound());
   res.send(await views.printReport({ u, evs: userEvidences(u.id).filter((e) => e.standard_id === std.id), template: req.query.t === 'modern' ? 'modern' : 'classic', base: baseUrl(req), scope: 'standard', std }));
 });
 app.get('/print/evidence/:id', async (req, res) => {
@@ -357,6 +359,8 @@ app.get('/print/evidence/:id', async (req, res) => {
 mountSchool(app, { auth, currentUser });
 // «مساعد المعلم»: سجل المادة لكل شعبة
 function addEvidence(userId, e) {
+  const ur = db.prepare('SELECT role FROM users WHERE id = ?').get(userId);
+  e = { ...e, standard_id: mapTo(ur && ur.role, e.standard_id) };
   const now = Date.now();
   const info = db.prepare(`INSERT INTO evidences (user_id, standard_id, title, goals, description, steps, impact, ev_date, links, verify_code, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(userId, e.standard_id, clip(e.title, 160), JSON.stringify(e.goals || []), clip(e.description, 3000), clip(e.steps, 3000), clip(e.impact, 1500), clip(e.ev_date || new Date().toISOString().slice(0, 10), 20), JSON.stringify(e.links || []), rand(10), now, now);

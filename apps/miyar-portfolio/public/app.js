@@ -2,7 +2,12 @@
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const view = $('#view');
-const S = { me: null, standards: [], evs: [], ai: false, base: '', storeUrl: '', plans: [] };
+const S = { me: null, standards: [], roles: [], evs: [], ai: false, base: '', storeUrl: '', plans: [] };
+// الوظائف التعليمية حسب نماذج الدليل الإرشادي لإدارة الأداء الوظيفي (الإصدار الثاني)
+const ROLE_OPTS = [['teacher', 'معلم / معلمة'], ['activity', 'رائد/ة نشاط (معلم مسند له نشاط طلابي)'], ['health', 'موجه/ة صحي (معلم مسند له توجيه صحي)'], ['kg', 'معلمة رياض أطفال'], ['lab', 'محضر/ة مختبر'], ['counselor', 'موجه/ة طلابي'], ['deputy', 'وكيل/ة مدرسة'], ['principal', 'مدير/ة مدرسة']];
+const TEACHES = ['teacher', 'activity', 'health', 'kg'];
+const roleSel = (cur = 'teacher') => `<select name="role">${ROLE_OPTS.map(([k, n]) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
+const IDEAS = { teacher: 'درس عن الكسور باستخدام لعبة البطاقات', activity: 'مسابقة ثقافية بمناسبة اليوم الوطني', health: 'حملة توعية عن التغذية الصحية', kg: 'ركن الرمل والماء لتنمية المهارات الحسية', lab: 'تجهيز تجربة التحليل الكهربائي للصف الثالث', counselor: 'جلسة إرشاد جمعي عن إدارة الوقت', deputy: 'متابعة الغياب والتأخر الصباحي هذا الأسبوع', principal: 'لقاء مجتمع تعلم عن تحليل نتائج نافس' };
 const COLORS = { miyar: '#0f766e', navy: '#1e3a8a', violet: '#5b21b6', rose: '#9f1239', gold: '#8a5a00', slate: '#334155' };
 
 function toast(msg) {
@@ -43,7 +48,7 @@ function topbar(route) {
   if (!S.me) { $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="${forSchool() ? '/school' : '/'}"><b>م</b>${forSchool() ? 'معياري للمدرسة' : 'معياري للمعلم'}</a><div class="nav" style="flex:none"><button onclick="toggleDark()" title="الوضع الليلي">🌙</button></div></div></div>`; return; }
   const l = (h, ic, t) => `<a href="#/${h}" class="${route === h ? 'on' : ''}">${ic} <span class="lbl">${t}</span></a>`;
   $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">معياري للمعلم</span></a>
-    <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('new', '➕', 'شاهد جديد')}${l('rec', '📚', 'مساعد المعلم')}${l('exam', '📝', 'صانع الاختبارات')}${l('profile', '👤', 'ملفي')}${l('subscription', '⭐', 'الاشتراك')}${S.me.is_admin ? l('admin', '🛠️', 'الإدارة') : ''}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
+    <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('new', '➕', 'شاهد جديد')}${TEACHES.includes(S.me.role) ? l('rec', '📚', 'مساعد المعلم') + l('exam', '📝', 'صانع الاختبارات') : ''}${l('profile', '👤', 'ملفي')}${l('subscription', '⭐', 'الاشتراك')}${S.me.is_admin ? l('admin', '🛠️', 'الإدارة') : ''}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
   document.querySelector('.nav a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
 
@@ -65,7 +70,8 @@ function authView(mode) {
     <div class="tabs"><a href="#/login" class="${mode === 'login' ? 'on' : ''}">تسجيل الدخول</a><a href="#/register" class="${mode === 'register' ? 'on' : ''}">حساب جديد</a></div>
     <form id="f">
       ${mode === 'register' ? `<div class="field"><label>الاسم الكامل</label><input name="full_name" required placeholder="مثال: أحمد محمد العتيبي"></div>
-      <div class="field"><label>أنا</label><select name="gender"><option value="m">معلم</option><option value="f">معلمة</option></select></div>` : ''}
+      <div class="grid g2"><div class="field"><label>الجنس</label><select name="gender"><option value="m">ذكر</option><option value="f">أنثى</option></select></div>
+      <div class="field"><label>الوظيفة</label>${roleSel()}</div></div>` : ''}
       <div class="field"><label>البريد الإلكتروني</label><input name="email" type="email" required autocomplete="email" dir="ltr"></div>
       <div class="field"><label>كلمة المرور</label><input name="password" type="password" required minlength="6" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" dir="ltr"></div>
       ${mode === 'register' ? '<label class="consent"><input type="checkbox" name="accept" value="1" required><span>قرأت وأوافق على <a href="/privacy" target="_blank">سياسة الخصوصية وشروط الاستخدام</a>، بما فيها حفظ البيانات على خوادم خارج المملكة.</span></label>' : ''}
@@ -90,14 +96,14 @@ function dashboard() {
   <div class="ai-box">
     <h2>✨ وثّق شاهد جديد في دقيقة</h2>
     <p style="margin:0 0 10px;opacity:.9">اكتب فكرة الشاهد بكلمتين، والمساعد يجهّز لك العنوان والأهداف والوصف ويربطه بالعنصر المناسب.</p>
-    <form class="row" id="aiq"><input name="idea" placeholder="مثال: درس عن الكسور باستخدام لعبة البطاقات" required><button class="btn">صِغها لي</button></form>
+    <form class="row" id="aiq"><input name="idea" placeholder="مثال: ${esc(IDEAS[S.me.role] || IDEAS.teacher)}" required><button class="btn">صِغها لي</button></form>
   </div>
   ${tasksCard()}
-  <a class="card" href="#/rec" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit;border:2px solid var(--brand-2)"><div style="font-size:30px">📚</div><div style="flex:1"><h3 style="margin:0">مساعد المعلم: سجل المادة يتجهز لحاله</h3><div class="muted" style="font-size:13px">أدخل طلابك وجدولك ودروسك مرة وحدة، وتطلع لك الخطة الأسبوعية والاختبارات والتحليل والخطط العلاجية ورسائل أولياء الأمور والشواهد.</div></div><span class="btn sm">افتح</span></a>
-  <a class="card" href="#/exam" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit"><div style="font-size:30px">📝</div><div style="flex:1"><h3 style="margin:0">صانع الاختبارات بجدول المواصفات</h3><div class="muted" style="font-size:13px">اختر الدروس ويتبني جدول المواصفات وتنكتب الأسئلة عليه، ثم اطبعها بنموذجين ومفتاح وورقة تظليل أو نزّلها Word.</div></div><span class="btn sm">افتح</span></a>
+  ${TEACHES.includes(S.me.role) ? `<a class="card" href="#/rec" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit;border:2px solid var(--brand-2)"><div style="font-size:30px">📚</div><div style="flex:1"><h3 style="margin:0">مساعد المعلم: سجل المادة يتجهز لحاله</h3><div class="muted" style="font-size:13px">أدخل طلابك وجدولك ودروسك مرة وحدة، وتطلع لك الخطة الأسبوعية والاختبارات والتحليل والخطط العلاجية ورسائل أولياء الأمور والشواهد.</div></div><span class="btn sm">افتح</span></a>
+  <a class="card" href="#/exam" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit"><div style="font-size:30px">📝</div><div style="flex:1"><h3 style="margin:0">صانع الاختبارات بجدول المواصفات</h3><div class="muted" style="font-size:13px">اختر الدروس ويتبني جدول المواصفات وتنكتب الأسئلة عليه، ثم اطبعها بنموذجين ومفتاح وورقة تظليل أو نزّلها Word.</div></div><span class="btn sm">افتح</span></a>` : ''}
   <div class="stats">
     <div class="card stat"><b>${S.evs.length}</b>شاهد موثّق</div>
-    <div class="card stat"><b>${covered}/11</b>عنصر مغطّى</div>
+    <div class="card stat"><b>${covered}/${S.standards.length}</b>عنصر مغطّى</div>
     <div class="card stat"><b>${score}%</b>من أوزان التقييم فيها شواهد<div class="bar" style="margin-top:6px"><i style="width:${score}%"></i></div></div>
   </div>
   <div class="card" style="margin-bottom:18px">
@@ -105,9 +111,9 @@ function dashboard() {
     <div class="share"><code>${esc(pub)}</code><button class="btn soft sm" id="copy">نسخ الرابط</button><a class="btn soft sm" href="${esc(pub)}" target="_blank">فتح الصفحة</a>
     <a class="btn sm" href="/print/portfolio?t=classic" target="_blank">🖨️ ملف الإنجاز PDF</a></div>
   </div>
-  <div class="head"><h2 style="margin:0">عناصر تقييم الأداء الوظيفي</h2></div>
+  <div class="head"><div><h2 style="margin:0">عناصر تقييم الأداء الوظيفي</h2><div class="muted" style="font-size:13px">${esc(((S.roles.find((r) => r.key === S.me.role) || {}).model) || '')}، حسب الدليل الإرشادي لإدارة الأداء الوظيفي · <a href="#/profile">تغيير الوظيفة</a></div></div></div>
   <div class="stds">${S.standards.map((s) => `<a class="card std-card ${counts[s.id] ? 'done' : ''}" href="#/std/${s.id}">
-    <div class="ic">${s.icon}</div><h3>${s.id}. ${esc(s.name)}</h3><div class="muted" style="font-size:12.5px">${esc(s.hint)}</div>
+    <div class="ic">${s.icon}</div><h3>${s.no}. ${esc(s.name)}</h3><div class="muted" style="font-size:12.5px">${esc(s.hint)}</div>
     <div class="meta"><span>الوزن ${s.weight}%</span><span>${counts[s.id] ? `✅ ${counts[s.id]} شاهد` : 'لا يوجد شاهد'}</span></div></a>`).join('')}</div>`;
   $('#aiq').onsubmit = (e) => { e.preventDefault(); sessionStorage.setItem('miyar-idea', e.target.idea.value); location.hash = '#/new'; };
   $('#copy').onclick = () => navigator.clipboard.writeText(pub).then(() => toast('تم نسخ الرابط'));
@@ -176,7 +182,7 @@ function editor(id, query) {
   ${task ? `<div class="banner trial"><span>📌 ${esc(task.text)} (${esc(task.school)}، المؤشر <bdi dir="ltr">${esc(task.indicator)}</bdi>). بعد الحفظ تنحسب المهمة منجزة ويظهر الشاهد في متابعة الخطة.</span></div>` : ''}
   <form id="ef" class="card">
     <div class="grid g2">
-      <div class="field"><label>عنصر التقييم</label><select name="standard_id" required><option value="">اختر العنصر</option>${S.standards.map((s) => `<option value="${s.id}" ${Number(stdQ) === s.id ? 'selected' : ''}>${s.id}. ${esc(s.name)}</option>`).join('')}</select></div>
+      <div class="field"><label>عنصر التقييم</label><select name="standard_id" required><option value="">اختر العنصر</option>${S.standards.map((s) => `<option value="${s.id}" ${Number(stdQ) === s.id ? 'selected' : ''}>${s.no}. ${esc(s.name)}</option>`).join('')}</select></div>
       <div class="field"><label>تاريخ التنفيذ</label><input type="date" name="ev_date" value="${esc(e ? e.ev_date : today())}"></div>
     </div>
     <div class="field"><label>عنوان الشاهد</label><input name="title" required value="${esc(e ? e.title : task ? task.text : '')}" placeholder="عنوان رسمي مختصر"></div>
@@ -256,8 +262,9 @@ function profile() {
   view.innerHTML = `<h1>ملفي الشخصي</h1><p class="muted" style="margin-top:0">هذه البيانات تظهر في صفحتك وفي غلاف ملف الإنجاز.</p>
   <form id="pf" class="card" style="margin-bottom:16px">
     <div class="grid g2">${inp('full_name', 'الاسم الكامل')}
-      <div class="field"><label>الجنس</label><select name="gender"><option value="m" ${u.gender === 'm' ? 'selected' : ''}>معلم</option><option value="f" ${u.gender === 'f' ? 'selected' : ''}>معلمة</option></select></div>
-      ${inp('job_title', 'المسمى الوظيفي', 'معلم / معلمة / وكيل / موجه طلابي')}${inp('subject', 'المادة', 'رياضيات')}
+      <div class="field"><label>الجنس</label><select name="gender"><option value="m" ${u.gender === 'm' ? 'selected' : ''}>ذكر</option><option value="f" ${u.gender === 'f' ? 'selected' : ''}>أنثى</option></select></div>
+      <div class="field"><label>الوظيفة (تحدد عناصر التقييم وأوزانها)</label>${roleSel(u.role)}</div>
+      ${inp('job_title', 'المسمى الوظيفي كما يظهر في الملف', 'معلم / وكيل شؤون الطلاب / موجه طلابي')}${inp('subject', 'المادة', 'رياضيات')}
       ${inp('stage', 'المرحلة', 'المرحلة المتوسطة')}${inp('school', 'المدرسة')}
       ${inp('office', 'إدارة التعليم', 'الإدارة العامة للتعليم بمنطقة ...')}${inp('principal', 'اسم مدير المدرسة')}
       ${inp('year', 'العام الدراسي', '1448 هـ')}</div>
@@ -277,11 +284,16 @@ function profile() {
     <form id="del"><div class="field"><label>اكتب كلمة المرور للتأكيد</label><input type="password" name="password" required dir="ltr"></div><button class="btn danger">حذف حسابي نهائياً</button></form>
   </details>`;
   const f = $('#pf');
+  // المسمى يتبع الوظيفة إذا كان المسمى الافتراضي
+  f.role.onchange = () => { const r = S.roles.find((x) => x.key === f.role.value); const old = S.roles.find((x) => x.key === u.role); const g = f.gender.value === 'f';
+    if (r && (!f.job_title.value || (old && [old.name, old.f].includes(f.job_title.value)))) f.job_title.value = g ? r.f : r.name; };
   $('#colors').onclick = (e) => { const c = e.target.dataset.c; if (!c) return; f.theme.value = c; document.documentElement.dataset.color = c; [...$('#colors').children].forEach((b) => b.classList.toggle('on', b.dataset.c === c)); };
   f.onsubmit = async (e) => {
     e.preventDefault();
     const b = Object.fromEntries(new FormData(f)); b.is_public = f.is_public.checked;
-    try { ({ user: S.me } = await api('/api/me', { method: 'PUT', body: b })); applyColor(); toast('تم الحفظ ✅'); } catch (err) { toast(err.message); }
+    const changed = b.role !== S.me.role;
+    if (changed && S.evs.length && !confirm('تغيير الوظيفة يغيّر عناصر التقييم وأوزانها. شواهدك الحالية تبقى محفوظة، واللي على عناصر غير موجودة في الوظيفة الجديدة تظهر في آخر الملف تحت «شواهد أخرى». نكمل؟')) return;
+    try { ({ user: S.me } = await api('/api/me', { method: 'PUT', body: b })); if (changed) await load(); applyColor(); toast('تم الحفظ ✅'); } catch (err) { toast(err.message); }
   };
   $('#pw').onsubmit = async (e) => { e.preventDefault(); try { await api('/api/password', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); e.target.reset(); toast('تم تغيير كلمة المرور'); } catch (err) { toast(err.message); } };
   $('#out').onclick = async () => { await api('/api/logout', { method: 'POST' }); S.me = null; location.hash = '#/login'; };
@@ -337,7 +349,7 @@ async function adminView() {
 async function loadEvs() { S.evs = (await api('/api/evidences')).evidences; }
 async function load() {
   const d = await api('/api/me');
-  Object.assign(S, { me: d.user, standards: d.standards, ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
+  Object.assign(S, { me: d.user, standards: d.standards, roles: d.roles || [], ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
   applyColor();
   await loadEvs();
   await loadTasks();

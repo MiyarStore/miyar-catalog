@@ -1,5 +1,5 @@
 const QRCode = require('qrcode');
-const { STANDARDS, byId } = require('./standards');
+const { ROLES, forRole, roleKey, anyById } = require('./standards');
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nl = (s) => esc(s).replace(/\n/g, '<br>');
@@ -35,7 +35,7 @@ function shareMeta({ title, desc, url, base }) {
 function landing(storeUrl, trialDays, plans = [], base = '') {
   const feats = [
     ['🤖', 'مساعد ذكي يصيغ الشاهد', 'اكتب فكرة الشاهد بكلمتين، ويجهّز لك العنوان الرسمي والأهداف والوصف وآلية التنفيذ ويربطه بالعنصر المناسب.'],
-    ['🗂️', 'مرتّب على العناصر الـ11', 'كل شاهد في مكانه الصحيح حسب عناصر تقييم الأداء الوظيفي، مع نسبة إنجاز لكل عنصر.'],
+    ['🗂️', 'مرتّب على عناصر وظيفتك', 'للمعلم ورائد النشاط والموجه الطلابي والصحي ومعلمة الرياض ومحضر المختبر والوكيل والمدير، كل وظيفة بعناصرها وأوزانها الرسمية.'],
     ['🔗', 'صفحة باسمك ورابط مشاركة', 'صفحة أنيقة فيها كل شواهدك، ترسل رابطها للمدير أو فريق التقويم أو تحطها QR على باب الفصل.'],
     ['🖨️', 'تقرير PDF بقالبين', 'ملف إنجاز كامل بغلاف وفهرس، أو تقرير لعنصر واحد، أو لشاهد واحد، جاهز للطباعة.'],
     ['✅', 'رمز تحقق على كل تقرير', 'كل تقرير وكل عنصر وكل شاهد عليه رمز QR يثبت أنه موثّق في معياري.'],
@@ -43,7 +43,7 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
   ];
   return shell({
     title: 'معياري للمعلم | ملف الإنجاز والشواهد الإلكتروني',
-    extraHead: shareMeta({ base, url: `${base}/`, title: 'معياري | ملف الإنجاز الوظيفي للمعلم والمعلمة', desc: 'وثّق شواهدك على عناصر تقييم الأداء الوظيفي الـ11 من جوالك، والمساعد الذكي يصيغها بلغة رسمية، وملفك الكامل يتجهّز تلقائياً. جرّبه 7 أيام مجاناً.' }),
+    extraHead: shareMeta({ base, url: `${base}/`, title: 'معياري | ملف الإنجاز الوظيفي للمعلم والمعلمة', desc: 'وثّق شواهدك على عناصر تقييم الأداء الوظيفي لوظيفتك من جوالك، والمساعد الذكي يصيغها بلغة رسمية، وملفك الكامل يتجهّز تلقائياً. جرّبه 7 أيام مجاناً.' }),
     body: `
 <header class="wrap" style="display:flex;justify-content:space-between;align-items:center;padding-top:18px;padding-bottom:18px">
   <a class="logo" href="/"><b>م</b>معياري</a>
@@ -52,7 +52,7 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
 <section class="wrap" style="padding:40px 16px 30px;text-align:center">
   <span class="pill">ملف الإنجاز الوظيفي للمعلم والمعلمة</span>
   <h1 style="font-size:clamp(28px,6vw,46px);margin:16px 0 10px">المدير يسألك: وين ملف إنجازك؟<br><span style="color:var(--brand)">خلّه جاهز من جوالك.</span></h1>
-  <p class="muted" style="max-width:640px;margin:0 auto 22px;font-size:17px">وثّق شواهدك على عناصر تقييم الأداء الوظيفي الـ11 في دقيقة، والمساعد الذكي يصيغها لك بلغة رسمية، وملفك الكامل يتجهّز تلقائياً.</p>
+  <p class="muted" style="max-width:640px;margin:0 auto 22px;font-size:17px">وثّق شواهدك على عناصر تقييم الأداء الوظيفي لوظيفتك في دقيقة، والمساعد الذكي يصيغها لك بلغة رسمية، وملفك الكامل يتجهّز تلقائياً.</p>
   <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
     <a class="btn" href="/app#/register" style="font-size:17px;padding:12px 22px">جرّبه ${trialDays} أيام مجاناً</a>
     <a class="btn ghost" href="${esc(storeUrl)}" style="font-size:17px;padding:12px 22px">اشترِ كود التفعيل</a>
@@ -63,8 +63,9 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
 </section>
 <section class="wrap" style="padding-bottom:50px">
   <div class="card" style="text-align:center">
-    <h2>عناصر التقييم الـ11 كلها في مكان واحد</h2>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px">${STANDARDS.map((s) => `<span class="pill">${s.icon} ${s.name}</span>`).join('')}</div>
+    <h2>ملف إنجاز لكل وظيفة تعليمية</h2>
+    <p class="muted" style="margin:0 auto;max-width:620px">عناصر التقييم وأوزانها لكل وظيفة مأخوذة من نماذج الدليل الإرشادي لإدارة الأداء الوظيفي لشاغلي الوظائف التعليمية (الإصدار الثاني).</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px">${Object.values(ROLES).map((r) => `<span class="pill">${r.name} · ${r.items.length} عنصر</span>`).join('')}</div>
   </div>
 </section>
 <section class="wrap" style="padding-bottom:40px">
@@ -98,7 +99,8 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
 async function publicPage(u, evs, base, isOwner) {
   const url = `${base}/p/${u.slug}`;
   const code = await qr(url, 220);
-  const byStd = STANDARDS.map((s) => ({ s, items: evs.filter((e) => e.standard_id === s.id) }));
+  const list = forRole(u.role);
+  const byStd = list.map((s) => ({ s, items: evs.filter((e) => e.standard_id === s.id) }));
   const covered = byStd.filter((x) => x.items.length).length;
   const card = (e) => {
     const imgs = e.files.filter((f) => f.mime.startsWith('image/'));
@@ -143,9 +145,9 @@ async function publicPage(u, evs, base, isOwner) {
       <div class="chips">${[u.stage, u.office, u.year].filter(Boolean).map((x) => `<span class="pill">${esc(x)}</span>`).join('')}</div>
       <div style="display:flex;gap:18px;margin-top:14px;flex-wrap:wrap">
         <div><b style="font-size:24px;color:var(--brand)">${evs.length}</b> <span class="muted">شاهد</span></div>
-        <div><b style="font-size:24px;color:var(--brand)">${covered}/11</b> <span class="muted">عنصر مغطّى</span></div>
+        <div><b style="font-size:24px;color:var(--brand)">${covered}/${list.length}</b> <span class="muted">عنصر مغطّى</span></div>
       </div>
-      <div class="bar" style="margin-top:8px"><i style="width:${Math.round((covered / 11) * 100)}%"></i></div>
+      <div class="bar" style="margin-top:8px"><i style="width:${Math.round((covered / list.length) * 100)}%"></i></div>
     </div>
     <div class="card" style="text-align:center"><img src="${code}" alt="QR" style="width:150px;height:150px"><div class="muted" style="font-size:12px">امسح الرمز لفتح الملف</div></div>
   </div>
@@ -164,8 +166,8 @@ function verifyPage({ kind, ev, std, u, count, stdCount, base }) {
   }
   const owner = kind === 'evidence' ? ev : u;
   const rows = kind === 'evidence'
-    ? [['الشاهد', ev.title], ['العنصر', `${std.id}. ${std.name}`], ['التاريخ', hijri(ev.ev_date) || '—'], ['صاحب الملف', ev.full_name], ['المدرسة', ev.school || '—'], ['رمز التحقق', ev.verify_code]]
-    : [['صاحب الملف', u.full_name], ['الوظيفة', u.job_title], ['المدرسة', u.school || '—'], kind === 'standard' ? ['العنصر', `${std.id}. ${std.name}`] : ['العناصر المغطّاة', `${stdCount} من 11`], ['عدد الشواهد', String(count)], ['رمز التحقق', u.verify_code]];
+    ? [['الشاهد', ev.title], ['العنصر', std.name], ['التاريخ', hijri(ev.ev_date) || '—'], ['صاحب الملف', ev.full_name], ['المدرسة', ev.school || '—'], ['رمز التحقق', ev.verify_code]]
+    : [['صاحب الملف', u.full_name], ['الوظيفة', u.job_title], ['المدرسة', u.school || '—'], kind === 'standard' ? ['العنصر', std.name] : ['العناصر المغطّاة', `${stdCount} من ${forRole(u.role).length}`], ['عدد الشواهد', String(count)], ['رمز التحقق', u.verify_code]];
   const link = owner.is_public ? `<a class="btn" href="${base}/p/${owner.slug}">عرض الملف كاملاً</a>` : '';
   return shell({
     title: 'تحقق من التقرير',
@@ -183,10 +185,15 @@ function verifyPage({ kind, ev, std, u, count, stdCount, base }) {
 async function printReport({ u, evs, template, base, scope, std }) {
   const modern = template === 'modern';
   const vUrl = (code, s) => `${base}/v/${code}${s ? '/' + s : ''}`;
-  const groups = STANDARDS.map((s) => ({ s, items: evs.filter((e) => e.standard_id === s.id) })).filter((g) => g.items.length);
+  const list = forRole(u.role);
+  const inRole = new Set(list.map((s) => s.id));
+  const groups = list.map((s) => ({ s, items: evs.filter((e) => e.standard_id === s.id) })).filter((g) => g.items.length);
+  // شواهد على عناصر من وظيفة سابقة (بعد تغيير الوظيفة) تظهر في آخر الملف ولا تضيع
+  const others = evs.filter((e) => !inRole.has(e.standard_id));
+  if (others.length) groups.push({ s: { id: 0, no: '•', name: 'شواهد أخرى', weight: 0 }, items: others, other: true });
   const qrMain = await qr(scope === 'standard' ? vUrl(u.verify_code, std.id) : vUrl(u.verify_code), 240);
   const stdQr = {};
-  for (const g of groups) stdQr[g.s.id] = await qr(vUrl(u.verify_code, g.s.id), 160);
+  for (const g of groups) if (!g.other) stdQr[g.s.id] = await qr(vUrl(u.verify_code, g.s.id), 160);
   const evQr = {};
   for (const e of evs) evQr[e.id] = await qr(vUrl(e.verify_code), 140);
 
@@ -195,7 +202,7 @@ async function printReport({ u, evs, template, base, scope, std }) {
   const evidenceBlock = (e) => {
     const imgs = e.files.filter((f) => f.mime.startsWith('image/')).slice(0, 4);
     return `<section class="ev">
-      <div class="ev-head"><div><div class="ev-std">${byId(e.standard_id).name}</div><h3>${esc(e.title)}</h3>${e.ev_date ? `<div class="ev-date">${hijri(e.ev_date)}</div>` : ''}</div>
+      <div class="ev-head"><div><div class="ev-std">${esc((anyById(e.standard_id, u.role) || {}).name || '')}</div><h3>${esc(e.title)}</h3>${e.ev_date ? `<div class="ev-date">${hijri(e.ev_date)}</div>` : ''}</div>
       <div class="qr-sm"><img src="${evQr[e.id]}"><span>${e.verify_code}</span></div></div>
       ${e.goals.length ? `<h4>الأهداف</h4><ul>${e.goals.map((g) => `<li>${esc(g)}</li>`).join('')}</ul>` : ''}
       ${e.description ? `<h4>الوصف</h4><p>${nl(e.description)}</p>` : ''}
@@ -214,15 +221,15 @@ async function printReport({ u, evs, template, base, scope, std }) {
     <div class="cover-qr"><img src="${qrMain}"><div>امسح الرمز للتحقق من صحة الملف<br><b>${u.verify_code}</b></div></div>
   </div>`;
 
-  const index = scope !== 'portfolio' ? '' : `<div class="page"><h2 class="sec">فهرس عناصر التقييم</h2>
+  const index = scope !== 'portfolio' ? '' : `<div class="page"><h2 class="sec">فهرس عناصر التقييم</h2><p class="muted" style="margin-top:-6px">حسب ${ROLES[roleKey(u.role)].model} في الدليل الإرشادي لإدارة الأداء الوظيفي</p>
     <table class="idx"><thead><tr><th>م</th><th>العنصر</th><th>الوزن</th><th>عدد الشواهد</th></tr></thead><tbody>
-    ${STANDARDS.map((s) => { const n = evs.filter((e) => e.standard_id === s.id).length; return `<tr class="${n ? '' : 'empty'}"><td>${s.id}</td><td>${s.name}</td><td>${s.weight}%</td><td>${n || '—'}</td></tr>`; }).join('')}
+    ${list.map((s) => { const n = evs.filter((e) => e.standard_id === s.id).length; return `<tr class="${n ? '' : 'empty'}"><td>${s.no}</td><td>${s.name}</td><td>${s.weight}%</td><td>${n || '—'}</td></tr>`; }).join('')}
     </tbody></table>
     ${u.bio ? `<h2 class="sec" style="margin-top:28px">نبذة</h2><p>${nl(u.bio)}</p>` : ''}
   </div>`;
 
   const body = groups.map((g) => `<div class="page">
-    ${scope !== 'evidence' ? `<div class="std-head"><div><span class="std-no">${g.s.id}</span><h2>${g.s.name}</h2><div class="muted">الوزن ${g.s.weight}% · ${g.items.length} شاهد</div></div><div class="qr-sm"><img src="${stdQr[g.s.id]}"><span>تحقق العنصر</span></div></div>` : ''}
+    ${scope !== 'evidence' ? `<div class="std-head"><div><span class="std-no">${g.s.no}</span><h2>${g.s.name}</h2><div class="muted">${g.other ? 'عناصر من وظيفة سابقة' : `الوزن ${g.s.weight}%`} · ${g.items.length} شاهد</div></div>${g.other ? '' : `<div class="qr-sm"><img src="${stdQr[g.s.id]}"><span>تحقق العنصر</span></div>`}</div>` : ''}
     ${g.items.map(evidenceBlock).join('')}
   </div>`).join('');
 

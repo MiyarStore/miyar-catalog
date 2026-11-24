@@ -153,4 +153,6 @@ db.exec(`CREATE TABLE IF NOT EXISTS school_ops (
 try { db.exec('ALTER TABLE users ADD COLUMN privacy_accepted_at INTEGER'); } catch {}
 // رابط فريق التنفيذ (بدون تسجيل دخول) لتأشير الإجراءات
 try { db.exec('ALTER TABLE schools ADD COLUMN team_token TEXT'); } catch {}
+// الوظيفة التعليمية (تحدد عناصر التقييم وأوزانها حسب الدليل الإرشادي)
+try { db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'teacher'"); } catch {}
 module.exports = { db, DATA_DIR };

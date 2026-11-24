@@ -39,3 +39,18 @@ test('النموذج (ب) نفس الأسئلة بترتيب مختلف', () => 
   assert.deepStrictEqual([...a].sort(), [...b].sort());
   assert.notDeepStrictEqual(a, b);
 });
+
+// عناصر الوظائف حسب الدليل الإرشادي (الإصدار الثاني): العدد والمجموع 100%
+test('عناصر كل وظيفة مجموع أوزانها 100% وعددها حسب الدليل', () => {
+  const S = require('../src/standards');
+  const want = { teacher: 11, activity: 15, health: 14, kg: 19, lab: 13, counselor: 13, deputy: 19, principal: 19 };
+  for (const [k, n] of Object.entries(want)) {
+    const l = S.forRole(k);
+    assert.strictEqual(l.length, n, k);
+    assert.strictEqual(l.reduce((a, s) => a + s.weight, 0), 100, k);
+    assert.strictEqual(new Set(l.map((s) => s.id)).size, n, k);
+  }
+  assert.strictEqual(S.byId(102, 'deputy').weight, 10);
+  assert.strictEqual(S.byId(110, 'principal').weight, 10);
+  assert.strictEqual(S.mapTo('kg', 10), 49);
+});
