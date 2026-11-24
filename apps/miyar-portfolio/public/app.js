@@ -68,10 +68,12 @@ function banner() {
 // هل جاء المستخدم من «معياري للمدرسة»؟ (نعرض هوية المدرسة في شاشة الدخول)
 const forSchool = () => { try { return (sessionStorage.getItem('miyar-next') || '').startsWith('/school'); } catch { return false; } };
 
+const TOOL_NAMES = { new: 'صياغة الشاهد بالذكاء الاصطناعي', self: 'التقييم الذاتي', logs: 'السجلات اليومية', rec: 'مساعد المعلم', exam: 'صانع الاختبارات', report: 'خطة التحسين من تقرير التقويم الذاتي', plan: 'خطة التحسين', nafis: 'الخطة العلاجية لنافس', evidence: 'ملف شواهد التقويم المدرسي', board: 'لوحة المدرسة الذكية', ops: 'الخطة التشغيلية', team: 'إسناد المهام للمعلمين' };
+const goingTo = () => { try { const n = sessionStorage.getItem('miyar-next') || ''; const k = (n.split('#/')[1] || '').split(/[/?]/)[0]; return TOOL_NAMES[k] || ''; } catch { return ''; } };
 function authView(mode) {
   const sch = forSchool();
   view.innerHTML = `<div class="auth card">
-    <div style="text-align:center;margin-bottom:12px"><a class="logo" href="${sch ? '/school' : '/'}" style="font-size:22px"><b>م</b>${sch ? 'معياري للمدرسة' : 'معياري للمعلم'}</a><p class="muted" style="margin:6px 0 0">${sch ? 'خطة التحسين وخطة نافس وملف شواهد التقويم' : 'ملف الإنجاز والشواهد الإلكتروني'}</p>${sch ? '<p class="muted" style="margin:8px 0 0;font-size:13px">سجّل دخولك أو أنشئ حساباً جديداً للمدرسة. الحساب نفسه يشتغل في معياري للمعلم.</p>' : ''}</div>
+    <div style="text-align:center;margin-bottom:12px"><a class="logo" href="${sch ? '/school' : '/'}" style="font-size:22px"><b>م</b>${sch ? 'معياري للمدرسة' : 'معياري للمعلم'}</a><p class="muted" style="margin:6px 0 0">${sch ? 'خطة التحسين وخطة نافس وملف شواهد التقويم' : 'ملف الإنجاز والشواهد الإلكتروني'}</p>${sch ? '<p class="muted" style="margin:8px 0 0;font-size:13px">سجّل دخولك أو أنشئ حساباً جديداً للمدرسة. الحساب نفسه يشتغل في معياري للمعلم.</p>' : ''}${goingTo() ? `<p class="next-tool">بعد ما تنشئ حسابك أو تدخل، تفتح لك مباشرة: <b>${esc(goingTo())}</b></p>` : ''}</div>
     <div class="tabs"><a href="#/login" class="${mode === 'login' ? 'on' : ''}">تسجيل الدخول</a><a href="#/register" class="${mode === 'register' ? 'on' : ''}">حساب جديد</a></div>
     <form id="f">
       ${mode === 'register' ? `<div class="field"><label>الاسم الكامل</label><input name="full_name" required placeholder="مثال: أحمد محمد العتيبي"></div>
@@ -497,7 +499,12 @@ async function route() {
   const parts = p.split('/');
   const q = new URLSearchParams(qs || '');
   if (!S.me && !['login', 'register'].includes(parts[0])) {
-    try { await load(); } catch { location.hash = '#/login'; return; }
+    const want = location.hash.slice(2);
+    try { await load(); } catch {
+      // زائر جاي لأداة محددة: نحفظ وجهته، ونفتح له إنشاء الحساب، وبعدها يدخل الأداة مباشرة
+      if (parts[0]) { try { sessionStorage.setItem('miyar-next', '/app#/' + want); } catch {} location.hash = '#/register'; return; }
+      location.hash = '#/login'; return;
+    }
   }
   topbar(parts[0]);
   window.scrollTo(0, 0);

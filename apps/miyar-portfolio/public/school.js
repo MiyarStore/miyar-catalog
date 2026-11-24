@@ -23,7 +23,7 @@ async function api(path, opts = {}) {
   const r = await fetch(path, o);
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
-    if (r.status === 401) { sessionStorage.setItem('miyar-next', '/school' + location.hash); location.href = '/app#/login'; }
+    if (r.status === 401) { sessionStorage.setItem('miyar-next', '/school' + location.hash); location.href = location.hash.length > 2 ? '/app#/register' : '/app#/login'; }
     const err = new Error(data.error || 'حدث خطأ، حاول مرة ثانية'); err.status = r.status; err.code = data.code; throw err;
   }
   return data;

@@ -1,5 +1,6 @@
 const QRCode = require('qrcode');
 const { ROLES, forRole, roleKey, anyById } = require('./standards');
+const { SCHOOL_PACKAGES } = require('./plans');
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nl = (s) => esc(s).replace(/\n/g, '<br>');
@@ -98,6 +99,14 @@ const LANDING_CSS = `<style>
 .sv-ic{width:50px;height:50px;border-radius:16px;display:grid;place-items:center;background:#E3F1EA;color:#0B6A57;flex:none}.sv.s .sv-ic{background:#F5EBDB;color:#8A5300}
 .sv ul{list-style:none;margin:0;padding:0;display:grid;gap:12px}.sv li{display:flex;gap:10px;align-items:flex-start;font-size:15.5px;line-height:1.7;color:#2C3A45}.sv li svg{flex:none;margin-top:4px;color:#0E7C66}
 .sv .lp-b1{align-self:flex-start;margin-top:auto}
+.tg-h{display:flex;gap:14px;align-items:center;margin-bottom:16px}.tg-h b{display:block;font-size:21px;font-weight:500}.tg-h small{display:block;font-size:13.5px;color:#5F6B74;line-height:1.7}.sv-ic.s{background:#F5EBDB;color:#8A5300}
+.tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.tl{background:#fff;border:1px solid #E7E1D5;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:10px;text-decoration:none;color:#17232E;transition:border-color .15s,box-shadow .15s,transform .15s}
+.tl:hover{border-color:#0E7C66;box-shadow:0 16px 40px rgba(14,124,102,.1);transform:translateY(-2px);color:#17232E}
+.tl-ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:#E3F1EA;color:#0B6A57}
+.tl h3{margin:4px 0 0;font-size:18px;font-weight:500;line-height:1.5}.tl p{margin:0;color:#5F6B74;line-height:1.8;font-size:14.5px;font-weight:300}
+.tl-m{display:flex;flex-wrap:wrap;gap:6px}.tl-m span{font-size:12.5px;padding:4px 10px;border-radius:999px;background:#F7F4EE;color:#4A5862}.tl-m span:first-child{background:#E3F1EA;color:#0B6A57}
+.tl-go{margin-top:auto;padding-top:6px;display:inline-flex;gap:6px;align-items:center;font-weight:500;color:#0E7C66}
 .bento{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .bx{border-radius:26px;padding:28px;display:flex;flex-direction:column;gap:12px;background:#fff;border:1px solid #E7E1D5;min-height:220px}.bx h3{margin:0;font-size:19px;font-weight:500}.bx p{margin:0;color:#5F6B74;line-height:1.8;font-weight:300}
 .bx .bi{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:#F7F4EE;color:#0B6A57}
@@ -115,10 +124,33 @@ const LANDING_CSS = `<style>
 .lp-end h2{margin:0;font-size:clamp(26px,3.6vw,38px);font-weight:300}.lp-end p{margin:0;color:#5F6B74}
 .lp-ft{border-top:1px solid #E7E1D5}.lp-ft .lp-w{padding-top:26px;padding-bottom:30px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;color:#5F6B74;font-size:14px}.lp-ft a{color:#5F6B74;margin-inline-start:18px;text-decoration:none}.lp-ft a:hover{color:#17232E}
 .note{color:#5F6B74;font-size:13.5px;margin:14px 0 0}
-@media(max-width:960px){.lp-hero{grid-template-columns:1fr;gap:34px;padding-top:30px}.lp-nav{display:none}.svc,.promo,.plans{grid-template-columns:1fr}.bento{grid-template-columns:1fr 1fr}.bx.big{grid-column:span 2}}
-@media(max-width:560px){.lp-w{padding:0 18px}.lp-out{display:none}.lp-art{padding:64px 14px 74px;min-height:0;border-radius:26px}.bento{grid-template-columns:1fr}.bx.big{grid-column:auto}.bx{min-height:0}.lp-sec{padding-top:70px}.lp-cta,.lp-cta a{width:100%;justify-content:center}.sv,.bx,.pr,.pl{padding:24px}.mk-f{inset-inline-start:12px;bottom:14px}.mk-q{inset-inline-end:12px;top:14px}}
+@media(max-width:960px){.tools{grid-template-columns:1fr 1fr}.lp-hero{grid-template-columns:1fr;gap:34px;padding-top:30px}.lp-nav{display:none}.svc,.promo,.plans{grid-template-columns:1fr}.bento{grid-template-columns:1fr 1fr}.bx.big{grid-column:span 2}}
+@media(max-width:560px){.tools{grid-template-columns:1fr}.tl{padding:20px}.lp-w{padding:0 18px}.lp-out{display:none}.lp-art{padding:64px 14px 74px;min-height:0;border-radius:26px}.bento{grid-template-columns:1fr}.bx.big{grid-column:auto}.bx{min-height:0}.lp-sec{padding-top:70px}.lp-cta,.lp-cta a{width:100%;justify-content:center}.sv,.bx,.pr,.pl{padding:24px}.mk-f{inset-inline-start:12px;bottom:14px}.mk-q{inset-inline-end:12px;top:14px}}
 </style>`;
+const TEACHER_TOOLS = [
+  { ic: 'doc', t: 'ملف الإنجاز الوظيفي', d: 'شواهدك مرتبة على عناصر تقييم وظيفتك وأوزانها، وملف PDF بغلاف وفهرس جاهز للطباعة.', href: '/app#/', go: 'افتح ملفك' },
+  { ic: 'sparkle', t: 'صياغة الشاهد بالذكاء الاصطناعي', d: 'اكتب الفكرة بكلمتين، ويطلع لك العنوان والأهداف والوصف وآلية التنفيذ والعنصر المناسب.', href: '/app#/new', go: 'صُغ أول شاهد' },
+  { ic: 'target', t: 'التقييم الذاتي للمعلم', d: 'قيّم نفسك بسلّم التقدير الرسمي، واعرف تقديرك المتوقع ووش ينقصك للمستوى الأعلى.', href: '/app#/self', go: 'قيّم نفسك' },
+  { ic: 'calendar', t: 'السجلات اليومية', d: 'حصص الانتظار والمناوبة والتعاميم واللجان والتواصل مع أولياء الأمور والمبادرات، وكل سجل يتحول لشاهد.', href: '/app#/logs', go: 'افتح السجلات' },
+  { ic: 'book', t: 'مساعد المعلم', d: 'سجل المادة والخطة الأسبوعية وتحليل نتائج الطلاب والخطط العلاجية ورسائل أولياء الأمور.', href: '/app#/rec', go: 'افتح المساعد' },
+  { ic: 'edit', t: 'صانع الاختبارات', d: 'جدول المواصفات على المعرفة والتطبيق والاستدلال، ونموذجان ومفتاح وورقة تظليل وتصدير Word.', href: '/app#/exam', go: 'اصنع اختبار' },
+];
+function schoolTools() {
+  const pr = (id) => { const p = SCHOOL_PACKAGES.find((x) => x.id === id); return p ? `${p.price} ريال سنوياً` : ''; };
+  return [
+    { ic: 'trend', t: 'خطة التحسين من تقرير التقويم الذاتي', d: 'ارفع تقرير التقويم الذاتي من منصة تميز، وتطلع لك خطة التحسين مرتبة من المؤشر الأضعف، Word وPDF.', free: 'مجاناً: تحليل تقريرك وأول مؤشرات خطتك', price: pr('school_improve'), href: '/school#/report', go: 'ارفع تقريرك' },
+    { ic: 'target', t: 'الخطة العلاجية لنافس', d: 'أدخل أرقام بطاقة نافس، وتطلع لك خطة علاجية لكل مادة ومجال وصف.', free: 'مجاناً: التحليل كامل وأول 3 مجالات', price: pr('school_nafis'), href: '/school#/nafis', go: 'ابدأ خطة نافس' },
+    { ic: 'folder', t: 'ملف شواهد التقويم المدرسي', d: 'رتّب شواهد مدرستك تحت كل مؤشر، واعرف النواقص قبل الزيارة، وسلّم المقيّم الملف برابط وباركود.', free: 'مجاناً: أول شواهد ومعاينة الفهرس', price: pr('school_evidence'), href: '/school#/evidence', go: 'رتّب شواهدك' },
+    { ic: 'screen', t: 'لوحة المدرسة الذكية', d: 'حضور الفصول وغياب المنسوبين وحصص الانتظار، رصد من جوال المعلم وعرض على شاشة المدرسة.', free: 'مجاناً: معاينة اللوحة', price: pr('school_dashboard'), href: '/school#/board', go: 'شوف اللوحة' },
+    { ic: 'flag', t: 'الخطة التشغيلية', d: 'التوجهات وتحليل الواقع والأهداف والبرامج والإجراءات، تنبني من تقريرك وخطة التحسين ونافس.', free: 'مجاناً: معاينة', price: 'ضمن الباقة الشاملة', href: '/school#/ops', go: 'افتح الخطة التشغيلية' },
+    { ic: 'users', t: 'إسناد المهام للمعلمين', d: 'وزّع إجراءات الخطة على المعلمين، وكل معلم يشوف مهامه ويرفع شاهده، ويطلع في تقرير المتابعة.', free: 'مع خطة التحسين', price: '', href: '/school#/team', go: 'أضف فريقك' },
+  ];
+}
 function landing(storeUrl, trialDays, plans = [], base = '') {
+  const SCHOOL_TOOLS = schoolTools();
+  const bundle = SCHOOL_PACKAGES.find((x) => x.id === 'school_bundle');
+  const minPlan = plans.length ? Math.min(...plans.map((p) => p.price)) : '';
+  const tool = (x) => `<a class="tl" href="${x.href}"><span class="tl-ic">${MI.ico(x.ic, 24)}</span><h3>${x.t}</h3><p>${x.d}</p>${x.free || x.price ? `<div class="tl-m">${x.free ? `<span>${x.free}</span>` : ''}${x.price ? `<span>${x.price}</span>` : ''}</div>` : ''}<span class="tl-go">${x.go} ${MI.ico('arrow', 16)}</span></a>`;
   const bi = (n) => `<span class="bi">${MI.ico(n, 24)}</span>`;
   const btn = { month: 'اشترك شهرياً', term: 'اشترك للفصل', year: 'اشترك سنوياً' };
   const li = (arr) => arr.map((x) => `<li>${MI.ico('check', 18)}<span>${x}</span></li>`).join('');
@@ -128,7 +160,7 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
     extraHead: shareMeta({ base, url: `${base}/`, title: 'معياري | ملف الإنجاز الوظيفي للمعلم والمعلمة', desc: `وثّق شواهدك على عناصر تقييم الأداء الوظيفي لوظيفتك من جوالك، والمساعد الذكي يصيغها بلغة رسمية، وملفك الكامل يتجهّز تلقائياً. جرّبه ${trialDays} أيام مجاناً.` }) + LANDING_CSS,
     body: `
 <div class="lp-top"><div class="lp-w lp-hd"><a class="logo" href="/">${MI.logo(32)}معياري</a>
-  <nav class="lp-nav" aria-label="القائمة الرئيسية"><a href="#services">الخدمات</a><a href="#features">المزايا</a><a href="#pricing">الباقات</a><a href="/school">للمدارس</a><a href="/exam-maker">صانع الاختبارات</a></nav>
+  <nav class="lp-nav" aria-label="القائمة الرئيسية"><a href="#tools">الأدوات</a><a href="#features">المزايا</a><a href="#pricing">الباقات</a><a href="/school">للمدارس</a><a href="/exam-maker">صانع الاختبارات</a></nav>
   <span class="lp-hd-a"><a class="lp-out" href="/app">تسجيل الدخول</a><a class="lp-in" href="/app#/register">ابدأ مجاناً</a></span></div></div>
 <main>
 <div class="lp-w">
@@ -137,7 +169,7 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
       <span class="lp-kick"><i></i>أدوات المعلم وقائد المدرسة في مكان واحد</span>
       <h1>ملف إنجازك <b>يكتب نفسه</b> وأنت تدرّس</h1>
       <p>اكتب عن الشاهد كلمتين وأرفق صورته. معياري يصيغه بلغة رسمية، ويربطه بعنصر التقييم المناسب لوظيفتك، ويجهّز ملفك للطباعة.</p>
-      <div class="lp-cta"><a class="lp-b1 g" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a><a class="lp-b2" href="#services">وش يقدم لك معياري؟</a></div>
+      <div class="lp-cta"><a class="lp-b1 g" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a><a class="lp-b2" href="#tools">اختر أداتك</a></div>
       <div class="lp-trust"><span>${MI.ico('check', 16)}بدون بطاقة دفع</span><span>${MI.ico('check', 16)}من الجوال والكمبيوتر بدون تحميل</span><span>${MI.ico('check', 16)}مبني على الدليل الإرشادي</span></div>
     </div>
     <div class="lp-art" role="img" aria-label="مثال توضيحي: تكتب فكرة الشاهد ومعياري يصيغه ويربطه بعنصر التقييم">
@@ -158,18 +190,15 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
   </section>
   <section class="lp-roles" aria-label="الوظائف المدعومة">لكل وظيفة تعليمية:${Object.values(ROLES).map((r) => `<span>${esc(r.name)}</span>`).join('')}</section>
 
-  <section class="lp-sec" id="services">
-    <div class="lp-eb">الخدمات</div>
-    <h2>وش يقدم لك <b>معياري</b>؟</h2>
-    <p class="lp-lead">قسمين واضحين: واحد للمعلم والمعلمة وكل الوظائف التعليمية، وواحد لقائد المدرسة.</p>
-    <div class="svc">
-      <div class="sv t"><div class="sv-h"><span class="sv-ic">${MI.ico('user', 24)}</span><div><b>للمعلم والمعلمة</b><small>وكل الوظائف التعليمية</small></div></div>
-        <ul>${li(['ملف الإنجاز الوظيفي على عناصر تقييم وظيفتك وأوزانها، PDF جاهز للطباعة', 'صياغة الشواهد بالذكاء الاصطناعي من كلمتين', 'التقييم الذاتي بسلّم التقدير الرسمي ومعرفة تقديرك المتوقع', 'السجلات اليومية: الانتظار والمناوبة والتعاميم واللجان والتواصل مع أولياء الأمور والمبادرات', 'صانع الاختبارات بجدول المواصفات', 'مساعد المعلم: سجل المادة والخطة الأسبوعية وتحليل النتائج والخطط العلاجية'])}</ul>
-        <a class="lp-b1 g" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a></div>
-      <div class="sv s"><div class="sv-h"><span class="sv-ic">${MI.ico('school', 24)}</span><div><b>لقائد المدرسة</b><small>معياري للمدرسة</small></div></div>
-        <ul>${li(['قراءة تقرير التقويم الذاتي من منصة تميز وإعداد خطة التحسين من المؤشر الأضعف', 'قراءة تقرير نافس وإعداد الخطة العلاجية لكل مادة وصف', 'الخطة التشغيلية: التوجهات وتحليل الواقع والأهداف والبرامج ومتابعة التنفيذ', 'ملف شواهد التقويم المدرسي', 'لوحة المدرسة: حضور الفصول وغياب المنسوبين وحصص الانتظار', 'إسناد مهام الخطة للمعلمين ومتابعة تنفيذها'])}</ul>
-        <a class="lp-b1" href="/school">جرّبها لمدرستك</a></div>
-    </div>
+  <section class="lp-sec" id="tools">
+    <div class="lp-eb">الأدوات</div>
+    <h2>اختر الأداة اللي تحتاجها، <b>وابدأ فيها مباشرة</b></h2>
+    <p class="lp-lead">كل أداة باسمها ووش تسوي لك. اضغط عليها، وتدخل عليها على طول بعد إنشاء حسابك.</p>
+    <div class="tg-h"><span class="sv-ic">${MI.ico('user', 22)}</span><div><b>أدوات المعلم والمعلمة</b><small>وكل الوظائف التعليمية · كل الأدوات مجاناً ${trialDays} أيام، وبعدها اشتراك واحد من ${minPlan} ريال</small></div></div>
+    <div class="tools">${TEACHER_TOOLS.map(tool).join('')}</div>
+    <div class="tg-h" style="margin-top:44px"><span class="sv-ic s">${MI.ico('school', 22)}</span><div><b>أدوات قائد المدرسة</b><small>معياري للمدرسة · كل أداة لها باقة سنوية، أو الباقة الشاملة ${bundle ? `${bundle.price} ريال` : ''}</small></div></div>
+    <div class="tools">${SCHOOL_TOOLS.map(tool).join('')}</div>
+    <p class="note">تقدر تجرّب أي أداة قبل ما تشترك. الاشتراك بكود تفعيل من <a href="${esc(storeUrl)}" style="color:inherit">متجر معيار</a> يوصلك فوراً.</p>
   </section>
 
   <section class="lp-sec" id="features">
