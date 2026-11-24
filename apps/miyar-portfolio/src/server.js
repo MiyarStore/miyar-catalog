@@ -15,6 +15,7 @@ const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 7);
 const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 40);
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 const { PLANS } = require('./plans');
+const CAL = require('./calendar');
 const STORE_URL = process.env.STORE_URL || 'https://miyar.store';
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
@@ -142,7 +143,7 @@ app.delete('/api/me', auth, (req, res) => {
 });
 
 app.get('/api/me', auth, (req, res) => {
-  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => s), roles: ROLE_LIST, ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req) });
+  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => s), roles: ROLE_LIST, calendars: CAL.options(), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req) });
 });
 
 const PROFILE_FIELDS = { full_name: 80, gender: 1, job_title: 40, subject: 60, school: 100, stage: 40, office: 80, principal: 80, bio: 400, year: 20, theme: 20 };
@@ -154,6 +155,7 @@ app.put('/api/me', auth, (req, res) => {
     if (b[k] !== undefined) { sets.push(`${k} = ?`); vals.push(clip(b[k], n).trim()); }
   }
   if (b.role !== undefined) { sets.push('role = ?'); vals.push(roleKey(String(b.role))); }
+  if (b.region !== undefined) { sets.push('region = ?'); vals.push(CAL.regionKey(String(b.region))); }
   if (b.is_public !== undefined) { sets.push('is_public = ?'); vals.push(b.is_public ? 1 : 0); }
   if (b.slug !== undefined) {
     const slug = String(b.slug).trim().toLowerCase();

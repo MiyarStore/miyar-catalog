@@ -16,7 +16,7 @@ function mountTeacher(app, { auth, active, printGuard, addEvidence, baseUrl }) {
     const tp = b.template ? TPL.apply(String(b.template), R.uid) : null;
     if (tp) for (const k of ['subject', 'stage', 'term']) if (!b[k] || k === 'subject') b[k] = tp[k];
     const d = R.blank(b, req.user);
-    if (tp) Object.assign(d, { lessons: tp.lessons, skills: tp.skills, start: b.start || tp.start, weeks: tp.weeks, off: tp.off, template: tp.template, per_hint: tp.per_hint });
+    if (tp) Object.assign(d, { lessons: tp.lessons, skills: tp.skills, start: b.start || tp.start, weeks: tp.weeks, off: d.region ? [] : tp.off, template: tp.template, per_hint: tp.per_hint });
     if (!d.subject) return res.status(400).json({ error: 'اكتب اسم المادة' });
     // نسخ الدروس والمهارات وإعدادات الفصل من شعبة ثانية لنفس المادة (بدون الطلاب والدرجات)
     if (b.copy_from) {

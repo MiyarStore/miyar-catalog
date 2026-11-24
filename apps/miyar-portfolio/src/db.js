@@ -155,4 +155,6 @@ try { db.exec('ALTER TABLE users ADD COLUMN privacy_accepted_at INTEGER'); } cat
 try { db.exec('ALTER TABLE schools ADD COLUMN team_token TEXT'); } catch {}
 // الوظيفة التعليمية (تحدد عناصر التقييم وأوزانها حسب الدليل الإرشادي)
 try { db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'teacher'"); } catch {}
+// التقويم الدراسي للمعلم: general (بقية المناطق) أو west (مكة والمدينة وجدة والطائف)
+try { db.exec("ALTER TABLE users ADD COLUMN region TEXT NOT NULL DEFAULT ''"); } catch {}
 module.exports = { db, DATA_DIR };

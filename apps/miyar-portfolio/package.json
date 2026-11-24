@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node --no-warnings src/server.js",
     "dev": "node --watch --no-warnings src/server.js",
-    "test": "node --test test/school.test.js test/exam.test.js"
+    "test": "node --test test/school.test.js test/exam.test.js test/calendar.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.5.0",

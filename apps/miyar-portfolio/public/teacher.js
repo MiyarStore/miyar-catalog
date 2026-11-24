@@ -44,12 +44,18 @@ async function recList() {
     ${templates.length ? `<div class="field"><label>مادة جاهزة <span class="muted">(الدروس والمهارات والتقويم من الكتاب، بدون لصق)</span></label><select name="template" id="tpl"><option value="">بدون، أدخل الدروس بنفسي</option>${templates.map((t) => `<option value="${esc(t.id)}">${esc(t.name)}، ${esc(t.stage)} (${t.lessons} درس)</option>`).join('')}</select></div>` : ''}
     <div class="grid g3"><div class="field"><label>المادة</label><input name="subject" required value="${esc(S.me.subject)}" placeholder="رياضيات"></div>
     <div class="field"><label>الصف</label><input name="grade" placeholder="الثالث المتوسط"></div><div class="field"><label>الشعبة / الفصل</label><input name="section" placeholder="3/1"></div>
-    <div class="field"><label>الفصل الدراسي</label><input name="term" value="الفصل الدراسي الأول"></div><div class="field"><label>بداية الدراسة</label><input type="date" name="start"></div><div class="field"><label>عدد الأسابيع</label><input type="number" name="weeks" value="18" min="4" max="24"></div></div>
+    <div class="field"><label>التقويم الدراسي</label><select name="region">${REGION_OPTS(S.me.region || '')}</select></div><div class="field"><label>الفصل الدراسي</label><select name="term">${TERM_OPTS(S.calendars && S.calendars[0] ? S.calendars[0].currentTerm : '')}</select></div><div class="field"><label>بداية الدراسة</label><input type="date" name="start"></div><div class="field"><label>عدد الأسابيع</label><input type="number" name="weeks" value="18" min="4" max="24"></div></div>
     ${list.length ? `<div class="field"><label>انسخ الدروس والمهارات والاختبارات من سجل ثاني <span class="muted">(اختياري، لنفس المادة في شعبة ثانية)</span></label><select name="copy_from"><option value="">بدون نسخ</option>${list.map((r) => `<option value="${r.id}">${esc(r.subject)} ${esc(r.grade)} ${esc(r.section)}</option>`).join('')}</select></div>` : ''}
     <button class="btn">إنشاء السجل</button></form>`;
-  if ($('#tpl')) $('#tpl').onchange = (e) => { const t = templates.find((x) => x.id === e.target.value); if (t) { $('#nr [name=subject]').value = t.name; $('#nr [name=weeks]').closest('.field').style.display = 'none'; $('#nr [name=start]').closest('.field').style.display = 'none'; } else { $('#nr [name=weeks]').closest('.field').style.display = ''; $('#nr [name=start]').closest('.field').style.display = ''; } };
+  const nr = $('#nr'); regionToggle(nr); nr.region.onchange = () => regionToggle(nr);
+  if ($('#tpl')) $('#tpl').onchange = (e) => { const t = templates.find((x) => x.id === e.target.value); if (t) $('#nr [name=subject]').value = t.name; };
   $('#nr').onsubmit = async (e) => { e.preventDefault(); try { const d = await api('/api/rec', { method: 'POST', body: Object.fromEntries(new FormData(e.target)) }); Object.assign(RC, d); location.hash = `#/rec/${d.rec.id}`; } catch (err) { toast(err.message); } };
 }
+
+const REGION_OPTS = (cur) => `<option value="">تقويم مخصص (أحدد البداية والأسابيع بنفسي)</option>${(S.calendars || []).map((c) => `<option value="${c.key}" ${cur === c.key ? 'selected' : ''}>${esc(c.short)}</option>`).join('')}`;
+const TERM_OPTS = (cur) => ['الفصل الدراسي الأول', 'الفصل الدراسي الثاني'].map((t) => `<option ${cur === t ? 'selected' : ''}>${t}</option>`).join('');
+// يخفي حقول البداية والأسابيع لما يكون التقويم معتمد
+function regionToggle(form) { const on = !!form.region.value; for (const n of ['start', 'weeks']) { const f = form[n] && form[n].closest('.field'); if (f) f.style.display = on ? 'none' : ''; } }
 
 // ---------- السجل ----------
 const TABS = [['setup', '⚙️ البيانات'], ['plan', '🗓️ الخطة'], ['tests', '📝 الاختبارات'], ['analysis', '📊 التحليل والعلاج'], ['compare', '📈 القبلي والبعدي'], ['follow', '👥 المتابعة'], ['parents', '💬 أولياء الأمور'], ['export', '🖨️ التصدير والشواهد']];
@@ -58,7 +64,7 @@ async function recView(id, tab = 'setup', q) {
   if (!RC.rec || RC.rec.id !== Number(id)) { view.innerHTML = '<p class="muted">جاري التحميل...</p>'; try { await recLoad(id); } catch (e) { toast(e.message); location.hash = '#/rec'; return; } }
   const r = RC.rec;
   const steps = [['الطلاب', r.students.length], ['الجدول', r.slots.length], ['الدروس', r.lessons.length], ['المهارات', r.skills.length], ['اختبار مرصود', RC.calc.tests.some((t) => t.n)]];
-  view.innerHTML = `${banner()}<div class="head"><div><a href="#/rec" class="muted" style="text-decoration:none">→ سجلاتي</a><h1 style="margin:4px 0 0">${esc(r.subject)}${r.grade ? ` · ${esc(r.grade)}` : ''}${r.section ? ` (${esc(r.section)})` : ''}</h1><div class="muted">${esc(r.term)} · ${r.students.length} طالب · الأسبوع ${RC.calc.plan.current} من ${r.weeks}</div></div>
+  view.innerHTML = `${banner()}<div class="head"><div><a href="#/rec" class="muted" style="text-decoration:none">→ سجلاتي</a><h1 style="margin:4px 0 0">${esc(r.subject)}${r.grade ? ` · ${esc(r.grade)}` : ''}${r.section ? ` (${esc(r.section)})` : ''}</h1><div class="muted">${esc(r.term)} · ${r.students.length} طالب · الأسبوع ${RC.calc.plan.current} من ${RC.calc.plan.total}${RC.calc.plan.calendar ? ` · ${esc(RC.calc.plan.calendar.regionName)}` : ''}</div></div>
     <a class="btn" target="_blank" href="/rec/${r.id}/print">🖨️ السجل كامل</a></div>
     ${steps.some((s) => !s[1]) ? `<div class="card" style="margin-bottom:10px"><b>خطوات البداية</b><ul class="steps-rec" style="margin-top:8px">${steps.map((s, i) => `<li class="${s[1] ? 'ok' : ''}"><b class="n">${s[1] ? '✓' : i + 1}</b>${s[0]}${typeof s[1] === 'number' && s[1] ? ` <span class="muted">(${s[1]})</span>` : ''}</li>`).join('')}</ul></div>` : ''}
     <nav class="rtabs">${TABS.map(([k, t]) => `<a href="#/rec/${r.id}/${k}" class="${tab === k ? 'on' : ''}">${t}</a>`).join('')}</nav><div id="rt"></div>`;
@@ -72,9 +78,12 @@ const rerender = () => route();
 function tSetup(el) {
   const r = RC.rec;
   el.innerHTML = `<form id="sf" class="card" style="margin-bottom:14px"><h3 style="margin-top:0">بيانات الشعبة</h3><div class="grid g3">
-    ${[['subject', 'المادة'], ['grade', 'الصف'], ['section', 'الشعبة'], ['stage', 'المرحلة'], ['term', 'الفصل الدراسي'], ['year', 'العام الدراسي']].map(([k, l]) => `<div class="field"><label>${l}</label><input name="${k}" value="${esc(r[k])}"></div>`).join('')}
+    ${[['subject', 'المادة'], ['grade', 'الصف'], ['section', 'الشعبة'], ['stage', 'المرحلة'], ['year', 'العام الدراسي']].map(([k, l]) => `<div class="field"><label>${l}</label><input name="${k}" value="${esc(r[k])}"></div>`).join('')}
+    <div class="field"><label>الفصل الدراسي</label><select name="term">${TERM_OPTS(r.term)}</select></div>
+    <div class="field"><label>التقويم الدراسي</label><select name="region">${REGION_OPTS(r.region)}</select></div>
     <div class="field"><label>بداية الدراسة (أول يوم)</label><input type="date" name="start" value="${esc(r.start)}"></div><div class="field"><label>عدد الأسابيع</label><input type="number" name="weeks" min="4" max="24" value="${r.weeks}"></div>
-    <div class="field"><label>أسابيع الإجازات والاختبارات <span class="muted">(أرقام، مثل 9، 18)</span></label><input name="off" value="${esc(r.off.join('، '))}"></div></div>
+    <div class="field"><label>أسابيع اختبارات أو إجازات إضافية <span class="muted">(أرقام، مثل 18)</span></label><input name="off" value="${esc(r.off.join('، '))}"></div></div>
+    ${RC.calc.plan.calendar ? `<p class="muted" style="font-size:13px;margin:0 0 10px">📅 ${esc(RC.calc.plan.calendar.regionName)}: يبدأ ${fdate(RC.calc.plan.calendar.start)} وينتهي ${fdate(RC.calc.plan.calendar.end)}، ${RC.calc.plan.calendar.weeks} أسبوعاً و${RC.calc.plan.calendar.schoolDays} يوماً دراسياً. الإجازات تنحسب تلقائياً، والحصص اللي تطيح في يوم إجازة ما يتوزع عليها شيء.</p>` : ''}
     <h3>جدول حصص الشعبة</h3><p class="muted" style="margin-top:0;font-size:13px">علّم حصص هذي الشعبة في الأسبوع، والخطة تتوزع عليها.${r.per_hint ? ` <b>المعتاد لهذي المادة ${r.per_hint} حصص في الأسبوع.</b>` : ''}</p>
     <div style="overflow:auto"><table class="tt"><tr><th></th>${[1, 2, 3, 4, 5, 6, 7, 8].map((p) => `<th>${p}</th>`).join('')}</tr>${DAYS_AR.map((d, i) => `<tr><th>${d}</th>${[1, 2, 3, 4, 5, 6, 7, 8].map((p) => `<td><label><input type="checkbox" name="slot" value="${i}:${p}" ${r.slots.some((s) => s.day === i && s.period === p) ? 'checked' : ''}></label></td>`).join('')}</tr>`).join('')}</table></div>
     <div style="margin-top:12px"><button class="btn">💾 حفظ البيانات والجدول</button></div></form>
@@ -97,6 +106,7 @@ function tSetup(el) {
     ${r.skills.length ? `<div style="margin-top:10px"><table class="etable">${r.skills.map((s, i) => `<tr data-i="${i}"><td style="width:30px">${i + 1}</td><td><input data-k="name" value="${esc(s.name)}"></td><td style="width:40px"><button class="btn ghost sm" data-del="${i}">×</button></td></tr>`).join('')}</table></div><button class="btn sm" id="kts" style="margin-top:8px">💾 حفظ المهارات</button>` : ''}</div>
   <details class="card" style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">حذف السجل</summary><p class="muted">يحذف السجل وكل درجاته. الشواهد اللي أضفتها لملف الإنجاز تبقى.</p><button class="btn danger" id="rdel">حذف السجل نهائياً</button></details>`;
 
+  regionToggle($('#sf')); $('#sf').region.onchange = () => regionToggle($('#sf'));
   $('#sf').onsubmit = async (e) => {
     e.preventDefault(); const f = new FormData(e.target); const b = Object.fromEntries(f);
     b.off = String(b.off || '').split(/[^0-9٠-٩]+/).map((x) => Number(x.replace(/[٠-٩]/g, (c) => '٠١٢٣٤٥٦٧٨٩'.indexOf(c)))).filter(Boolean);
@@ -130,7 +140,7 @@ function tPlan(el) {
   ${p.need > p.capacity ? `<div class="banner expired"><span>الدروس تحتاج ${p.need} حصة، والمتاح ${p.capacity}. ${p.overflow.length} دروس ما دخلت الخطة، زِد الحصص أو قلل حصص بعض الدروس.</span></div>` : ''}
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><a class="btn sm" target="_blank" href="/rec/${r.id}/print?k=week&week=${p.current}">🖨️ خطة هذا الأسبوع</a><a class="btn soft sm" target="_blank" href="/rec/${r.id}/print?k=weeks">🖨️ كل الخطط الأسبوعية</a><a class="btn soft sm" target="_blank" href="/rec/${r.id}/print?k=term">🖨️ الخطة الفصلية</a><a class="btn ghost sm" target="_blank" href="/rec/${r.id}/print?k=progress">🖨️ تقرير سير المادة</a></div>
   <p class="muted" style="font-size:13px;margin-top:0">علّم الدرس لما تنفذه، ويتحدث تقرير سير المادة. ★ تعني إجراء تلقائي (التشخيصي، أو حصة علاجية بعد اختبار مرصود).</p>
-  ${p.weeks.map((w) => `<div class="wkc ${w.n === p.current ? 'cur' : ''}" id="w${w.n}"><div class="head" style="margin:0 0 4px"><b>الأسبوع ${w.n}${w.n === p.current ? ' (الحالي)' : ''}</b><span class="muted" style="font-size:12.5px">${w.from ? `${fdate(w.from)} - ${fdate(w.to)}` : ''} ${w.off ? '· إجازة / اختبارات' : ''}</span></div>
+  ${p.weeks.map((w) => `<div class="wkc ${w.n === p.current ? 'cur' : ''}" id="w${w.n}"><div class="head" style="margin:0 0 4px"><b>الأسبوع ${w.n}${w.n === p.current ? ' (الحالي)' : ''}</b><span class="muted" style="font-size:12.5px">${w.from ? `${fdate(w.from)} - ${fdate(w.to)}` : ''} ${w.off ? `· ${esc((w.holidays || []).join('، ') || 'إجازة / اختبارات')}` : (w.holidays || []).length ? `· 🏖️ ${esc(w.holidays.join('، '))}` : ''}</span></div>
     ${w.items.map((x) => x.type === 'lesson' ? `<label class="it ${x.done ? 'done-l' : ''}"><input type="checkbox" data-l="${x.id}" ${x.done ? 'checked' : ''}> ${esc(x.title)} <span class="muted">(${x.page ? `ص ${x.page}، ` : ''}${x.periods} ${x.periods > 1 ? 'حصص' : 'حصة'}${x.cont ? '، تكملة' : ''})</span></label>` : `<div class="it" style="color:var(--brand-text)">★ ${esc(x.title)}</div>`).join('') || (w.off ? '' : '<div class="muted it">-</div>')}
     ${w.off ? '' : `<a class="muted" style="font-size:12px" target="_blank" href="/rec/${r.id}/print?k=week&week=${w.n}">طباعة الأسبوع</a>`}</div>`).join('')}`;
   el.onchange = async (e) => { const id = e.target.dataset.l; if (!id) return; const lessons = RC.rec.lessons.map((l) => (l.id === id ? { ...l, done: e.target.checked, done_at: e.target.checked ? Date.now() : null } : l)); try { await recSave({ lessons }, true); tPlan(el); toast(e.target.checked ? 'تم ✅' : 'تم التراجع'); } catch (err) { toast(err.message); } };

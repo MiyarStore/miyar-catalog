@@ -3,6 +3,7 @@
 // وتقارن القبلي بالبعدي، وتجهز رسائل أولياء الأمور وتقرير سير المادة.
 const crypto = require('crypto');
 const { db } = require('../db');
+const CAL = require('../calendar');
 
 db.exec(`CREATE TABLE IF NOT EXISTS teacher_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -60,7 +61,7 @@ function blank(b = {}, user = {}) {
   return {
     subject: clip(b.subject || user.subject, 60), grade: clip(b.grade, 40), section: clip(b.section, 20), stage: clip(b.stage || user.stage, 40),
     term: clip(b.term || 'الفصل الدراسي الأول', 40), year: clip(b.year || user.year || '1448 هـ', 20),
-    start: parseDay(b.start) != null ? b.start : '', weeks: Math.min(Math.max(Number(b.weeks) || 18, 4), 24), off: [],
+    region: CAL.regionKey(b.region), start: parseDay(b.start) != null ? b.start : '', weeks: Math.min(Math.max(Number(b.weeks) || 18, 4), 24), off: [],
     slots: [], students: [], lessons: [], skills: [], tests: [], remedial_done: {}, messages: [], template: '', per_hint: 0,
   };
 }
@@ -68,6 +69,7 @@ function blank(b = {}, user = {}) {
 function clean(d) {
   const o = blank();
   for (const k of ['subject', 'grade', 'section', 'stage', 'term', 'year']) o[k] = clip(d[k], 60).trim();
+  o.region = CAL.regionKey(d.region);
   o.start = parseDay(d.start) != null ? d.start : '';
   o.template = clip(d.template, 40); o.per_hint = Math.min(Math.max(Number(d.per_hint) || 0, 0), 12);
   o.weeks = Math.min(Math.max(Number(d.weeks) || 18, 4), 24);
@@ -100,7 +102,16 @@ function clean(d) {
 // ---------- الخطة الفصلية والأسبوعية ----------
 // نوزع الدروس على الأسابيع حسب عدد حصص الشعبة في الأسبوع. الأسبوع الأول فيه التهيئة والتشخيصي،
 // وبعد كل اختبار مرصود نحجز حصة علاجية في الأسبوع اللي بعده (تحديث الخطة حسب نتائج القياس).
+// لو المعلم اختار تقويمه (العام أو الغربي) ناخذ البداية والأسابيع والإجازات من التقويم المعتمد مباشرة،
+// ونتجاوز الحصص اللي تطيح في يوم إجازة (مثل اليوم الوطني أو الإجازات الإضافية).
+function calendarOf(d) {
+  if (!d.region) return null;
+  const ws = CAL.weeks(d.region, d.term);
+  return ws.length ? { ws, sum: CAL.summary(d.region, d.term) } : null;
+}
 function plan(d) {
+  const cal = calendarOf(d);
+  if (cal) d = { ...d, start: cal.sum.start, weeks: cal.ws.length, off: [...new Set([...cal.sum.off, ...d.off.filter((w) => w <= cal.ws.length)])].sort((a, b) => a - b) };
   const per = d.slots.length || 4;
   const start = parseDay(d.start);
   const s0 = start != null ? sundayOf(start) : null;
@@ -121,9 +132,13 @@ function plan(d) {
   let qi = 0;
   for (let w = 1; w <= d.weeks; w++) {
     const from = s0 != null ? s0 + (w - 1) * 7 * DAY : null;
-    const wk = { n: w, from: from != null ? ymd(from) : '', to: from != null ? ymd(from + 4 * DAY) : '', off: d.off.includes(w), items: [], slots: [] };
+    const cw = cal ? cal.ws[w - 1] : null;
+    const closed = (day) => (cw ? !cw.days[day].school : false);
+    const holidays = cw ? [...new Set(cw.days.filter((x) => !x.school && x.holiday && x.holiday !== 'خارج الفصل').map((x) => x.holiday))] : [];
+    const open = d.slots.filter((s) => !closed(s.day));
+    const wk = { n: w, from: from != null ? ymd(from) : '', to: from != null ? ymd(from + 4 * DAY) : '', off: d.off.includes(w) || (cal && !open.length && d.slots.length > 0), holidays, items: [], slots: [] };
     if (!wk.off) {
-      let cap = per;
+      let cap = d.slots.length ? open.length : per;
       for (const r of reserve[w] || []) { if (cap <= 0) break; wk.items.push(r); cap -= r.periods; }
       while (cap > 0 && qi < queue.length) {
         const l = queue[qi]; const take = Math.min(cap, l.left);
@@ -134,7 +149,13 @@ function plan(d) {
       }
       // توزيع على الحصص: كل بند ياخذ حصصه بالترتيب
       const flat = wk.items.flatMap((it) => Array.from({ length: it.periods }, () => it));
-      wk.slots = d.slots.map((s, i) => ({ ...s, date: from != null ? ymd(from + s.day * DAY) : '', item: flat[i] ? { type: flat[i].type, title: flat[i].title, unit: flat[i].unit || '' } : null }));
+      let fi = 0;
+      wk.slots = d.slots.map((s) => {
+        const date = from != null ? ymd(from + s.day * DAY) : '';
+        if (closed(s.day)) return { ...s, date, holiday: cw.days[s.day].holiday, item: null };
+        const it = flat[fi++];
+        return { ...s, date, item: it ? { type: it.type, title: it.title, unit: it.unit || '' } : null };
+      });
     }
     weeks.push(wk);
   }
@@ -142,9 +163,9 @@ function plan(d) {
   const overflow = d.lessons.filter((l) => !placed.has(l.id) || queue.find((q) => q.id === l.id).left > 0);
   const now = todayKSA();
   const current = s0 != null ? Math.min(Math.max(Math.floor((now - s0) / (7 * DAY)) + 1, 1), d.weeks) : 1;
-  const capacity = (d.weeks - d.off.length) * per;
+  const capacity = weeks.filter((w) => !w.off).reduce((a, w) => a + (w.slots.length ? w.slots.filter((s) => !s.holiday).length : per), 0);
   const need = d.lessons.reduce((a, l) => a + l.periods, 0) + Object.values(reserve).flat().length;
-  return { per, weeks, current, overflow, capacity, need };
+  return { per, weeks, current, overflow, capacity, need, start: d.start, total: d.weeks, calendar: cal ? cal.sum : null };
 }
 
 // تقرير سير المادة: المخطط حتى هذا الأسبوع مقابل المنفذ

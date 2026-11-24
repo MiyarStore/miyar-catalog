@@ -267,7 +267,8 @@ function profile() {
       ${inp('job_title', 'المسمى الوظيفي كما يظهر في الملف', 'معلم / وكيل شؤون الطلاب / موجه طلابي')}${inp('subject', 'المادة', 'رياضيات')}
       ${inp('stage', 'المرحلة', 'المرحلة المتوسطة')}${inp('school', 'المدرسة')}
       ${inp('office', 'إدارة التعليم', 'الإدارة العامة للتعليم بمنطقة ...')}${inp('principal', 'اسم مدير المدرسة')}
-      ${inp('year', 'العام الدراسي', '1448 هـ')}</div>
+      ${inp('year', 'العام الدراسي', '1448 هـ')}
+      <div class="field"><label>التقويم الدراسي لمدرستك</label><select name="region"><option value="">اختر</option>${(S.calendars || []).map((c) => `<option value="${c.key}" ${u.region === c.key ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div></div>
     <div class="field"><label>نبذة مختصرة</label><textarea name="bio" placeholder="خبرتك، مؤهلك، اهتماماتك">${esc(u.bio)}</textarea></div>
     <h3>الصفحة العامة</h3>
     <div class="grid g2"><div class="field"><label>رابط صفحتك</label><div style="display:flex;gap:6px;align-items:center;direction:ltr"><span class="muted" style="font-size:13px;white-space:nowrap">${esc(S.base)}/p/</span><input name="slug" value="${esc(u.slug)}" dir="ltr"></div></div>
@@ -349,7 +350,7 @@ async function adminView() {
 async function loadEvs() { S.evs = (await api('/api/evidences')).evidences; }
 async function load() {
   const d = await api('/api/me');
-  Object.assign(S, { me: d.user, standards: d.standards, roles: d.roles || [], ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
+  Object.assign(S, { me: d.user, standards: d.standards, roles: d.roles || [], calendars: d.calendars || [], ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
   applyColor();
   await loadEvs();
   await loadTasks();
