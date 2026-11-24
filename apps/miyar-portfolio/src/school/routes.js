@@ -106,7 +106,7 @@ function mountSchool(app, { auth, currentUser }) {
       packages: SCHOOL_PACKAGES,
       catalog: { basic: catalog('basic'), secondary: catalog('secondary') },
       usage: { plans: used(s.id, 'plan'), planLimit: YEAR_PLAN_LIMIT, trialRows: TRIAL_ROWS },
-      store: process.env.STORE_URL || 'https://miyar.store',
+      store: process.env.STORE_URL || 'https://miyarstore.com',
     });
   });
 

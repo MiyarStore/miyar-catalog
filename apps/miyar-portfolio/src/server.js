@@ -19,7 +19,7 @@ const RUB = require('./rubric');
 const COV = require('./coverage');
 const SELF = require('./self-export');
 const CAL = require('./calendar');
-const STORE_URL = process.env.STORE_URL || 'https://miyar.store';
+const STORE_URL = process.env.STORE_URL || 'https://miyarstore.com';
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
 
