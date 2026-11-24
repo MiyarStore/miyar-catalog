@@ -15,11 +15,11 @@ function hijri(d) {
 }
 const FONTS = '<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Amiri:wght@700&display=swap" rel="stylesheet">';
 
-function shell({ title, body, color = 'miyar', extraHead = '', bodyClass = '', raw = false }) {
+function shell({ title, body, color = 'miyar', extraHead = '', bodyClass = '', raw = false, help = !raw }) {
   return `<!doctype html><html lang="ar" dir="rtl" data-color="${esc(color)}"><head><meta charset="utf-8"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>${FONTS}<link rel="stylesheet" href="/assets/theme.css">${extraHead}
 <script>try{var t=localStorage.getItem('miyar-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script></head>
-<body class="${bodyClass}">${raw ? body : MI.iconizeHtml(body)}</body></html>`;
+<body class="${bodyClass}">${raw ? body : MI.iconizeHtml(body)}${help ? '<script src="/assets/help.js" defer></script>' : ''}</body></html>`;
 }
 
 const notFound = () => shell({ title: 'غير موجود', body: `<div class="wrap" style="padding:80px 16px;text-align:center"><h1>الصفحة غير موجودة</h1><p class="muted">تأكد من الرابط.</p><a class="btn" href="/">الرئيسية</a></div>` });
@@ -80,7 +80,14 @@ const LANDING_CSS = `<style>
 .pl.best{background:#0B1B2B;color:#fff;border-color:#0B1B2B}.pl.best .pc small,.pl.best p{color:#B7C4D1}.pl.best a{background:#3DDBB0;border-color:#3DDBB0}.pl.best a:hover{background:#7BEBCB}
 .pl .bdg{font-size:12.5px;font-weight:600;background:#3DDBB0;color:#0B1B2B;border-radius:999px;padding:3px 12px}
 .lp-ft{padding:30px 0;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;color:#B7C4D1;font-size:14px}.lp-ft a{color:#B7C4D1;margin-inline-start:18px}.lp-ft a:hover{color:#3DDBB0}
-@media(max-width:900px){.lp-nav{display:none}.lp-flow{grid-template-columns:1fr;transform:translateY(40px)}.bento{grid-template-columns:1fr 1fr}.bx.big,.bx.dk{grid-column:span 2}.plans,.promo{grid-template-columns:1fr}}
+.svc{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;max-width:1100px;margin:30px 0 0;text-align:right;transform:translateY(60px)}
+.sv{border-radius:28px;padding:26px;display:flex;flex-direction:column;gap:16px}.sv.t{background:#fff;color:#0B1B2B;box-shadow:0 20px 50px rgba(0,0,0,.25)}.sv.s{background:#3DDBB0;color:#0B1B2B}
+.sv-h{display:flex;gap:12px;align-items:center}.sv-h b{display:block;font-size:22px;font-weight:700}.sv-h small{display:block;font-size:13.5px;color:#42566A}.sv.s .sv-h small{color:#0B4A3D}
+.sv-ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#EFFBF7;color:#0A7B67;flex:none}.sv.s .sv-ic{background:#0B1B2B;color:#3DDBB0}
+.sv ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}.sv li{display:flex;gap:10px;align-items:flex-start;font-size:15.5px;line-height:1.65}.sv li svg{flex:none;margin-top:4px;color:#0A7B67}.sv.s li svg{color:#0B1B2B}
+.sv .lp-b1{align-self:flex-start;margin-top:auto}.sv .lp-b1.dk{background:#0B1B2B;color:#fff}.sv .lp-b1.dk:hover{background:#132A40}
+.how{background:#0B1B2B;border-radius:28px;padding:30px;margin-bottom:60px;color:#fff}.how h2{color:#fff;margin-bottom:6px !important;font-size:24px !important}.lp-flow.in{transform:none;margin-top:16px;max-width:none}
+@media(max-width:900px){.svc{grid-template-columns:1fr;transform:translateY(40px)}.lp-nav{display:none}.lp-flow{grid-template-columns:1fr;transform:translateY(40px)}.bento{grid-template-columns:1fr 1fr}.bx.big,.bx.dk{grid-column:span 2}.plans,.promo{grid-template-columns:1fr}}
 @media(max-width:560px){.lp-w{padding:0 18px}.lp-hero{padding-top:36px}.bento{grid-template-columns:1fr}.bx.big,.bx.dk{grid-column:auto}.bx{min-height:0}.lp-sec{padding-top:80px}.lp-b1,.lp-b2{width:100%;text-align:center}.lp-cta{width:100%}}
 </style>`;
 function landing(storeUrl, trialDays, plans = [], base = '') {
@@ -96,19 +103,29 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
     <nav class="lp-nav" aria-label="القائمة الرئيسية"><a href="#features">المزايا</a><a href="#pricing">الباقات</a><a href="/school">للمدارس</a><a href="/exam-maker">صانع الاختبارات</a></nav>
     <a class="lp-out" href="/app">تسجيل الدخول</a></header>
   <section class="lp-hero">
-    <span class="lp-kick">ملف الإنجاز الوظيفي للمعلم والمعلمة</span>
+    <span class="lp-kick">أدوات المعلم وقائد المدرسة في مكان واحد</span>
     <h1>ملف إنجازك <em>يكتب نفسه</em> وأنت تدرّس</h1>
     <p>صوّر الشاهد واكتب عنه كلمتين. معياري يصيغه بلغة رسمية، ويرتبه على عناصر تقييم وظيفتك، ويجهّز ملفك للطباعة.</p>
-    <div class="lp-cta"><a class="lp-b1" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a><a class="lp-b2" href="#features">شوف كيف يشتغل</a></div>
-    <div class="lp-flow" aria-label="مثال على طريقة العمل">
-      <div class="lp-step"><span>تكتب</span><b>طبّقت التعلم التعاوني في درس الكسور</b></div>
-      <div class="lp-step"><span>يطلع لك</span><b>توظيف استراتيجية التعلم التعاوني في تدريس الكسور</b><small>الأهداف والوصف وآلية التنفيذ مصاغة بلغة رسمية، وتقدر تعدّلها.</small></div>
-      <div class="lp-step"><span>ويُربط بـ</span><b>التنويع في استراتيجيات التدريس</b><small>العنصر المناسب من عناصر تقييم وظيفتك، ويدخل ملفك مباشرة.</small></div>
+    <div class="lp-cta"><a class="lp-b1" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a><a class="lp-b2" href="#services">وش يقدم لك معياري؟</a></div>
+    <div class="svc" id="services">
+      <div class="sv t"><div class="sv-h"><span class="sv-ic">${MI.ico('user', 24)}</span><div><b>للمعلم والمعلمة</b><small>وكل الوظائف التعليمية</small></div></div>
+        <ul>${['ملف الإنجاز الوظيفي على عناصر تقييم وظيفتك وأوزانها، PDF جاهز للطباعة', 'صياغة الشواهد بالذكاء الاصطناعي من كلمتين', 'التقييم الذاتي بسلّم التقدير الرسمي ومعرفة تقديرك المتوقع', 'السجلات اليومية: الانتظار والمناوبة والتعاميم واللجان والتواصل مع أولياء الأمور والمبادرات', 'صانع الاختبارات بجدول المواصفات', 'مساعد المعلم: سجل المادة والخطة الأسبوعية وتحليل النتائج والخطط العلاجية'].map((x) => `<li>${MI.ico('check', 18)}<span>${x}</span></li>`).join('')}</ul>
+        <a class="lp-b1" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a></div>
+      <div class="sv s"><div class="sv-h"><span class="sv-ic">${MI.ico('school', 24)}</span><div><b>لقائد المدرسة</b><small>معياري للمدرسة</small></div></div>
+        <ul>${['قراءة تقرير التقويم الذاتي من منصة تميز وإعداد خطة التحسين من المؤشر الأضعف', 'قراءة تقرير نافس وإعداد الخطة العلاجية لكل مادة وصف', 'الخطة التشغيلية: التوجهات وتحليل الواقع والأهداف والبرامج ومتابعة التنفيذ', 'ملف شواهد التقويم المدرسي', 'لوحة المدرسة: حضور الفصول وغياب المنسوبين وحصص الانتظار', 'إسناد مهام الخطة للمعلمين ومتابعة تنفيذها'].map((x) => `<li>${MI.ico('check', 18)}<span>${x}</span></li>`).join('')}</ul>
+        <a class="lp-b1 dk" href="/school">جرّبها لمدرستك</a></div>
     </div>
   </section>
 </div></div>
 <main class="lp-w">
-  <section class="lp-sec" id="features">
+  <section class="lp-sec" id="features" style="padding-top:110px">
+    <div class="how"><h2>كيف يصيغ معياري شاهدك؟</h2>
+    <div class="lp-flow in" aria-label="مثال على طريقة العمل">
+      <div class="lp-step"><span>تكتب</span><b>طبّقت التعلم التعاوني في درس الكسور</b></div>
+      <div class="lp-step"><span>يطلع لك</span><b>توظيف استراتيجية التعلم التعاوني في تدريس الكسور</b><small>الأهداف والوصف وآلية التنفيذ مصاغة بلغة رسمية، وتقدر تعدّلها.</small></div>
+      <div class="lp-step"><span>ويُربط بـ</span><b>التنويع في استراتيجيات التدريس</b><small>العنصر المناسب من عناصر تقييم وظيفتك، ويدخل ملفك مباشرة.</small></div>
+    </div>
+    </div>
     <h2>كل شي يطلبه منك التقييم، جاهز قبل ما يُطلب</h2>
     <div class="bento">
       <div class="bx big">${ic('doc')}<h3>ملف PDF بترويسة الوزارة</h3><p>غلاف وفهرس وكل عنصر بشواهده، أو تقرير لعنصر واحد أو لشاهد واحد إذا طلبه المدير.</p></div>
@@ -163,6 +180,7 @@ async function publicPage(u, evs, base, isOwner) {
   return shell({
     title: `ملف إنجاز ${u.full_name}`,
     color: u.theme,
+    help: false,
     extraHead: `${shareMeta({ base, url: `${base}/p/${u.slug}`, title: `ملف إنجاز ${u.full_name}`, desc: `ملف الإنجاز الوظيفي لـ${u.full_name}: ${evs.length} شاهد موثّق على عناصر تقييم الأداء الوظيفي.` })}<style>
       .hero{background:var(--navy);color:#fff;padding:36px 0 70px;border-radius:0 0 32px 32px}.hero .btn{background:rgba(255,255,255,.12);color:#fff}
       .hero h1{font-size:clamp(24px,5vw,36px)} .hero .muted{color:rgba(255,255,255,.85)}

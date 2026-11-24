@@ -321,6 +321,7 @@ app.get('/api/admin/stats', auth, admin, (req, res) => {
   const q = (s) => db.prepare(s).get().n;
   const now = Date.now();
   res.json({
+    packages: SCHOOL_PACKAGES.map(({ id, name, price }) => ({ id, name, price })),
     users: q('SELECT COUNT(*) n FROM users'),
     paid: db.prepare('SELECT COUNT(*) n FROM users WHERE plan_ends > ?').get(now).n,
     trial: db.prepare('SELECT COUNT(*) n FROM users WHERE plan_ends <= ? AND trial_ends > ?').get(now, now).n,
@@ -446,6 +447,15 @@ app.get('/print/logs/:kind', (req, res) => {
 require('./teacher/routes').mountTeacher(app, { auth, active, printGuard, addEvidence, baseUrl });
 require('./exam/routes').mountExam(app, { auth, active, printGuard, uploadsDir: UPLOADS });
 
+// «اسأل معياري»: أسئلة الزوار عن التطبيق، وزر واتساب الدعم
+const HELP = require('./help');
+app.get('/api/help', (req, res) => res.json({ wa: HELP.waLink(), ai: aiEnabled() }));
+app.post('/api/help', async (req, res) => {
+  if (!HELP.allowed(req.ip || 'x')) return res.status(429).json({ error: 'أسئلة كثيرة خلال وقت قصير، جرّب بعد دقائق أو كلمنا واتساب.' });
+  const messages = HELP.clean(req.body && req.body.messages);
+  if (!messages) return res.status(400).json({ error: 'اكتب سؤالك' });
+  res.json(await HELP.answer(messages, { trialDays: TRIAL_DAYS, storeUrl: STORE_URL, base: baseUrl(req) }));
+});
 app.get('/privacy', (req, res) => res.send(views.privacyPage(STORE_URL, baseUrl(req))));
 app.get('/terms', (req, res) => res.redirect('/privacy#terms'));
 // أيقونة المتصفح (حرف «م» بلون الهوية)
