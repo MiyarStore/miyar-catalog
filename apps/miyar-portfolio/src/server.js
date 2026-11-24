@@ -26,6 +26,15 @@ const UPLOADS = path.join(DATA_DIR, 'uploads');
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', true);
+// العنوان الرئيسي: إذا تغيّر الدومين، أي طلب صفحة على عنوان قديم يتحوّل للعنوان الجديد بنفس المسار،
+// عشان رموز QR المطبوعة والروابط القديمة تظل شغالة. طلبات الـ API ما تتحول حتى ما تنكسر صفحة مفتوحة.
+const CANON = (() => { try { return process.env.PUBLIC_URL ? new URL(process.env.PUBLIC_URL) : null; } catch { return null; } })();
+app.use((req, res, next) => {
+  const host = String(req.get('host') || '').toLowerCase();
+  if (!CANON || !host || host === CANON.host || !['GET', 'HEAD'].includes(req.method)) return next();
+  if (/^(localhost|127\.|\[::1\])/.test(host) || host.endsWith('.railway.internal') || host === 'healthcheck.railway.app' || req.path.startsWith('/api/')) return next();
+  res.redirect(301, `${CANON.origin}${req.originalUrl}`);
+});
 app.use(express.json({ limit: '1mb' }));
 
 // ---------- أدوات ----------
