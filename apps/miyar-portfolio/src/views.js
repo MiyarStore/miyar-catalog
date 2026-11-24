@@ -5,6 +5,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const nl = (s) => esc(s).replace(/\n/g, '<br>');
 const qr = (text, size = 180) => QRCode.toDataURL(text, { margin: 1, width: size, color: { dark: '#10201e', light: '#ffffff' } });
 const F = require('./fmt');
+const MI = require('../public/icons.js');
 function hijri(d) {
   if (!d) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(String(d))) return esc(F.dual(d));
@@ -12,13 +13,13 @@ function hijri(d) {
   if (isNaN(dt)) return esc(d);
   try { return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' }).format(dt); } catch { return esc(d); }
 }
-const FONTS = '<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Amiri:wght@700&display=swap" rel="stylesheet">';
+const FONTS = '<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Amiri:wght@700&display=swap" rel="stylesheet">';
 
-function shell({ title, body, color = 'miyar', extraHead = '', bodyClass = '' }) {
+function shell({ title, body, color = 'miyar', extraHead = '', bodyClass = '', raw = false }) {
   return `<!doctype html><html lang="ar" dir="rtl" data-color="${esc(color)}"><head><meta charset="utf-8"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>${FONTS}<link rel="stylesheet" href="/assets/theme.css">${extraHead}
 <script>try{var t=localStorage.getItem('miyar-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script></head>
-<body class="${bodyClass}">${body}</body></html>`;
+<body class="${bodyClass}">${raw ? body : MI.iconizeHtml(body)}</body></html>`;
 }
 
 const notFound = () => shell({ title: 'غير موجود', body: `<div class="wrap" style="padding:80px 16px;text-align:center"><h1>الصفحة غير موجودة</h1><p class="muted">تأكد من الرابط.</p><a class="btn" href="/">الرئيسية</a></div>` });
@@ -30,70 +31,113 @@ function shareMeta({ title, desc, url, base }) {
   return `<meta name="description" content="${esc(desc)}"><meta property="og:type" content="website"><meta property="og:locale" content="ar_SA">
 <meta property="og:site_name" content="معياري"><meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${esc(url)}"><meta property="og:image" content="${esc(img)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image"><meta name="theme-color" content="#0f766e">`;
+<meta name="twitter:card" content="summary_large_image"><meta name="theme-color" content="#0B1B2B">`;
 }
 
+// التقارير المطبوعة تبقى بهويتها الرسمية السابقة (الخط والألوان) بعد تغيير تصميم الواجهة
+const PRINT_KEEP = `<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
+:root[data-color] { --brand: #0f766e; --brand-2: #14b8a6; --brand-soft: #e6f6f4; --brand-text: var(--brand); --on-brand: #fff; --bg: #f6f8f8; --card: #ffffff; --text: #10201e; --muted: #5b6b69; --line: #e2e8e7; --radius: 14px; font-family: 'IBM Plex Sans Arabic', 'Tajawal', system-ui, sans-serif; color-scheme: light; }
+:root[data-color="navy"] { --brand: #1e3a8a; --brand-2: #3b82f6; --brand-soft: #e8eefc; } :root[data-color="violet"] { --brand: #5b21b6; --brand-2: #8b5cf6; --brand-soft: #f0eafd; }
+:root[data-color="rose"] { --brand: #9f1239; --brand-2: #f43f5e; --brand-soft: #fdecef; } :root[data-color="gold"] { --brand: #8a5a00; --brand-2: #d99a1e; --brand-soft: #fbf3e2; } :root[data-color="slate"] { --brand: #334155; --brand-2: #64748b; --brand-soft: #eef1f5; }
+.toolbar .btn { border-radius: 10px; min-height: 0; padding: 10px 16px; } .toolbar .btn.sm { padding: 6px 10px; }
+h1, h2, h3, b, strong { font-weight: 700; } body { -webkit-font-smoothing: auto; }
+.card { box-shadow: 0 1px 2px rgba(16,32,30,.06), 0 4px 16px rgba(16,32,30,.06); }
+.pill { padding: 2px 10px; border-radius: 99px; }
+.bar { height: 8px; border-radius: 99px; } .bar > i { background: linear-gradient(90deg, var(--brand), var(--brand-2)); border-radius: 99px; }
+</style>`;
+
 // ---------- الصفحة التعريفية ----------
+const LANDING_CSS = `<style>
+.lp{background:#fff;color:#0B1B2B}.lp-dark{background:#0B1B2B;color:#fff}
+.lp-w{max-width:1200px;margin:0 auto;padding:0 24px}
+.lp-hd{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0}
+.lp-hd .logo{color:#fff;font-size:22px}.lp-nav{display:flex;gap:26px;font-size:15px}.lp-nav a{color:#B7C4D1;text-decoration:none}.lp-nav a:hover{color:#fff}
+.lp-out{padding:10px 20px;font-weight:500;color:#fff;border:1px solid #2C4157;border-radius:999px;text-decoration:none}.lp-out:hover{border-color:#3DDBB0;color:#fff}
+.lp-hero{text-align:center;padding:60px 0 0;display:flex;flex-direction:column;align-items:center;gap:22px}
+.lp-kick{font-size:14px;color:#3DDBB0;font-weight:500}
+.lp-hero h1{margin:0;font-size:clamp(38px,7vw,68px);line-height:1.18;font-weight:700;max-width:900px}.lp-hero h1 em{font-style:normal;color:#3DDBB0}
+.lp-hero p{margin:0;font-size:clamp(17px,2.2vw,20px);line-height:1.75;color:#B7C4D1;max-width:640px;font-weight:300}
+.lp-cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.lp-b1{padding:15px 32px;font-size:17px;font-weight:600;color:#0B1B2B;background:#3DDBB0;border-radius:999px;text-decoration:none}.lp-b1:hover{background:#7BEBCB;color:#0B1B2B}
+.lp-b2{padding:15px 28px;font-size:17px;font-weight:500;color:#fff;border:1px solid #2C4157;border-radius:999px;text-decoration:none}.lp-b2:hover{border-color:#3DDBB0;color:#fff}
+.lp-flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;width:100%;max-width:1000px;margin-top:26px;transform:translateY(48px)}
+.lp-step{background:#132A40;border:1px solid #22405C;border-radius:24px;padding:22px;text-align:right;display:flex;flex-direction:column;gap:8px}
+.lp-step:nth-child(2){background:#fff;color:#0B1B2B;border-color:#fff;box-shadow:0 20px 50px rgba(0,0,0,.25)}.lp-step:nth-child(3){background:#3DDBB0;color:#0B1B2B;border-color:#3DDBB0}
+.lp-step span{font-size:13px;font-weight:600;color:#8FA3B6}.lp-step:nth-child(2) span{color:#0A7B67}.lp-step:nth-child(3) span{color:#0B4A3D}
+.lp-step b{font-size:17px;font-weight:600;line-height:1.55}.lp-step small{font-size:13.5px;color:#5B6B7C;line-height:1.6}.lp-step:nth-child(3) small{color:#0B4A3D}.lp-step:first-child b{font-weight:400;color:#E8EEF4}
+.lp-sec{padding:100px 0 30px}.lp-sec h2{font-size:clamp(28px,4vw,40px);font-weight:700;line-height:1.3;margin:0 0 30px;max-width:720px}
+.bento{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.bx{border-radius:24px;padding:26px;display:flex;flex-direction:column;gap:12px;background:#F3F5F8;min-height:220px}.bx h3{margin:0;font-size:20px;font-weight:600}.bx p{margin:0;color:#42566A;line-height:1.75}
+.bx.big{grid-column:span 2;background:#EFFBF7}.bx.big .ico{color:#0A7B67}.bx.dk{grid-column:span 2;background:#0B1B2B;color:#fff}.bx.dk p{color:#B7C4D1}.bx.dk .ico{color:#3DDBB0}
+.lp-roles{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:26px 0;border-top:1px solid #E2E8EF;border-bottom:1px solid #E2E8EF}
+.lp-roles b{font-weight:600;margin-inline-end:6px}.lp-roles span{padding:8px 16px;border-radius:999px;background:#F3F5F8;font-size:14.5px}
+.promo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.pr{border:1px solid #E2E8EF;border-radius:24px;padding:26px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}.pr .tag{font-size:13px;color:#0A7B67;font-weight:600}.pr h3{margin:0;font-size:21px;font-weight:600}.pr p{margin:0 0 6px;color:#42566A;line-height:1.75}
+.pr a{color:#0B1B2B;font-weight:600;text-decoration:none;border-bottom:2px solid #3DDBB0;padding-bottom:2px}
+.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:1000px}
+.pl{border:1px solid #E2E8EF;border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:14px}.pl .nm{font-size:17px;font-weight:600}.pl .pc{font-size:52px;font-weight:700;line-height:1}.pl .pc small{font-size:16px;font-weight:400;color:#5B6B7C}.pl p{margin:0;color:#5B6B7C;font-size:14px}
+.pl a{margin-top:auto;text-align:center;padding:13px;border-radius:999px;border:1px solid #C9D3DE;color:#0B1B2B;text-decoration:none;font-weight:600}.pl a:hover{border-color:#0B1B2B}
+.pl.best{background:#0B1B2B;color:#fff;border-color:#0B1B2B}.pl.best .pc small,.pl.best p{color:#B7C4D1}.pl.best a{background:#3DDBB0;border-color:#3DDBB0}.pl.best a:hover{background:#7BEBCB}
+.pl .bdg{font-size:12.5px;font-weight:600;background:#3DDBB0;color:#0B1B2B;border-radius:999px;padding:3px 12px}
+.lp-ft{padding:30px 0;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;color:#B7C4D1;font-size:14px}.lp-ft a{color:#B7C4D1;margin-inline-start:18px}.lp-ft a:hover{color:#3DDBB0}
+@media(max-width:900px){.lp-nav{display:none}.lp-flow{grid-template-columns:1fr;transform:translateY(40px)}.bento{grid-template-columns:1fr 1fr}.bx.big,.bx.dk{grid-column:span 2}.plans,.promo{grid-template-columns:1fr}}
+@media(max-width:560px){.lp-w{padding:0 18px}.lp-hero{padding-top:36px}.bento{grid-template-columns:1fr}.bx.big,.bx.dk{grid-column:auto}.bx{min-height:0}.lp-sec{padding-top:80px}.lp-b1,.lp-b2{width:100%;text-align:center}.lp-cta{width:100%}}
+</style>`;
 function landing(storeUrl, trialDays, plans = [], base = '') {
-  const feats = [
-    ['🤖', 'مساعد ذكي يصيغ الشاهد', 'اكتب فكرة الشاهد بكلمتين، ويجهّز لك العنوان الرسمي والأهداف والوصف وآلية التنفيذ ويربطه بالعنصر المناسب.'],
-    ['🗂️', 'مرتّب على عناصر وظيفتك', 'للمعلم ورائد النشاط والموجه الطلابي والصحي ومعلمة الرياض ومحضر المختبر والوكيل والمدير، كل وظيفة بعناصرها وأوزانها الرسمية.'],
-    ['🔗', 'صفحة باسمك ورابط مشاركة', 'صفحة أنيقة فيها كل شواهدك، ترسل رابطها للمدير أو فريق التقويم أو تحطها QR على باب الفصل.'],
-    ['🖨️', 'تقرير PDF بقالبين', 'ملف إنجاز كامل بغلاف وفهرس، أو تقرير لعنصر واحد، أو لشاهد واحد، جاهز للطباعة.'],
-    ['✅', 'رمز تحقق على كل تقرير', 'كل تقرير وكل عنصر وكل شاهد عليه رمز QR يثبت أنه موثّق في معياري.'],
-    ['🌙', 'ثيمات ووضع ليلي', 'ست ألوان تختار منها، ووضع ليلي مريح، ويشتغل من الجوال بدون تحميل.'],
-  ];
+  const ic = (n) => MI.ico(n, 34);
+  const btn = { month: 'اشترك شهرياً', term: 'اشترك للفصل', year: 'اشترك سنوياً' };
   return shell({
-    title: 'معياري للمعلم | ملف الإنجاز والشواهد الإلكتروني',
-    extraHead: shareMeta({ base, url: `${base}/`, title: 'معياري | ملف الإنجاز الوظيفي للمعلم والمعلمة', desc: 'وثّق شواهدك على عناصر تقييم الأداء الوظيفي لوظيفتك من جوالك، والمساعد الذكي يصيغها بلغة رسمية، وملفك الكامل يتجهّز تلقائياً. جرّبه 7 أيام مجاناً.' }),
+    title: 'معياري | ملف الإنجاز الوظيفي للمعلم والمعلمة',
+    bodyClass: 'lp',
+    extraHead: shareMeta({ base, url: `${base}/`, title: 'معياري | ملف الإنجاز الوظيفي للمعلم والمعلمة', desc: `وثّق شواهدك على عناصر تقييم الأداء الوظيفي لوظيفتك من جوالك، والمساعد الذكي يصيغها بلغة رسمية، وملفك الكامل يتجهّز تلقائياً. جرّبه ${trialDays} أيام مجاناً.` }) + LANDING_CSS,
     body: `
-<header class="wrap" style="display:flex;justify-content:space-between;align-items:center;padding-top:18px;padding-bottom:18px">
-  <a class="logo" href="/"><b>م</b>معياري</a>
-  <a class="btn ghost" href="/app">تسجيل الدخول</a>
-</header>
-<section class="wrap" style="padding:40px 16px 30px;text-align:center">
-  <span class="pill">ملف الإنجاز الوظيفي للمعلم والمعلمة</span>
-  <h1 style="font-size:clamp(28px,6vw,46px);margin:16px 0 10px">المدير يسألك: وين ملف إنجازك؟<br><span style="color:var(--brand)">خلّه جاهز من جوالك.</span></h1>
-  <p class="muted" style="max-width:640px;margin:0 auto 22px;font-size:17px">وثّق شواهدك على عناصر تقييم الأداء الوظيفي لوظيفتك في دقيقة، والمساعد الذكي يصيغها لك بلغة رسمية، وملفك الكامل يتجهّز تلقائياً.</p>
-  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-    <a class="btn" href="/app#/register" style="font-size:17px;padding:12px 22px">جرّبه ${trialDays} أيام مجاناً</a>
-    <a class="btn ghost" href="${esc(storeUrl)}" style="font-size:17px;padding:12px 22px">اشترِ كود التفعيل</a>
-  </div>
-</section>
-<section class="wrap grid g3" style="padding-bottom:40px">
-  ${feats.map(([i, t, d]) => `<div class="card"><div style="font-size:28px">${i}</div><h3>${t}</h3><p class="muted" style="margin:0">${d}</p></div>`).join('')}
-</section>
-<section class="wrap" style="padding-bottom:50px">
-  <div class="card" style="text-align:center">
-    <h2>ملف إنجاز لكل وظيفة تعليمية</h2>
-    <p class="muted" style="margin:0 auto;max-width:620px">عناصر التقييم وأوزانها لكل وظيفة مأخوذة من نماذج الدليل الإرشادي لإدارة الأداء الوظيفي لشاغلي الوظائف التعليمية (الإصدار الثاني).</p>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px">${Object.values(ROLES).map((r) => `<span class="pill">${r.name} · ${r.items.length} عنصر</span>`).join('')}</div>
-  </div>
-</section>
-<section class="wrap" style="padding-bottom:40px">
-  <div class="card" style="display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-color:var(--brand-2)">
-    <div><span class="pill">جديد للمدارس</span><h2 style="margin:8px 0 4px">معياري للمدرسة: خطة التحسين من تقرير التقويم المدرسي</h2><p class="muted" style="margin:0">ارفع تقرير التقويم الذاتي من منصة تميز، وتطلع لك خطة التحسين مرتبة من المؤشر الأضعف، جاهزة بصيغة Word وPDF.</p></div>
-    <a class="btn" href="/school">جرّبها لمدرستك</a>
-  </div>
-</section>
-<section class="wrap" style="padding-bottom:40px">
-  <div class="card" style="display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-    <div><span class="pill">جديد للمعلم</span><h2 style="margin:8px 0 4px">صانع الاختبارات بجدول المواصفات</h2><p class="muted" style="margin:0">الجدول على المعرفة والتطبيق والاستدلال، والأسئلة تُكتب حسبه، ونموذجان ومفتاح وورقة تظليل.</p></div>
-    <a class="btn ghost" href="/exam-maker">اعرف أكثر</a>
-  </div>
-</section>
-<section class="wrap" style="padding-bottom:50px" id="pricing">
-  <h2 style="text-align:center">الباقات</h2>
-  <p class="muted" style="text-align:center;margin-top:0">ابدأ بتجربة مجانية ${trialDays} أيام، وبعدها اختر الباقة اللي تناسبك.</p>
-  <div class="grid g3">${plans.map((p) => `<div class="card" style="text-align:center;${p.best ? 'border:2px solid var(--brand-2)' : ''}">
-    ${p.best ? `<span class="pill">⭐ الأوفر${p.saving ? `، توفّر ${p.saving}%` : ''}</span>` : '<span class="pill" style="visibility:hidden">.</span>'}
-    <h3 style="margin-top:10px">${p.name}</h3>
-    <div style="font-size:34px;font-weight:800;color:var(--brand-text)">${p.price} <small style="font-size:15px">ريال / ${p.per}</small></div>
-    <p class="muted" style="margin:6px 0 14px">${p.note}</p>
-    <a class="btn ${p.best ? '' : 'ghost'}" href="${esc(storeUrl)}">اشترِ الكود</a></div>`).join('')}</div>
-  <p class="muted" style="text-align:center;font-size:13px;margin-top:12px">إذا انتهى اشتراكك، تبقى شواهدك محفوظة وصفحتك ظاهرة، وتتوقف الإضافة والطباعة فقط إلى أن تجدد.</p>
-</section>
-<footer class="wrap muted" style="padding:20px 16px 40px;text-align:center;font-size:13px">معياري من متجر معيار للمنتجات التعليمية الرقمية · <a href="/privacy">الخصوصية وشروط الاستخدام</a></footer>`,
+<div class="lp-dark"><div class="lp-w">
+  <header class="lp-hd"><a class="logo" href="/">${MI.logo(34)}معياري</a>
+    <nav class="lp-nav" aria-label="القائمة الرئيسية"><a href="#features">المزايا</a><a href="#pricing">الباقات</a><a href="/school">للمدارس</a><a href="/exam-maker">صانع الاختبارات</a></nav>
+    <a class="lp-out" href="/app">تسجيل الدخول</a></header>
+  <section class="lp-hero">
+    <span class="lp-kick">ملف الإنجاز الوظيفي للمعلم والمعلمة</span>
+    <h1>ملف إنجازك <em>يكتب نفسه</em> وأنت تدرّس</h1>
+    <p>صوّر الشاهد واكتب عنه كلمتين. معياري يصيغه بلغة رسمية، ويرتبه على عناصر تقييم وظيفتك، ويجهّز ملفك للطباعة.</p>
+    <div class="lp-cta"><a class="lp-b1" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a><a class="lp-b2" href="#features">شوف كيف يشتغل</a></div>
+    <div class="lp-flow" aria-label="مثال على طريقة العمل">
+      <div class="lp-step"><span>تكتب</span><b>طبّقت التعلم التعاوني في درس الكسور</b></div>
+      <div class="lp-step"><span>يطلع لك</span><b>توظيف استراتيجية التعلم التعاوني في تدريس الكسور</b><small>الأهداف والوصف وآلية التنفيذ مصاغة بلغة رسمية، وتقدر تعدّلها.</small></div>
+      <div class="lp-step"><span>ويُربط بـ</span><b>التنويع في استراتيجيات التدريس</b><small>العنصر المناسب من عناصر تقييم وظيفتك، ويدخل ملفك مباشرة.</small></div>
+    </div>
+  </section>
+</div></div>
+<main class="lp-w">
+  <section class="lp-sec" id="features">
+    <h2>كل شي يطلبه منك التقييم، جاهز قبل ما يُطلب</h2>
+    <div class="bento">
+      <div class="bx big">${ic('doc')}<h3>ملف PDF بترويسة الوزارة</h3><p>غلاف وفهرس وكل عنصر بشواهده، أو تقرير لعنصر واحد أو لشاهد واحد إذا طلبه المدير.</p></div>
+      <div class="bx">${ic('qr')}<h3>رمز تحقق QR</h3><p>على كل تقرير وكل شاهد، يثبت إنه موثّق في معياري.</p></div>
+      <div class="bx">${ic('calendar')}<h3>سجلاتك اليومية</h3><p>الانتظار والمناوبة والتعاميم واللجان والتواصل مع الأسر، وكل سجل يتحول لشاهد بضغطة.</p></div>
+      <div class="bx">${ic('sparkle')}<h3>مساعد يصيغ الشاهد</h3><p>اكتب الفكرة بكلمتين، ويجهّز العنوان والأهداف والوصف ويقترح العنصر المناسب.</p></div>
+      <div class="bx">${ic('target')}<h3>تقييم ذاتي بسلّم التقدير</h3><p>قيّم نفسك بأوصاف المستويات الرسمية، واعرف وش ينقصك للمستوى الأعلى.</p></div>
+      <div class="bx dk">${ic('link')}<h3>صفحة باسمك</h3><p>رابط واحد ترسله لفريق التقويم بدل الملفات والمجلدات، أو تحطه QR على باب الفصل.</p></div>
+    </div>
+  </section>
+  <section class="lp-roles" aria-label="الوظائف المدعومة"><b>لكل وظيفة تعليمية:</b>${Object.values(ROLES).map((r) => `<span>${esc(r.name)}</span>`).join('')}</section>
+  <p style="color:#5B6B7C;font-size:13.5px;margin:12px 0 0">عناصر التقييم وأوزانها لكل وظيفة من نماذج الدليل الإرشادي لإدارة الأداء الوظيفي لشاغلي الوظائف التعليمية (الإصدار الثاني).</p>
+  <section class="lp-sec" style="padding-top:70px">
+    <div class="promo">
+      <div class="pr"><span class="tag">للمدارس</span><h3>معياري للمدرسة</h3><p>ارفع تقرير التقويم الذاتي من منصة تميز، وتطلع لك خطة التحسين مرتبة من المؤشر الأضعف، جاهزة Word وPDF.</p><a href="/school">جرّبها لمدرستك</a></div>
+      <div class="pr"><span class="tag">للمعلم</span><h3>صانع الاختبارات بجدول المواصفات</h3><p>الجدول على المعرفة والتطبيق والاستدلال، والأسئلة تُكتب حسبه، ونموذجان ومفتاح وورقة تظليل.</p><a href="/exam-maker">اعرف أكثر</a></div>
+    </div>
+  </section>
+  <section class="lp-sec" id="pricing" style="padding-bottom:90px">
+    <h2 style="margin-bottom:8px">سعر كوب قهوة</h2>
+    <p style="color:#5B6B7C;margin:0 0 28px;font-size:17px">جرّب ${trialDays} أيام مجاناً، وبعدها اختر الباقة اللي تناسبك.</p>
+    <div class="plans">${plans.map((p) => `<div class="pl${p.best ? ' best' : ''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="nm">${esc(p.name)}</span>${p.best ? `<span class="bdg">الأوفر${p.saving ? ` · وفّر ${p.saving}%` : ''}</span>` : ''}</div>
+      <div class="pc">${p.price} <small>ريال / ${esc(p.per)}</small></div><p>${esc(p.note)}</p>
+      <a href="${esc(storeUrl)}">${btn[p.id] || 'اشترك'}</a></div>`).join('')}</div>
+    <p style="color:#5B6B7C;font-size:13.5px;margin-top:16px">إذا انتهى اشتراكك، تبقى شواهدك محفوظة وصفحتك ظاهرة، وتتوقف الإضافة والطباعة فقط إلى أن تجدد.</p>
+  </section>
+</main>
+<footer class="lp-dark"><div class="lp-w lp-ft"><span>معياري · من متجر معيار للمنتجات التعليمية الرقمية</span><span><a href="/privacy">الخصوصية والشروط</a><a href="${esc(storeUrl)}">المتجر</a></span></div></footer>`,
   });
 }
 
@@ -113,14 +157,14 @@ async function publicPage(u, evs, base, isOwner) {
       <div class="muted" style="font-size:13px">${hijri(e.ev_date)}</div>
       ${e.description ? `<p>${nl(e.description)}</p>` : ''}
       ${e.goals.length ? `<details><summary>الأهداف وآلية التنفيذ</summary><ul>${e.goals.map((g) => `<li>${esc(g)}</li>`).join('')}</ul>${e.steps ? `<p>${nl(e.steps)}</p>` : ''}${e.impact ? `<p><b>الأثر:</b> ${nl(e.impact)}</p>` : ''}</details>` : ''}
-      ${pdfs.length || e.links.length ? `<div class="ev-links">${pdfs.map((f) => `<a class="btn soft sm" href="/files/${f.id}" target="_blank">📄 ${esc(f.original)}</a>`).join('')}${e.links.map((l) => `<a class="btn soft sm" href="${esc(l)}" target="_blank" rel="noopener">🔗 رابط</a>`).join('')}</div>` : ''}
+      ${pdfs.length || e.links.length ? `<div class="ev-links">${pdfs.map((f) => `<a class="btn soft sm" href="/files/${f.id}" target="_blank">${MI.ico('doc', 16)} ${esc(f.original)}</a>`).join('')}${e.links.map((l) => `<a class="btn soft sm" href="${esc(l)}" target="_blank" rel="noopener">${MI.ico('link', 16)} رابط</a>`).join('')}</div>` : ''}
     </article>`;
   };
   return shell({
     title: `ملف إنجاز ${u.full_name}`,
     color: u.theme,
     extraHead: `${shareMeta({ base, url: `${base}/p/${u.slug}`, title: `ملف إنجاز ${u.full_name}`, desc: `ملف الإنجاز الوظيفي لـ${u.full_name}: ${evs.length} شاهد موثّق على عناصر تقييم الأداء الوظيفي.` })}<style>
-      .hero{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;padding:36px 0 70px}
+      .hero{background:var(--navy);color:#fff;padding:36px 0 70px;border-radius:0 0 32px 32px}.hero .btn{background:rgba(255,255,255,.12);color:#fff}
       .hero h1{font-size:clamp(24px,5vw,36px)} .hero .muted{color:rgba(255,255,255,.85)}
       .prof{margin-top:-50px;display:grid;gap:16px} @media(min-width:760px){.prof{grid-template-columns:1fr 240px}}
       .std{margin:26px 0 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap} .std h2{margin:0;font-size:20px}
@@ -135,7 +179,7 @@ async function publicPage(u, evs, base, isOwner) {
 <div class="hero"><div class="wrap">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
     <span style="opacity:.9;font-weight:700">ملف الإنجاز الوظيفي</span>
-    <div style="display:flex;gap:6px">${isOwner ? '<a class="btn sm" style="background:rgba(255,255,255,.18)" href="/app">✏️ تعديل</a>' : ''}<button class="btn sm" style="background:rgba(255,255,255,.18)" onclick="var r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('miyar-theme',r.dataset.theme)}catch(e){}">🌙</button></div>
+    <div style="display:flex;gap:6px">${isOwner ? `<a class="btn sm" href="/app">${MI.ico('edit', 16)} تعديل</a>` : ''}<button class="btn sm" onclick="var r=document.documentElement;r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('miyar-theme',r.dataset.theme)}catch(e){}" aria-label="الوضع الليلي">${MI.ico('moon', 16)}</button></div>
   </div>
   <h1 style="margin-top:18px">${esc(u.full_name)}</h1>
   <div class="muted">${esc([u.job_title, u.subject && 'مادة ' + u.subject, u.school].filter(Boolean).join(' · '))}</div>
@@ -154,7 +198,7 @@ async function publicPage(u, evs, base, isOwner) {
     <div class="card" style="text-align:center"><img src="${code}" alt="QR" style="width:150px;height:150px"><div class="muted" style="font-size:12px">امسح الرمز لفتح الملف</div></div>
   </div>
   ${byStd.filter((x) => x.items.length).map(({ s, items }) => `
-    <div class="std"><span style="font-size:24px">${s.icon}</span><h2>${s.id}. ${s.name}</h2><span class="pill">${items.length} شاهد</span></div>
+    <div class="std"><span style="color:var(--brand-text)">${MI.icoFor(s.icon, 26)}</span><h2>${s.id}. ${s.name}</h2><span class="pill">${items.length} شاهد</span></div>
     <div class="evs">${items.map(card).join('')}</div>`).join('') || '<div class="card" style="margin-top:20px;text-align:center" class="muted">لا توجد شواهد منشورة بعد.</div>'}
   <p class="muted" style="text-align:center;margin-top:40px;font-size:13px">موثّق عبر <a href="/">معياري</a></p>
 </main>`,
@@ -277,7 +321,8 @@ async function printReport({ u, evs, template, base, scope, std }) {
   return shell({
     title: `تقرير - ${u.full_name}`,
     color: u.theme,
-    extraHead: `<style>${css}</style>`,
+    raw: true,
+    extraHead: `${PRINT_KEEP}<style>${css}</style>`,
     body: `<div class="toolbar"><a class="btn ghost sm" href="/app">→ رجوع</a>
       <a class="btn sm ${modern ? 'ghost' : ''}" href="${q('classic')}">القالب الرسمي</a><a class="btn sm ${modern ? '' : 'ghost'}" href="${q('modern')}">القالب العصري</a>
       <button class="btn sm" onclick="window.print()">🖨️ طباعة / حفظ PDF</button><span class="muted" style="font-size:12px">اختر "حفظ كـ PDF" من نافذة الطباعة</span></div>

@@ -12,7 +12,7 @@ const COLORS = { miyar: '#0f766e', navy: '#1e3a8a', violet: '#5b21b6', rose: '#9
 
 function toast(msg) {
   const t = $('#toast');
-  t.textContent = msg;
+  t.textContent = MI.strip(msg);
   t.classList.add('show');
   clearTimeout(t._h);
   t._h = setTimeout(() => t.classList.remove('show'), 2600);
@@ -36,7 +36,8 @@ const hijri = (d) => { if (!d) return ''; try { return new Intl.DateTimeFormat('
 const today = () => new Date().toISOString().slice(0, 10);
 const fem = () => S.me && S.me.gender === 'f';
 
-function applyColor() { document.documentElement.dataset.color = (S.me && S.me.theme) || 'miyar'; }
+// واجهة التطبيق بهوية معياري دائماً، ولون المعلم يظهر في صفحته العامة وتقاريره
+function applyColor() { document.documentElement.dataset.color = 'miyar'; }
 function toggleDark() {
   const r = document.documentElement;
   const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -45,11 +46,15 @@ function toggleDark() {
 }
 
 function topbar(route) {
-  if (!S.me) { $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="${forSchool() ? '/school' : '/'}"><b>م</b>${forSchool() ? 'معياري للمدرسة' : 'معياري للمعلم'}</a><div class="nav" style="flex:none"><button onclick="toggleDark()" title="الوضع الليلي">🌙</button></div></div></div>`; return; }
-  const l = (h, ic, t) => `<a href="#/${h}" class="${route === h ? 'on' : ''}">${ic} <span class="lbl">${t}</span></a>`;
-  $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">معياري للمعلم</span></a>
-    <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('new', '➕', 'شاهد جديد')}${TEACHES.includes(S.me.role) ? l('rec', '📚', 'مساعد المعلم') + l('exam', '📝', 'صانع الاختبارات') : ''}${l('logs', '🗂️', 'السجلات')}${l('profile', '👤', 'ملفي')}${l('subscription', '⭐', 'الاشتراك')}${S.me.is_admin ? l('admin', '🛠️', 'الإدارة') : ''}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
-  document.querySelector('.nav a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  const dk = `<button class="tb-btn" onclick="toggleDark()" title="الوضع الليلي" aria-label="الوضع الليلي">${MI.ico('moon', 20)}</button>`;
+  if (!S.me) { $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="${forSchool() ? '/school' : '/'}"><b>م</b>${forSchool() ? 'معياري للمدرسة' : 'معياري'}</a><div style="display:flex">${dk}</div></div></div>`; return; }
+  const T = TEACHES.includes(S.me.role);
+  const on = (h) => route === h || (h === '' && route === 'std') || (h === 'new' && route === 'edit');
+  const l = (h, ic, t, cls = '') => `<a href="#/${h}" class="${on(h) ? 'on' : ''} ${cls}">${cls ? `<i>${MI.ico(ic, 20)}</i>` : MI.ico(ic, 19)}<span>${t}</span></a>`;
+  $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b>معياري</a>
+    <nav class="nav" aria-label="التنقل">${l('', 'home', 'الرئيسية')}${l('new', 'plus', 'شاهد جديد')}${T ? l('rec', 'book', 'مساعد المعلم') + l('exam', 'edit', 'صانع الاختبارات') : l('self', 'target', 'التقييم الذاتي')}${l('logs', 'folder', 'السجلات')}${l('profile', 'user', 'حسابي')}${S.me.is_admin ? l('admin', 'tool', 'الإدارة') : ''}${dk}</nav>
+    <div class="tb-side"><a class="tb-btn" href="#/subscription" title="الاشتراك" aria-label="الاشتراك">${MI.ico('star', 20)}</a>${dk}</div></div></div>
+    <nav class="bnav" aria-label="التنقل">${l('', 'home', 'الرئيسية')}${l('logs', 'folder', 'السجلات')}${l('new', 'plus', 'شاهد', 'add')}${T ? l('rec', 'book', 'المساعد') : l('self', 'target', 'التقييم')}${l('profile', 'user', 'حسابي')}</nav>`;
 }
 
 function banner() {
@@ -116,36 +121,78 @@ function bindRubric(after) {
 }
 
 // ---------- الرئيسية ----------
+const IC = (n, s = 20) => MI.ico(n, s);
+const nEv = (n) => (n === 1 ? 'شاهد واحد' : n === 2 ? 'شاهدان' : n > 2 && n < 11 ? `${n} شواهد` : `${n} شاهد`);
+const nEl = (n) => (n === 1 ? 'عنصر واحد' : n === 2 ? 'عنصران' : n > 2 && n < 11 ? `${n} عناصر` : `${n} عنصراً`);
+function ring(pct) {
+  const C = 2 * Math.PI * 48;
+  const d = Math.max(0, Math.min(C, (pct / 100) * C)).toFixed(1);
+  return `<svg class="ring" width="112" height="112" viewBox="0 0 112 112" role="img" aria-label="جاهزية الملف ${pct}% من أوزان التقييم"><circle cx="56" cy="56" r="48" fill="none" stroke="#22405C" stroke-width="10"/>${pct > 0 ? `<circle cx="56" cy="56" r="48" fill="none" stroke="#3DDBB0" stroke-width="10" stroke-linecap="round" stroke-dasharray="${d} 302" transform="rotate(-90 56 56)"/>` : ''}<text x="56" y="64" text-anchor="middle" font-family="Readex Pro, sans-serif" font-size="25" font-weight="700" fill="#fff">${pct}%</text></svg>`;
+}
 function dashboard() {
   const counts = Object.fromEntries(S.standards.map((s) => [s.id, S.evs.filter((e) => e.standard_id === s.id).length]));
   const covered = Object.values(counts).filter(Boolean).length;
+  const missing = S.standards.length - covered;
   const score = S.standards.reduce((a, s) => a + (counts[s.id] ? s.weight : 0), 0);
   const pub = `${S.base}/p/${S.me.slug}`;
-  view.innerHTML = `${banner()}
-  <div class="ai-box">
-    <h2>✨ وثّق شاهد جديد في دقيقة</h2>
-    <p style="margin:0 0 10px;opacity:.9">اكتب فكرة الشاهد بكلمتين، والمساعد يجهّز لك العنوان والأهداف والوصف ويربطه بالعنصر المناسب.</p>
-    <form class="row" id="aiq"><input name="idea" placeholder="مثال: ${esc(IDEAS[S.me.role] || IDEAS.teacher)}" required><button class="btn">صِغها لي</button></form>
-  </div>
-  ${tasksCard()}
-  ${(() => { const L = S.logs; const n = Object.values(L.counts).reduce((a, b) => a + b, 0); return `<a class="card" href="#/logs" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit;${L.due.length ? 'border:2px solid #f59e0b' : ''}"><div style="font-size:30px">🗂️</div><div style="flex:1"><h3 style="margin:0">السجلات اليومية</h3><div class="muted" style="font-size:13px">${L.due.length ? `🔔 عندك ${L.due.length} ${L.due.length > 2 && L.due.length < 11 ? 'متابعات مستحقة' : 'متابعة مستحقة'} في سجل التواصل · ` : ''}${n ? `${n} سجل موثق` : 'حصص الانتظار، المناوبة، التعاميم، اللجان، التواصل مع أولياء الأمور، والمبادرات بقياس قبلي وبعدي. كل سجل يتحول لشاهد بضغطة.'}</div></div><span class="btn sm">افتح</span></a>`; })()}
-  ${TEACHES.includes(S.me.role) ? `<a class="card" href="#/rec" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit;border:2px solid var(--brand-2)"><div style="font-size:30px">📚</div><div style="flex:1"><h3 style="margin:0">مساعد المعلم: سجل المادة يتجهز لحاله</h3><div class="muted" style="font-size:13px">أدخل طلابك وجدولك ودروسك مرة وحدة، وتطلع لك الخطة الأسبوعية والاختبارات والتحليل والخطط العلاجية ورسائل أولياء الأمور والشواهد.</div></div><span class="btn sm">افتح</span></a>
-  <a class="card" href="#/exam" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit"><div style="font-size:30px">📝</div><div style="flex:1"><h3 style="margin:0">صانع الاختبارات بجدول المواصفات</h3><div class="muted" style="font-size:13px">اختر الدروس ويتبني جدول المواصفات وتنكتب الأسئلة عليه، ثم اطبعها بنموذجين ومفتاح وورقة تظليل أو نزّلها Word.</div></div><span class="btn sm">افتح</span></a>` : ''}
-  <div class="stats">
-    <div class="card stat"><b>${S.evs.length}</b>شاهد موثّق</div>
-    <div class="card stat"><b>${covered}/${S.standards.length}</b>عنصر مغطّى</div>
-    <div class="card stat"><b>${score}%</b>من أوزان التقييم فيها شواهد<div class="bar" style="margin-top:6px"><i style="width:${score}%"></i></div></div>
-  </div>
-  ${(() => { const c = selfCalc(); return S.standards.some((s) => s.levels) ? `<a class="card" href="#/self" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit"><div style="font-size:30px">🎯</div><div style="flex:1"><h3 style="margin:0">التقييم الذاتي بسلّم التقدير الرسمي</h3><div class="muted" style="font-size:13px">${c.rated ? `قدّرت ${c.rated} من ${c.total} عناصر · تقديرك المتوقع ${c.value} من 5${c.band ? ` (${esc(c.band.name)})` : ''}` : 'قيّم نفسك من 1 إلى 5 في كل عنصر بأوصاف الوزارة، واعرف تقديرك العام المتوقع وش ينقصك للمستوى الأعلى.'}</div></div><span class="btn sm">${c.rated ? 'افتح' : 'ابدأ'}</span></a>` : ''; })()}
-  <div class="card" style="margin-bottom:18px">
-    <div class="head" style="margin-bottom:8px"><h3 style="margin:0">🔗 صفحتك ورابط المشاركة</h3><span class="pill">${S.me.is_public ? 'منشورة' : 'مخفية'}</span></div>
-    <div class="share"><code>${esc(pub)}</code><button class="btn soft sm" id="copy">نسخ الرابط</button><a class="btn soft sm" href="${esc(pub)}" target="_blank">فتح الصفحة</a>
-    <a class="btn sm" href="/print/portfolio?t=classic" target="_blank">🖨️ ملف الإنجاز PDF</a></div>
-  </div>
-  <div class="head"><div><h2 style="margin:0">عناصر تقييم الأداء الوظيفي</h2><div class="muted" style="font-size:13px">${esc(((S.roles.find((r) => r.key === S.me.role) || {}).model) || '')}، حسب الدليل الإرشادي لإدارة الأداء الوظيفي · <a href="#/profile">تغيير الوظيفة</a></div></div></div>
-  <div class="stds">${S.standards.map((s) => `<a class="card std-card ${counts[s.id] ? 'done' : ''}" href="#/std/${s.id}">
-    <div class="ic">${s.icon}</div><h3>${s.no}. ${esc(s.name)}</h3><div class="muted" style="font-size:12.5px">${esc(s.hint)}</div>
-    <div class="meta"><span>الوزن ${s.weight}%${RT()[s.id] ? ` · 🎯 ${RT()[s.id]}/5` : ''}${(s.parts || []).length && counts[s.id] ? ` · 🧩 ${covOf(s).covered}/${s.parts.length}` : ''}</span><span>${counts[s.id] ? `✅ ${counts[s.id]} شاهد` : 'لا يوجد شاهد'}</span></div></a>`).join('')}</div>`;
+  const st = S.me.status;
+  const name = String(S.me.full_name || '').trim();
+  const short = name.split(/\s+/).slice(0, 2).join(' ');
+  const T = TEACHES.includes(S.me.role);
+  const L = S.logs; const nLogs = Object.values(L.counts).reduce((a, b) => a + b, 0);
+  const c = selfCalc(); const hasRub = S.standards.some((s) => s.levels);
+  const gap = S.standards.filter((s) => !counts[s.id]).sort((a, b) => b.weight - a.weight)[0];
+  const next = gap ? { href: `#/new?std=${gap.id}`, k: 'alert', warn: true, t: `أضف شاهد لـ «${esc(gap.name)}»`, s: `الخطوة الجاية · وزنه ${gap.weight}% من التقييم` }
+    : hasRub && c.rated < c.total ? { href: '#/self', k: 'target', t: 'قيّم نفسك بسلّم التقدير الرسمي', s: 'الخطوة الجاية · كل العناصر عليها شواهد' }
+    : { href: '/print/portfolio?t=classic', k: 'printer', t: 'اطبع ملف إنجازك كامل', s: 'الخطوة الجاية · ملفك مغطّى', blank: true };
+  const head = score >= 100 ? 'ملفك مغطّى بالكامل' : score >= 60 ? 'ملفك قرّب يكتمل' : covered ? 'بداية موفّقة، كمّل' : 'ابدأ ملفك بأول شاهد';
+  const sum = S.evs.length ? `${nEv(S.evs.length)} على ${nEl(covered)}. ${missing ? `باقي ${nEl(missing)} بدون شواهد.` : 'كل العناصر عليها شواهد.'}` : 'اكتب فكرة الشاهد تحت بكلمتين، والمساعد يصيغه ويربطه بالعنصر المناسب.';
+  const pill = st.plan === 'trial' ? `<a class="dh-pill" href="#/subscription">باقي ${st.daysLeft} ${st.daysLeft > 10 ? 'يوم' : 'أيام'} · فعّل</a>` : st.plan === 'expired' ? '<a class="dh-pill exp" href="#/subscription">انتهى الاشتراك · جدّد</a>' : '';
+  const row = (href, k, t, s, blank) => `<a class="lrow" href="${href}"${blank ? ' target="_blank"' : ''}><span class="tile-ic">${IC(k, 22)}</span><span class="t"><b>${t}</b><small>${s}</small></span>${IC('arrow', 18)}</a>`;
+  view.innerHTML = `
+  <section class="dash-hero">
+    <div class="dh-top"><div class="dh-me"><span class="dh-av">${esc(name.charAt(0) || 'م')}</span><div style="min-width:0"><div class="dh-hi">أهلاً</div><div class="dh-name">${esc(short ? `أ. ${short}` : 'بك')}</div></div></div>${pill}</div>
+    <div class="dh-body">${ring(score)}<div class="dh-sum"><b>${head}</b><span>${sum}</span></div></div>
+    <form id="aiq"><div class="dh-ai-l">${IC('sparkle', 18)} وثّق شاهد في دقيقة</div><div class="dh-ai"><input name="idea" aria-label="فكرة الشاهد" placeholder="مثال: ${esc(IDEAS[S.me.role] || IDEAS.teacher)}" required><button class="btn">صِغها لي</button></div></form>
+  </section>
+  <div class="dash-cols">
+    <div class="dash-col">
+      ${L.due.length ? `<a class="card due" href="#/logs/contact"><span class="tile-ic warn">${IC('bell', 24)}</span><span style="flex:1"><b style="display:block;font-weight:600">عندك ${L.due.length} ${L.due.length > 2 && L.due.length < 11 ? 'متابعات مستحقة' : 'متابعة مستحقة'}</b><small class="muted">في سجل التواصل مع أولياء الأمور</small></span>${IC('arrow', 18)}</a>` : ''}
+      <a class="card next" href="${next.href}"${next.blank ? ' target="_blank"' : ''}><span class="tile-ic${next.warn ? ' warn' : ''}">${IC(next.k, 24)}</span><span class="t"><small>${next.s}</small><b>${next.t}</b></span>${IC('arrow', 20)}</a>
+      <div class="qa">
+        <a class="pri" href="#/new">${IC('plus', 26)}<span>شاهد جديد</span></a>
+        <a href="#/logs/wait">${IC('clock', 26)}<span>حصة انتظار</span></a>
+        <a href="#/logs/contact">${IC('phone', 26)}<span>تواصل مع ولي أمر</span></a>
+        <a href="/print/portfolio?t=classic" target="_blank">${IC('printer', 26)}<span>اطبع ملفي</span></a>
+      </div>
+      ${tasksCard()}
+      <div class="card links" style="padding:4px 0">
+        ${row('#/logs', 'folder', 'السجلات اليومية', nLogs ? `${nLogs} سجل موثّق · الانتظار، المناوبة، التعاميم، اللجان، التواصل، المبادرات` : 'الانتظار والمناوبة والتعاميم واللجان والتواصل والمبادرات، وكل سجل يتحول لشاهد')}
+        ${T ? row('#/rec', 'book', 'مساعد المعلم', 'سجل المادة والخطة الأسبوعية والتحليل والخطط العلاجية') + row('#/exam', 'edit', 'صانع الاختبارات', 'جدول المواصفات ونموذجان ومفتاح وورقة تظليل') : ''}
+        ${hasRub ? row('#/self', 'target', 'التقييم الذاتي', c.rated ? `قدّرت ${c.rated} من ${c.total} · تقديرك المتوقع ${c.value} من 5${c.band ? ` (${esc(c.band.name)})` : ''}` : 'قيّم نفسك بأوصاف الوزارة واعرف وش ينقصك للمستوى الأعلى') : ''}
+      </div>
+      <div class="card share-card">
+        <div class="sec-h" style="margin:0"><h3 style="margin:0;display:flex;gap:8px;align-items:center">${IC('link', 20)} صفحتك ورابط المشاركة</h3><span class="pill">${S.me.is_public ? 'منشورة' : 'مخفية'}</span></div>
+        <div class="share"><code>${esc(pub)}</code><button class="btn soft sm" id="copy">${IC('copy', 16)} نسخ</button><a class="btn ghost sm" href="${esc(pub)}" target="_blank">فتح الصفحة</a></div>
+      </div>
+    </div>
+    <section class="dash-col" aria-label="عناصر التقييم">
+      <div><div class="sec-h"><h2>عناصر التقييم</h2><button type="button" class="chip-btn${S.onlyMissing ? ' on' : ''}" id="miss">${S.onlyMissing ? 'عرض الكل' : 'الناقصة فقط'}</button></div>
+      <div class="muted" style="font-size:12.5px;margin:-6px 0 10px">${esc(((S.roles.find((r) => r.key === S.me.role) || {}).model) || '')}، حسب الدليل الإرشادي لإدارة الأداء الوظيفي · <a href="#/profile">تغيير الوظيفة</a></div></div>
+      <div class="card els" id="els"></div>
+    </section>
+  </div>`;
+  const drawEls = () => {
+    const list = S.standards.filter((s) => !S.onlyMissing || !counts[s.id]);
+    $('#els').innerHTML = list.map((s) => {
+      const n = counts[s.id]; const cv = (s.parts || []).length ? covOf(s) : null; const r = RT()[s.id];
+      const w = n ? (cv && cv.total ? Math.max(12, Math.round((cv.covered / cv.total) * 100)) : Math.min(100, n * 34)) : 6;
+      const meta = [`الوزن ${s.weight}%`, r ? `تقديرك ${r}/5` : '', cv && n ? `وصف «مثالي» ${cv.covered}/${cv.total}` : ''].filter(Boolean).join(' · ');
+      return `<a class="el" href="#/std/${s.id}"><div class="el-top"><span><span class="n">${s.no}.</span> ${esc(s.name)}</span><span class="el-st${n ? '' : ' none'}">${n ? nEv(n) : 'بدون شاهد'}</span></div><div class="bar${n ? '' : ' warn'}"><i style="width:${w}%"></i></div><div class="el-meta">${meta}</div></a>`;
+    }).join('') || '<p class="muted" style="text-align:center;margin:14px 0">كل العناصر عليها شواهد.</p>';
+  };
+  drawEls();
+  $('#miss').onclick = (e) => { S.onlyMissing = !S.onlyMissing; e.target.classList.toggle('on', S.onlyMissing); e.target.textContent = S.onlyMissing ? 'عرض الكل' : 'الناقصة فقط'; drawEls(); };
   $('#aiq').onsubmit = (e) => { e.preventDefault(); sessionStorage.setItem('miyar-idea', e.target.idea.value); location.hash = '#/new'; };
   $('#copy').onclick = () => navigator.clipboard.writeText(pub).then(() => toast('تم نسخ الرابط'));
 }
@@ -375,7 +422,7 @@ function profile() {
   // المسمى يتبع الوظيفة إذا كان المسمى الافتراضي
   f.role.onchange = () => { const r = S.roles.find((x) => x.key === f.role.value); const old = S.roles.find((x) => x.key === u.role); const g = f.gender.value === 'f';
     if (r && (!f.job_title.value || (old && [old.name, old.f].includes(f.job_title.value)))) f.job_title.value = g ? r.f : r.name; };
-  $('#colors').onclick = (e) => { const c = e.target.dataset.c; if (!c) return; f.theme.value = c; document.documentElement.dataset.color = c; [...$('#colors').children].forEach((b) => b.classList.toggle('on', b.dataset.c === c)); };
+  $('#colors').onclick = (e) => { const c = e.target.dataset.c; if (!c) return; f.theme.value = c; [...$('#colors').children].forEach((b) => b.classList.toggle('on', b.dataset.c === c)); };
   f.onsubmit = async (e) => {
     e.preventDefault();
     const b = Object.fromEntries(new FormData(f)); b.is_public = f.is_public.checked;
@@ -470,6 +517,9 @@ async function route() {
 // تكبير مربعات النص تلقائياً حسب المحتوى
 const grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 4 + 'px'; };
 document.addEventListener('input', (e) => { if (e.target.tagName === 'TEXTAREA') grow(e.target); });
+// الإيموجي في الشاشات تتحول لأيقونات خطية موحدة
+const iconObs = new MutationObserver((ms) => { for (const m of ms) m.addedNodes.forEach((n) => { if (n.nodeType === 1) MI.iconize(n); else if (n.nodeType === 3 && n.parentNode) MI.iconize(n.parentNode); }); });
+iconObs.observe(view, { childList: true, subtree: true });
 new MutationObserver(() => document.querySelectorAll('textarea').forEach((t) => { if (t.value && !t._g) { t._g = 1; grow(t); } })).observe(view, { childList: true, subtree: true });
 window.addEventListener('hashchange', route);
 route();
