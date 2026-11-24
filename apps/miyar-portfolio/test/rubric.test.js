@@ -3,7 +3,11 @@ const assert = require('node:assert');
 const RUB = require('../src/rubric');
 const { forRole } = require('../src/standards');
 
-test('سلّم التقدير: خمسة أوصاف لكل عنصر من عناصر المعلم', () => {
+test('سلّم التقدير: خمسة أوصاف لكل عنصر في كل الوظائف', () => {
+  const { ROLES } = require('../src/standards');
+  for (const role of Object.keys(ROLES)) for (const s of forRole(role)) { const l = RUB.levelsOf(s.id, role); assert.ok(l, role + ' ' + s.name); assert.equal(l.length, 5); for (const t of l) assert.ok(t.length > 15, t); }
+  assert.notEqual(RUB.levelsOf(105, 'principal')[0], RUB.levelsOf(105, 'deputy')[0]);
+  assert.notEqual(RUB.levelsOf(7, 'kg')[0], RUB.levelsOf(7, 'teacher')[0]);
   for (const s of forRole('teacher')) { const l = RUB.levelsOf(s.id); assert.ok(l, s.name); assert.equal(l.length, 5); for (const t of l) assert.ok(t.length > 20); }
 });
 test('آلية الاحتساب الرسمية: التقدير × الوزن ومستويات التقدير العام', () => {

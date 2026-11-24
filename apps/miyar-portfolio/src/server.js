@@ -145,7 +145,7 @@ app.delete('/api/me', auth, (req, res) => {
 });
 
 app.get('/api/me', auth, (req, res) => {
-  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => ({ ...s, levels: RUB.levelsOf(s.id) })), bands: RUB.BANDS, roles: ROLE_LIST, calendars: CAL.options(), extras: CAL.extras(), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req) });
+  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => ({ ...s, levels: RUB.levelsOf(s.id, req.user.role) })), bands: RUB.BANDS, roles: ROLE_LIST, calendars: CAL.options(), extras: CAL.extras(), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req) });
 });
 
 const PROFILE_FIELDS = { full_name: 80, gender: 1, job_title: 40, subject: 60, school: 100, stage: 40, office: 80, principal: 80, bio: 400, year: 20, theme: 20 };
