@@ -4,8 +4,10 @@ const { ROLES, forRole, roleKey, anyById } = require('./standards');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nl = (s) => esc(s).replace(/\n/g, '<br>');
 const qr = (text, size = 180) => QRCode.toDataURL(text, { margin: 1, width: size, color: { dark: '#10201e', light: '#ffffff' } });
+const F = require('./fmt');
 function hijri(d) {
   if (!d) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(d))) return esc(F.dual(d));
   const dt = new Date(d + 'T12:00:00');
   if (isNaN(dt)) return esc(d);
   try { return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' }).format(dt); } catch { return esc(d); }
@@ -208,6 +210,7 @@ async function printReport({ u, evs, template, base, scope, std }) {
       ${e.description ? `<h4>الوصف</h4><p>${nl(e.description)}</p>` : ''}
       ${e.steps ? `<h4>آلية التنفيذ</h4><p>${nl(e.steps)}</p>` : ''}
       ${e.impact ? `<h4>الأثر</h4><p>${nl(e.impact)}</p>` : ''}
+      ${(() => { const ps = require('./coverage').partsOf(e.standard_id, u.role).filter((p) => (e.parts || []).includes(p.k)); return ps.length ? `<h4>ما يثبته من وصف المستوى 5 (مثالي)</h4><ul>${ps.map((p) => `<li>${esc(p.t)}</li>`).join('')}</ul>` : ''; })()}
       ${imgs.length ? `<div class="imgs n${imgs.length}">${imgs.map((f) => `<img src="/files/${f.id}">`).join('')}</div>` : ''}
       ${e.links.length ? `<p class="links">${e.links.map((l) => `🔗 ${esc(l)}`).join('<br>')}</p>` : ''}
     </section>`;
@@ -278,7 +281,7 @@ async function printReport({ u, evs, template, base, scope, std }) {
     body: `<div class="toolbar"><a class="btn ghost sm" href="/app">→ رجوع</a>
       <a class="btn sm ${modern ? 'ghost' : ''}" href="${q('classic')}">القالب الرسمي</a><a class="btn sm ${modern ? '' : 'ghost'}" href="${q('modern')}">القالب العصري</a>
       <button class="btn sm" onclick="window.print()">🖨️ طباعة / حفظ PDF</button><span class="muted" style="font-size:12px">اختر "حفظ كـ PDF" من نافذة الطباعة</span></div>
-      ${cover}${index}${body}${empty}`,
+      ${cover}${index}${body}${empty}<p class="madeby" style="text-align:center;font-size:10px;color:#8a9896">${esc(F.madeBy(u))}</p>`,
   });
 }
 

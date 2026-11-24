@@ -16,6 +16,7 @@ const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 40);
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 const { PLANS } = require('./plans');
 const RUB = require('./rubric');
+const COV = require('./coverage');
 const SELF = require('./self-export');
 const CAL = require('./calendar');
 const STORE_URL = process.env.STORE_URL || 'https://miyar.store';
@@ -83,6 +84,7 @@ function evidenceRow(e) {
     ...e,
     goals: JSON.parse(e.goals || '[]'),
     links: JSON.parse(e.links || '[]'),
+    parts: JSON.parse(e.parts || '[]'),
     files: db.prepare('SELECT id, original, mime, size FROM attachments WHERE evidence_id = ? ORDER BY id').all(e.id),
   };
 }
@@ -145,7 +147,7 @@ app.delete('/api/me', auth, (req, res) => {
 });
 
 app.get('/api/me', auth, (req, res) => {
-  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => ({ ...s, levels: RUB.levelsOf(s.id, req.user.role) })), bands: RUB.BANDS, roles: ROLE_LIST, calendars: CAL.options(), extras: CAL.extras(), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req) });
+  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => ({ ...s, levels: RUB.levelsOf(s.id, req.user.role), parts: COV.partsOf(s.id, req.user.role) })), bands: RUB.BANDS, roles: ROLE_LIST, calendars: CAL.options(), extras: CAL.extras(), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req), logs: LOGS.summary(req.user.id) });
 });
 
 const PROFILE_FIELDS = { full_name: 80, gender: 1, job_title: 40, subject: 60, school: 100, stage: 40, office: 80, principal: 80, bio: 400, year: 20, theme: 20 };
@@ -217,8 +219,10 @@ function readEvidence(b, role) {
   if (!title) throw new Error('اكتب عنوان الشاهد');
   const goals = (Array.isArray(b.goals) ? b.goals : String(b.goals || '').split('\n')).map((g) => clip(g, 200).trim()).filter(Boolean).slice(0, 8);
   const links = (Array.isArray(b.links) ? b.links : String(b.links || '').split('\n')).map((l) => clip(l, 500).trim()).filter((l) => /^https?:\/\//.test(l)).slice(0, 8);
+  const valid = COV.partsOf(sid, role).map((p) => p.k);
+  const parts = (Array.isArray(b.parts) ? b.parts : []).map(String).filter((k) => valid.includes(k));
   return {
-    standard_id: sid, title, goals: JSON.stringify(goals), links: JSON.stringify(links),
+    standard_id: sid, title, goals: JSON.stringify(goals), links: JSON.stringify(links), parts: JSON.stringify([...new Set(parts)]),
     description: clip(b.description, 3000), steps: clip(b.steps, 3000), impact: clip(b.impact, 1500), ev_date: clip(b.ev_date, 20),
   };
 }
@@ -229,8 +233,8 @@ app.post('/api/evidences', auth, active, (req, res) => {
   let e;
   try { e = readEvidence(req.body, req.user.role); } catch (err) { return res.status(400).json({ error: err.message }); }
   const now = Date.now();
-  const info = db.prepare(`INSERT INTO evidences (user_id, standard_id, title, goals, description, steps, impact, ev_date, links, verify_code, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(req.user.id, e.standard_id, e.title, e.goals, e.description, e.steps, e.impact, e.ev_date, e.links, rand(10), now, now);
+  const info = db.prepare(`INSERT INTO evidences (user_id, standard_id, title, goals, description, steps, impact, ev_date, links, parts, verify_code, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(req.user.id, e.standard_id, e.title, e.goals, e.description, e.steps, e.impact, e.ev_date, e.links, e.parts, rand(10), now, now);
   res.json({ evidence: evidenceRow(db.prepare('SELECT * FROM evidences WHERE id = ?').get(info.lastInsertRowid)) });
 });
 
@@ -239,8 +243,8 @@ app.put('/api/evidences/:id', auth, active, (req, res) => {
   if (!own) return res.status(404).json({ error: 'الشاهد غير موجود' });
   let e;
   try { e = readEvidence(req.body, req.user.role); } catch (err) { return res.status(400).json({ error: err.message }); }
-  db.prepare(`UPDATE evidences SET standard_id=?, title=?, goals=?, description=?, steps=?, impact=?, ev_date=?, links=?, updated_at=? WHERE id=?`)
-    .run(e.standard_id, e.title, e.goals, e.description, e.steps, e.impact, e.ev_date, e.links, Date.now(), own.id);
+  db.prepare(`UPDATE evidences SET standard_id=?, title=?, goals=?, description=?, steps=?, impact=?, ev_date=?, links=?, parts=?, updated_at=? WHERE id=?`)
+    .run(e.standard_id, e.title, e.goals, e.description, e.steps, e.impact, e.ev_date, e.links, e.parts, Date.now(), own.id);
   res.json({ evidence: evidenceRow(db.prepare('SELECT * FROM evidences WHERE id = ?').get(own.id)) });
 });
 
@@ -381,11 +385,55 @@ mountSchool(app, { auth, currentUser });
 function addEvidence(userId, e) {
   const ur = db.prepare('SELECT role FROM users WHERE id = ?').get(userId);
   e = { ...e, standard_id: mapTo(ur && ur.role, e.standard_id) };
+  const valid = COV.partsOf(e.standard_id, ur && ur.role).map((p) => p.k);
+  const parts = (e.parts || []).filter((k) => valid.includes(k));
   const now = Date.now();
-  const info = db.prepare(`INSERT INTO evidences (user_id, standard_id, title, goals, description, steps, impact, ev_date, links, verify_code, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(userId, e.standard_id, clip(e.title, 160), JSON.stringify(e.goals || []), clip(e.description, 3000), clip(e.steps, 3000), clip(e.impact, 1500), clip(e.ev_date || new Date().toISOString().slice(0, 10), 20), JSON.stringify(e.links || []), rand(10), now, now);
+  const info = db.prepare(`INSERT INTO evidences (user_id, standard_id, title, goals, description, steps, impact, ev_date, links, parts, verify_code, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(userId, e.standard_id, clip(e.title, 160), JSON.stringify(e.goals || []), clip(e.description, 3000), clip(e.steps, 3000), clip(e.impact, 1500), clip(e.ev_date || new Date().toISOString().slice(0, 10), 20), JSON.stringify(e.links || []), JSON.stringify(parts), rand(10), now, now);
   return evidenceRow(db.prepare('SELECT * FROM evidences WHERE id = ?').get(info.lastInsertRowid));
 }
+// ---------- السجلات اليومية ----------
+const LOGS = require('./logs');
+const LOGX = require('./logs-export');
+const kindsOut = (u) => Object.fromEntries(Object.entries(LOGS.KINDS).map(([k, K]) => [k, { key: k, name: K.name, one: K.one, icon: K.icon, hint: K.hint, follow: !!K.follow, single: !!K.single, cols: K.cols, std: typeof K.std === 'number' ? mapTo(u.role, K.std) : null, fields: K.fields }]));
+const logOut = (u, r) => (r ? { ...r, std: mapTo(u.role, r.std) } : r);
+app.get('/api/logs', auth, (req, res) => {
+  const q = req.query || {};
+  res.json({ kinds: kindsOut(req.user), logs: LOGS.list(req.user.id, { kind: LOGS.KINDS[q.kind] ? q.kind : null, from: q.from, to: q.to }).map((r) => logOut(req.user, r)), summary: LOGS.summary(req.user.id) });
+});
+app.post('/api/logs', auth, active, (req, res) => { const r = LOGS.save(req.user.id, null, req.body || {}); if (r.error) return res.status(400).json(r); res.json({ log: logOut(req.user, r.log) }); });
+app.put('/api/logs/:id', auth, active, (req, res) => {
+  if (!LOGS.get(req.user.id, req.params.id)) return res.status(404).json({ error: 'السجل غير موجود' });
+  const r = LOGS.save(req.user.id, req.params.id, req.body || {}); if (r.error) return res.status(400).json(r); res.json({ log: logOut(req.user, r.log) });
+});
+app.delete('/api/logs/:id', auth, (req, res) => { LOGS.remove(req.user.id, req.params.id); res.json({ ok: true }); });
+// تحويل السجل (أو مبادرة واحدة) إلى شاهد على عنصره
+app.post('/api/logs/evidence', auth, active, (req, res) => {
+  const b = req.body || {};
+  let rows;
+  if (b.id) { const r = LOGS.get(req.user.id, b.id); if (!r) return res.status(404).json({ error: 'السجل غير موجود' }); rows = [r]; }
+  else { if (!LOGS.KINDS[b.kind] || LOGS.KINDS[b.kind].single) return res.status(400).json({ error: 'نوع غير صالح' }); rows = LOGS.list(req.user.id, { kind: b.kind, from: b.from, to: b.to }); }
+  if (!rows.length) return res.status(400).json({ error: 'ما فيه سجلات في هذه الفترة' });
+  const kind = rows[0].kind;
+  const ev = LOGS.evidenceFrom(kind, rows);
+  const qs = new URLSearchParams(b.id ? {} : { ...(b.from ? { from: b.from } : {}), ...(b.to ? { to: b.to } : {}) }).toString();
+  const link = b.id ? `${baseUrl(req)}/print/logs/item/${rows[0].id}` : `${baseUrl(req)}/print/logs/${kind}${qs ? `?${qs}` : ''}`;
+  delete ev.span;
+  const e = addEvidence(req.user.id, { ...ev, links: [link] });
+  res.json({ evidence: e });
+});
+app.get('/print/logs/item/:id', (req, res) => {
+  const u = printGuard(req, res); if (!u) return;
+  const r = LOGS.get(u.id, req.params.id);
+  if (!r || r.kind !== 'initiative') return res.status(404).send(views.notFound());
+  res.send(LOGX.initiativePage({ u, r, stdName: (anyById(mapTo(u.role, r.std), u.role) || {}).name || '' }));
+});
+app.get('/print/logs/:kind', (req, res) => {
+  const u = printGuard(req, res); if (!u) return;
+  const kind = req.params.kind; if (!LOGS.KINDS[kind] || LOGS.KINDS[kind].single) return res.status(404).send(views.notFound());
+  const { from, to } = req.query;
+  res.send(LOGX.kindPage({ u, kind, rows: LOGS.list(u.id, { kind, from, to }), from: /^\d{4}-\d{2}-\d{2}$/.test(from || '') ? from : '', to: /^\d{4}-\d{2}-\d{2}$/.test(to || '') ? to : '' }));
+});
 require('./teacher/routes').mountTeacher(app, { auth, active, printGuard, addEvidence, baseUrl });
 require('./exam/routes').mountExam(app, { auth, active, printGuard, uploadsDir: UPLOADS });
 

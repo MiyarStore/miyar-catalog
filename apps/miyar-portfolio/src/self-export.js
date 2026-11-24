@@ -2,6 +2,7 @@
 const { letterheadHtml, LH_CSS, esc } = require('./school/export');
 const { ROLES, roleKey } = require('./standards');
 const RUB = require('./rubric');
+const F = require('./fmt');
 
 const CSS = `${LH_CSS}
 @page { size: A4; margin: 12mm; }
@@ -21,7 +22,8 @@ th { background: #0f766e; color: #fff; font-weight: 600; } td.c { text-align: ce
 function build({ u, ratings, counts = {} }) {
   const c = RUB.calc(u.role, ratings);
   const school = { office: u.office, name: u.school, year: u.year, ministry_number: '' };
-  const f = u.gender === 'f';
+  const g = F.G(u);
+  const who = roleKey(u.role) === 'teacher' ? g.teacher : g.employee;
   const rows = c.rows.map((x) => {
     const lv = x.score && x.levels ? x.levels[x.score - 1] : '';
     const nx = x.score && x.score < 5 && x.levels ? x.levels[x.score] : '';
@@ -35,7 +37,8 @@ function build({ u, ratings, counts = {} }) {
     <table><thead><tr><th style="width:8mm">م</th><th>عنصر التقييم ومستوى الأداء الحالي</th><th style="width:14mm">الوزن</th><th style="width:14mm">التقدير (1-5)</th><th style="width:16mm">التقدير الموزون</th><th style="width:14mm">الشواهد</th></tr></thead><tbody>${rows}</tbody>
     <tfoot><tr><th colspan="4">المجموع</th><th class="c">${c.rated ? Math.round(c.rows.reduce((a, x) => a + x.weighted, 0) * 100) / 100 : '-'}</th><th></th></tr></tfoot></table>
     <p class="note muted">آلية الاحتساب حسب نماذج تقييم أداء شاغلي الوظائف التعليمية: تقدير العنصر (1 إلى 5) × وزنه النسبي، ثم جمع التقديرات الموزونة للحصول على التقدير العام. مستويات التقدير العام: 5 مثالي، 4 تخطى التوقعات، 3 وافق التوقعات، 2 بحاجة إلى تطوير، 1 غير مرضٍ.${c.complete ? '' : ' التقدير محسوب على العناصر المقدّرة فقط.'} هذا تقدير ذاتي استرشادي، والتقييم المعتمد يجريه المدير المباشر.</p>
-    <div class="sign"><div>${f ? 'المعلمة' : 'الموظف'}: ${esc(u.full_name)}<br>التوقيع: ............</div><div>مدير المدرسة${u.principal ? `: ${esc(u.principal)}` : ''}<br>التوقيع: ............</div></div></div>`;
+    <div class="sign"><div>${who}: ${esc(u.full_name)}<br>التوقيع: ............</div><div>${g.principal}${u.principal ? `: ${esc(u.principal)}` : ''}<br>التوقيع: ............</div></div>
+    <p class="note muted center">تاريخ الطباعة: ${F.dual(Date.now())} · ${esc(F.madeBy(u))}</p></div>`;
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>التقييم الذاتي - ${esc(u.full_name)}</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet"><style>${CSS}</style></head><body>
 <div class="toolbar"><a class="btn ghost" href="/app#/self">→ رجوع</a><button class="btn" onclick="print()">🖨️ طباعة / حفظ PDF</button></div>${body}</body></html>`;

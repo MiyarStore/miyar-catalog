@@ -159,4 +159,19 @@ try { db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'teacher'
 try { db.exec("ALTER TABLE users ADD COLUMN region TEXT NOT NULL DEFAULT ''"); } catch {}
 // التقييم الذاتي بسلّم التقدير الرسمي: {رقم العنصر: 1..5}
 try { db.exec("ALTER TABLE users ADD COLUMN self_rating TEXT NOT NULL DEFAULT '{}'"); } catch {}
+// «السجلات اليومية»: حصص الانتظار، المناوبة والإشراف، التعاميم، اللجان والاجتماعات، التواصل، المبادرات
+db.exec(`CREATE TABLE IF NOT EXISTS logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  log_date TEXT NOT NULL,
+  data TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT '',
+  follow_up TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_logs_user ON logs(user_id, kind, log_date)');
+// ربط الشاهد بعبارات وصف المستوى 5 اللي يثبتها
+try { db.exec("ALTER TABLE evidences ADD COLUMN parts TEXT NOT NULL DEFAULT '[]'"); } catch {}
 module.exports = { db, DATA_DIR };

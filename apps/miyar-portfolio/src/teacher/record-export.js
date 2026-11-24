@@ -4,7 +4,8 @@ const R = require('./record');
 
 const pc = (v) => (v == null ? '-' : `${v}%`);
 const sg = (v) => (v == null ? '-' : `<bdi dir="ltr">${v > 0 ? '+' : ''}${v}</bdi>`);
-const dAr = (s) => { if (!s) return ''; try { return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${s}T12:00:00Z`)); } catch { return s; } };
+const F = require('../fmt');
+const dAr = (s) => F.dual(s);
 const dShort = (s) => { if (!s) return ''; try { return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'short' }).format(new Date(`${s}T12:00:00Z`)); } catch { return s; } };
 const colorOf = (v) => (v == null ? '#9aa8a6' : v >= 80 ? '#15803d' : v >= 50 ? '#b45309' : '#b91c1c');
 
@@ -47,6 +48,7 @@ th { background: #0f766e; color: #fff; font-weight: 600; } tr:nth-child(even) td
 .muted { color: #5b6b69; } .center { text-align: center; } .wk { break-inside: avoid; margin-bottom: 10px; } .off td { color: #9aa8a6; }
 .prep th { width: 24mm; background: #f1f7f6; color: #0f3b37; font-weight: 700; } .prep td ul, .prep td ol { margin: 0; padding-inline-start: 18px; } .prep .tag { display: inline-block; background: #e6f2f0; border-radius: 6px; padding: 1px 7px; margin: 2px; font-size: 11.5px; }
 .q { break-inside: avoid; margin: 0 0 10px; } .q ol { margin: 4px 0; padding-inline-start: 22px; list-style: arabic-indic; } .q ol { list-style-type: arabic-indic; }
+.madeby { font-size: 10px; color: #8a9896; text-align: center; margin: 10px 0 0; }
 .sign { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 26px; text-align: center; } .sign div { border-top: 1px dashed #9aa8a6; padding-top: 6px; }
 .btn { display: inline-flex; gap: 6px; align-items: center; background: #0f766e; color: #fff; border: 0; padding: 7px 14px; border-radius: 9px; font: inherit; cursor: pointer; text-decoration: none; font-size: 13px; } .btn.ghost { background: #eef5f4; color: #0f766e; }
 .brk { page-break-before: always; }
@@ -66,7 +68,8 @@ function build({ u, d, kind = 'all', test, week, lesson, anon = false, back = '/
   const lh = letterheadHtml(school, null);
   const cls = `${d.subject}${d.grade ? ` - ${d.grade}` : ''}${d.section ? ` (${d.section})` : ''}`;
   const head = (title, sub = '') => `${lh}<h1>${esc(title)}</h1><div class="center muted">${esc(cls)}${d.term ? ` · ${esc(d.term)}` : ''}${sub ? ` · ${sub}` : ''}</div>`;
-  const sign = `<div class="sign"><div>${u.gender === 'f' ? 'المعلمة' : 'المعلم'}: ${esc(u.full_name)}</div><div>${u.gender === 'f' ? 'المشرفة' : 'المشرف'} / الوكيل</div><div>مدير المدرسة${u.principal ? `: ${esc(u.principal)}` : ''}</div></div>`;
+  const g = F.G(u);
+  const sign = `<div class="sign"><div>${g.teacher}: ${esc(u.full_name)}</div><div>${g.f ? 'المشرفة' : 'المشرف'} / ${g.deputy}</div><div>${g.principal}${u.principal ? `: ${esc(u.principal)}` : ''}</div></div><p class="madeby">${esc(F.madeBy(u))}</p>`;
   const page = (inner) => `<div class="page">${inner}</div>`;
   const parts = [];
   const tests = f.tests;
@@ -174,4 +177,4 @@ function build({ u, d, kind = 'all', test, week, lesson, anon = false, back = '/
   const bar = anon ? '' : `<div class="toolbar"><a class="btn ghost" href="${esc(back)}">→ رجوع</a><button class="btn" onclick="print()">🖨️ طباعة / حفظ PDF</button><span class="muted" style="font-size:12px">اختر «حفظ كـ PDF» من نافذة الطباعة</span></div>`;
   return shell(`سجل ${cls}`, bar + parts.join(''));
 }
-module.exports = { build };
+module.exports = { build, CSS, shell };

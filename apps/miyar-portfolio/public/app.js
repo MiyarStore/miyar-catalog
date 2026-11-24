@@ -48,7 +48,7 @@ function topbar(route) {
   if (!S.me) { $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="${forSchool() ? '/school' : '/'}"><b>م</b>${forSchool() ? 'معياري للمدرسة' : 'معياري للمعلم'}</a><div class="nav" style="flex:none"><button onclick="toggleDark()" title="الوضع الليلي">🌙</button></div></div></div>`; return; }
   const l = (h, ic, t) => `<a href="#/${h}" class="${route === h ? 'on' : ''}">${ic} <span class="lbl">${t}</span></a>`;
   $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">معياري للمعلم</span></a>
-    <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('new', '➕', 'شاهد جديد')}${TEACHES.includes(S.me.role) ? l('rec', '📚', 'مساعد المعلم') + l('exam', '📝', 'صانع الاختبارات') : ''}${l('profile', '👤', 'ملفي')}${l('subscription', '⭐', 'الاشتراك')}${S.me.is_admin ? l('admin', '🛠️', 'الإدارة') : ''}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
+    <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('new', '➕', 'شاهد جديد')}${TEACHES.includes(S.me.role) ? l('rec', '📚', 'مساعد المعلم') + l('exam', '📝', 'صانع الاختبارات') : ''}${l('logs', '🗂️', 'السجلات')}${l('profile', '👤', 'ملفي')}${l('subscription', '⭐', 'الاشتراك')}${S.me.is_admin ? l('admin', '🛠️', 'الإدارة') : ''}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
   document.querySelector('.nav a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
 
@@ -128,6 +128,7 @@ function dashboard() {
     <form class="row" id="aiq"><input name="idea" placeholder="مثال: ${esc(IDEAS[S.me.role] || IDEAS.teacher)}" required><button class="btn">صِغها لي</button></form>
   </div>
   ${tasksCard()}
+  ${(() => { const L = S.logs; const n = Object.values(L.counts).reduce((a, b) => a + b, 0); return `<a class="card" href="#/logs" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit;${L.due.length ? 'border:2px solid #f59e0b' : ''}"><div style="font-size:30px">🗂️</div><div style="flex:1"><h3 style="margin:0">السجلات اليومية</h3><div class="muted" style="font-size:13px">${L.due.length ? `🔔 عندك ${L.due.length} ${L.due.length > 2 && L.due.length < 11 ? 'متابعات مستحقة' : 'متابعة مستحقة'} في سجل التواصل · ` : ''}${n ? `${n} سجل موثق` : 'حصص الانتظار، المناوبة، التعاميم، اللجان، التواصل مع أولياء الأمور، والمبادرات بقياس قبلي وبعدي. كل سجل يتحول لشاهد بضغطة.'}</div></div><span class="btn sm">افتح</span></a>`; })()}
   ${TEACHES.includes(S.me.role) ? `<a class="card" href="#/rec" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit;border:2px solid var(--brand-2)"><div style="font-size:30px">📚</div><div style="flex:1"><h3 style="margin:0">مساعد المعلم: سجل المادة يتجهز لحاله</h3><div class="muted" style="font-size:13px">أدخل طلابك وجدولك ودروسك مرة وحدة، وتطلع لك الخطة الأسبوعية والاختبارات والتحليل والخطط العلاجية ورسائل أولياء الأمور والشواهد.</div></div><span class="btn sm">افتح</span></a>
   <a class="card" href="#/exam" style="display:flex;gap:12px;align-items:center;margin-bottom:18px;text-decoration:none;color:inherit"><div style="font-size:30px">📝</div><div style="flex:1"><h3 style="margin:0">صانع الاختبارات بجدول المواصفات</h3><div class="muted" style="font-size:13px">اختر الدروس ويتبني جدول المواصفات وتنكتب الأسئلة عليه، ثم اطبعها بنموذجين ومفتاح وورقة تظليل أو نزّلها Word.</div></div><span class="btn sm">افتح</span></a>` : ''}
   <div class="stats">
@@ -144,7 +145,7 @@ function dashboard() {
   <div class="head"><div><h2 style="margin:0">عناصر تقييم الأداء الوظيفي</h2><div class="muted" style="font-size:13px">${esc(((S.roles.find((r) => r.key === S.me.role) || {}).model) || '')}، حسب الدليل الإرشادي لإدارة الأداء الوظيفي · <a href="#/profile">تغيير الوظيفة</a></div></div></div>
   <div class="stds">${S.standards.map((s) => `<a class="card std-card ${counts[s.id] ? 'done' : ''}" href="#/std/${s.id}">
     <div class="ic">${s.icon}</div><h3>${s.no}. ${esc(s.name)}</h3><div class="muted" style="font-size:12.5px">${esc(s.hint)}</div>
-    <div class="meta"><span>الوزن ${s.weight}%${RT()[s.id] ? ` · 🎯 ${RT()[s.id]}/5` : ''}</span><span>${counts[s.id] ? `✅ ${counts[s.id]} شاهد` : 'لا يوجد شاهد'}</span></div></a>`).join('')}</div>`;
+    <div class="meta"><span>الوزن ${s.weight}%${RT()[s.id] ? ` · 🎯 ${RT()[s.id]}/5` : ''}${(s.parts || []).length && counts[s.id] ? ` · 🧩 ${covOf(s).covered}/${s.parts.length}` : ''}</span><span>${counts[s.id] ? `✅ ${counts[s.id]} شاهد` : 'لا يوجد شاهد'}</span></div></a>`).join('')}</div>`;
   $('#aiq').onsubmit = (e) => { e.preventDefault(); sessionStorage.setItem('miyar-idea', e.target.idea.value); location.hash = '#/new'; };
   $('#copy').onclick = () => navigator.clipboard.writeText(pub).then(() => toast('تم نسخ الرابط'));
 }
@@ -173,6 +174,22 @@ function selfView() {
   bindRubric(() => { const y = scrollY; selfView(); scrollTo(0, y); });
 }
 
+// تغطية عبارات وصف المستوى 5 بالشواهد
+function covOf(s) {
+  const parts = s.parts || [];
+  const evs = S.evs.filter((e) => e.standard_id === s.id);
+  const rows = parts.map((p) => ({ ...p, n: evs.filter((e) => (e.parts || []).includes(p.k)).length }));
+  return { rows, covered: rows.filter((r) => r.n).length, total: rows.length };
+}
+function coverageCard(s) {
+  const c = covOf(s);
+  if (!c.total) return '';
+  return `<div class="card cov" style="margin-bottom:14px"><div class="head" style="margin:0 0 6px"><h3 style="margin:0">🧩 وش تثبت شواهدك من وصف «مثالي»؟</h3><span class="pill">${c.covered} من ${c.total}</span></div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:6px">عبارات المستوى 5 في سلّم التقدير الرسمي لهذا العنصر. اربط كل شاهد بالعبارات اللي يثبتها من صفحة تعديله.</div>
+    ${c.rows.map((r) => `<div class="cov-row ${r.n ? 'ok' : ''}"><span class="cov-i">${r.n ? '✓' : '○'}</span><div style="flex:1"><div>${esc(r.t)}</div>${r.n ? `<div class="muted" style="font-size:12px">${r.n} شاهد</div>` : (r.ev && r.ev.length ? `<div class="muted" style="font-size:12px">شواهد مقترحة: ${r.ev.map(esc).join('، ')}</div>` : '')}</div>${r.n ? '' : `<a class="btn soft sm" href="#/new?std=${s.id}&part=${r.k}">➕ شاهد</a>`}</div>`).join('')}
+    ${s.parts.some((p) => p.ev && p.ev.length) ? '<div class="muted" style="font-size:11.5px;margin-top:6px">الشواهد المقترحة أمثلة إرشادية من معياري، وليست قائمة رسمية.</div>' : ''}</div>`;
+}
+
 // ---------- عرض عنصر ----------
 function standardView(id) {
   const s = S.standards.find((x) => x.id === Number(id));
@@ -181,6 +198,7 @@ function standardView(id) {
   view.innerHTML = `${banner()}<div class="head"><div><a href="#/" class="muted" style="text-decoration:none">→ العناصر</a><h1 style="margin:4px 0 0">${s.icon} ${esc(s.name)}</h1><div class="muted">الوزن ${s.weight}% · ${esc(s.hint)}</div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn" href="#/new?std=${s.id}">➕ إضافة شاهد</a>${items.length ? `<a class="btn ghost" target="_blank" href="/print/standard/${s.id}">🖨️ تقرير العنصر</a>` : ''}</div></div>
     ${rubricBox(s)}
+    ${coverageCard(s)}
     <div class="ev-list">${items.map(evItem).join('') || `<div class="card" style="text-align:center"><p class="muted">ما فيه شواهد في هذا العنصر بعد.</p><a class="btn" href="#/new?std=${s.id}">أضف أول شاهد</a></div>`}</div>`;
   bindRubric(() => standardView(id));
 }
@@ -241,6 +259,7 @@ function editor(id, query) {
       <div class="field"><label>عنصر التقييم</label><select name="standard_id" required><option value="">اختر العنصر</option>${S.standards.map((s) => `<option value="${s.id}" ${Number(stdQ) === s.id ? 'selected' : ''}>${s.no}. ${esc(s.name)}</option>`).join('')}</select></div>
       <div class="field"><label>تاريخ التنفيذ</label><input type="date" name="ev_date" value="${esc(e ? e.ev_date : today())}"></div>
     </div>
+    <div class="field" id="partsf"></div>
     <div class="field"><label>عنوان الشاهد</label><input name="title" required value="${esc(e ? e.title : task ? task.text : '')}" placeholder="عنوان رسمي مختصر"></div>
     <div class="field"><label>الأهداف التربوية <span class="muted">(كل هدف في سطر)</span></label><textarea name="goals">${esc(e ? e.goals.join('\n') : '')}</textarea></div>
     <div class="field"><label>الوصف</label><textarea name="description">${esc(e ? e.description : task ? `تنفيذ إجراء من خطة تحسين ${task.school} للمؤشر ${task.indicator}: ${task.indicator_text || ''}` : '')}</textarea></div>
@@ -257,6 +276,15 @@ function editor(id, query) {
     </div>
   </form>`;
   const f = $('#ef');
+  const partQ = query.get('part');
+  const renderParts = (keep) => {
+    const s = S.standards.find((x) => x.id === Number(f.standard_id.value));
+    const parts = (s && s.parts) || [];
+    const on = keep || (e && Number(e.standard_id) === (s && s.id) ? e.parts || [] : partQ ? [partQ] : []);
+    $('#partsf').innerHTML = parts.length ? `<label>وش يثبت هذا الشاهد من وصف المستوى 5؟ <span class="muted">(اختياري، يوضح لك العبارات الناقصة)</span></label><div class="parts-pick">${parts.map((p) => `<label class="chk"><input type="checkbox" name="parts" value="${p.k}" ${on.includes(p.k) ? 'checked' : ''}> ${esc(p.t)}</label>`).join('')}</div>` : '';
+  };
+  renderParts();
+  f.standard_id.addEventListener('change', () => renderParts([]));
   const renderFiles = () => {
     $('#files').innerHTML = (e ? e.files : []).map((x) => `<div class="file">${x.mime.startsWith('image/') ? `<img src="/files/${x.id}">` : '<div class="pdf">📄</div>'}<button type="button" data-del="${x.id}" title="حذف">×</button><small>${esc(x.original)}</small></div>`).join('')
       + pending.map((x, i) => `<div class="file">${x.type.startsWith('image/') ? `<img src="${URL.createObjectURL(x)}">` : '<div class="pdf">📄</div>'}<button type="button" data-rm="${i}">×</button><small>${esc(x.name)} (جديد)</small></div>`).join('');
@@ -274,7 +302,8 @@ function editor(id, query) {
     const btn = $('#aib'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> جاري الصياغة';
     try {
       const { draft } = await api('/api/ai/draft', { method: 'POST', body: { idea, standard_id: f.standard_id.value || undefined } });
-      f.standard_id.value = draft.standard_id; f.title.value = draft.title; f.goals.value = (draft.goals || []).join('\n');
+      const prevStd = f.standard_id.value; f.standard_id.value = draft.standard_id; if (String(prevStd) !== String(draft.standard_id)) renderParts([]);
+      f.title.value = draft.title; f.goals.value = (draft.goals || []).join('\n');
       f.description.value = draft.description || ''; f.steps.value = draft.steps || ''; f.impact.value = draft.impact || '';
       f.querySelectorAll('textarea').forEach(grow);
       toast(`تمت الصياغة وربطها بعنصر: ${stdName(draft.standard_id)}`);
@@ -288,7 +317,9 @@ function editor(id, query) {
   f.onsubmit = async (ev) => {
     ev.preventDefault();
     const btn = $('#save'); btn.disabled = true;
-    const body = Object.fromEntries(new FormData(f));
+    const fdx = new FormData(f);
+    const body = Object.fromEntries(fdx);
+    body.parts = fdx.getAll('parts');
     try {
       let { evidence } = await api(e ? `/api/evidences/${e.id}` : '/api/evidences', { method: e ? 'PUT' : 'POST', body });
       if (pending.length) {
@@ -406,7 +437,7 @@ async function adminView() {
 async function loadEvs() { S.evs = (await api('/api/evidences')).evidences; }
 async function load() {
   const d = await api('/api/me');
-  Object.assign(S, { me: d.user, standards: d.standards, bands: d.bands || [], roles: d.roles || [], calendars: d.calendars || [], extras: d.extras || [], ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
+  Object.assign(S, { logs: d.logs || { counts: {}, due: [], open: 0 }, me: d.user, standards: d.standards, bands: d.bands || [], roles: d.roles || [], calendars: d.calendars || [], extras: d.extras || [], ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
   applyColor();
   await loadEvs();
   await loadTasks();
@@ -429,6 +460,7 @@ async function route() {
     case 'edit': return editor(parts[1], q);
     case 'rec': return window.recView(parts[1], parts[2], q);
     case 'exam': return window.examView(parts[1], parts[2]);
+    case 'logs': return window.logsView(parts[1], parts[2]);
     case 'profile': return profile();
     case 'subscription': return subscription();
     case 'admin': return adminView();
