@@ -76,6 +76,7 @@ label { display: block; font-weight: 500; font-size: 14px; margin-bottom: 6px; }
 /* كلمة الشعار */
 .logo .wm { flex: none; display: block; }
 .wm-g { fill: var(--wm, #0E7C66); } .wm-s { stroke: var(--wm, #0E7C66); } .wm-a { fill: var(--wm-gold, #B8975A); }
+.wm-fixed .wm-g { fill: #0E7C66; } .wm-fixed .wm-s { stroke: #0E7C66; } .wm-fixed .wm-a { fill: #B8975A; }
 .logo .sfx { font-size: .9em; color: var(--muted); font-weight: 600; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --wm: #F7F4EE; --wm-gold: #D4B77A; } }
 :root[data-theme="dark"] { --wm: #F7F4EE; --wm-gold: #D4B77A; }
