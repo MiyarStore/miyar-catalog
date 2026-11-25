@@ -81,3 +81,29 @@ label { display: block; font-weight: 500; font-size: 14px; margin-bottom: 6px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --wm: #F7F4EE; --wm-gold: #D4B77A; } }
 :root[data-theme="dark"] { --wm: #F7F4EE; --wm-gold: #D4B77A; }
 @media (max-width: 520px) { .logo > svg:first-child { width: 32px; height: 32px; } .logo .wm { height: 32px; width: 78px; } }
+/* رحلتك: بطاقة الأسبوع، الجرس، التنبيهات */
+.tb-btn.bell { position: relative; }
+.tb-btn.bell .dot { position: absolute; top: 2px; inset-inline-end: 2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--danger); color: #fff; font: 700 10.5px/17px inherit; text-align: center; }
+.card.jr { display: flex; flex-direction: column; gap: 12px; }
+.jr-top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.jr-k { display: inline-flex; gap: 6px; align-items: center; color: var(--brand-text); font-weight: 700; }
+.jr-p { color: var(--muted); font-weight: 600; }
+.jr-h { display: flex; gap: 12px; align-items: center; color: inherit; text-decoration: none; }
+.jr-h > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.jr-h b { font-size: 17px; font-weight: 700; }
+.jr-h small { color: var(--muted); font-size: 13px; }
+.jr-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; font-size: 12.5px; color: var(--muted); }
+.jr-late { color: var(--warn); font-weight: 700; }
+.jr-act { display: flex; flex-wrap: wrap; gap: 8px; }
+.card.jr.done { border-color: var(--brand); background: var(--brand-soft); }
+.nt { display: flex; flex-direction: column; gap: 3px; padding: 12px 16px; color: inherit; text-decoration: none; border-bottom: 1px solid var(--line-2); }
+.nt:last-child { border-bottom: 0; }
+.nt b { font-weight: 700; }
+.nt span { font-size: 13.5px; color: var(--muted); }
+.nt small { font-size: 12px; color: var(--muted); }
+.nt.new { border-inline-start: 3px solid var(--brand); background: var(--brand-soft); }
+.jr-row { display: flex; gap: 10px; align-items: center; padding: 10px 16px; color: inherit; text-decoration: none; border-bottom: 1px solid var(--line-2); }
+.jr-row:last-child { border-bottom: 0; }
+.jr-row .t { display: flex; flex-direction: column; } .jr-row small { color: var(--muted); font-size: 12.5px; }
+.jr-ic { color: var(--muted); display: inline-flex; }
+.jr-row.ok .jr-ic { color: var(--ok); } .jr-row.late .jr-ic, .jr-row.late small { color: var(--warn); }

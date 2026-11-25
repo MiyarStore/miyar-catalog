@@ -52,8 +52,8 @@ function topbar(route) {
   const on = (h) => route === h || (h === '' && route === 'std') || (h === 'new' && route === 'edit');
   const l = (h, ic, t, cls = '') => `<a href="#/${h}" class="${on(h) ? 'on' : ''} ${cls}">${cls ? `<i>${MI.ico(ic, 20)}</i>` : MI.ico(ic, 19)}<span>${t}</span></a>`;
   $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/">${MI.brand(38)}</a>
-    <nav class="nav" aria-label="التنقل">${l('', 'home', 'الرئيسية')}${l('new', 'plus', 'شاهد جديد')}${T ? l('rec', 'book', 'مساعد المعلم') + l('exam', 'edit', 'صانع الاختبارات') : l('self', 'target', 'التقييم الذاتي')}${l('logs', 'folder', 'السجلات')}${l('profile', 'user', 'حسابي')}${S.me.is_admin ? l('admin', 'tool', 'الإدارة') : ''}${dk}</nav>
-    <div class="tb-side"><a class="tb-btn" href="#/subscription" title="الاشتراك" aria-label="الاشتراك">${MI.ico('star', 20)}</a>${dk}</div></div></div>
+    <nav class="nav" aria-label="التنقل">${l('', 'home', 'الرئيسية')}${l('new', 'plus', 'شاهد جديد')}${T ? l('rec', 'book', 'مساعد المعلم') + l('exam', 'edit', 'صانع الاختبارات') : l('self', 'target', 'التقييم الذاتي')}${l('logs', 'folder', 'السجلات')}${l('profile', 'user', 'حسابي')}${S.me.is_admin ? l('admin', 'tool', 'الإدارة') : ''}${bell()}${dk}</nav>
+    <div class="tb-side">${bell()}<a class="tb-btn" href="#/subscription" title="الاشتراك" aria-label="الاشتراك">${MI.ico('star', 20)}</a>${dk}</div></div></div>
     <nav class="bnav" aria-label="التنقل">${l('', 'home', 'الرئيسية')}${l('logs', 'folder', 'السجلات')}${l('new', 'plus', 'شاهد', 'add')}${T ? l('rec', 'book', 'المساعد') : l('self', 'target', 'التقييم')}${l('profile', 'user', 'حسابي')}</nav>`;
 }
 
@@ -131,6 +131,82 @@ function ring(pct) {
   const d = Math.max(0, Math.min(C, (pct / 100) * C)).toFixed(1);
   return `<svg class="ring" width="112" height="112" viewBox="0 0 112 112" role="img" aria-label="جاهزية الملف ${pct}% من أوزان التقييم"><circle cx="56" cy="56" r="48" fill="none" stroke="rgba(14,124,102,.14)" stroke-width="10"/>${pct > 0 ? `<circle cx="56" cy="56" r="48" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-dasharray="${d} 302" transform="rotate(-90 56 56)"/>` : ''}<text x="56" y="64" text-anchor="middle" font-family="Readex Pro, sans-serif" font-size="25" font-weight="500" fill="currentColor">${pct}%</text></svg>`;
 }
+
+// ---------- رحلتك: التذكيرات والتنبيهات ----------
+const pushOk = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const fmtD = (t) => { try { return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long' }).format(new Date(t)); } catch { return ''; } };
+function bell() {
+  const n = (S.notif && S.notif.unread) || 0;
+  return `<a class="tb-btn bell" href="#/alerts" title="التنبيهات" aria-label="التنبيهات${n ? ` (${n} جديدة)` : ''}">${MI.ico('bell', 20)}${n ? `<b class="dot">${n > 9 ? '9+' : n}</b>` : ''}</a>`;
+}
+async function loadNotif() {
+  try { S.notif = await api('/api/notifications'); } catch { return; }
+  document.querySelectorAll('.tb-btn.bell').forEach((a) => { a.outerHTML = bell(); });
+}
+// خطة الرحلة من الخادم (المواعيد والاقتراحات)، والحالة نحسبها من الشواهد الحالية عشان تتحدث فوراً
+function journeyNow(counts) {
+  const j = S.journey; if (!j || !j.items || !j.items.length) return null;
+  const now = Date.now();
+  const items = j.items.map((x) => ({ ...x, done: !!counts[x.id] }));
+  const open = items.filter((x) => !x.done);
+  const late = open.filter((x) => x.due && x.due < now);
+  const soon = open.filter((x) => x.due && x.due >= now && x.due < now + 14 * 864e5);
+  const done = items.length - open.length;
+  return { items, open, late, done, total: items.length, pct: Math.round((done / items.length) * 100), focus: late[0] || soon[0] || open[0] || null, finishBy: j.finishBy, complete: !open.length };
+}
+function pushBtn() {
+  if (!pushOk() || (S.notif && S.notif.push && S.notif.push.subs) || Notification.permission === 'denied') return '';
+  return `<button type="button" class="btn soft sm" id="push-on">${IC('bell', 16)} فعّل تذكيرات الجوال</button>`;
+}
+function journeyCard(counts) {
+  const j = journeyNow(counts); if (!j) return '';
+  const f = S.me.gender === 'f';
+  if (j.complete) return `<div class="card jr done"><div class="jr-h"><span class="tile-ic">${IC('star', 24)}</span><div><b>مبروك، ملف إنجازك اكتمل</b><small>كل عناصر التقييم (${j.total}) عليها شواهد. ${f ? 'اطبعي' : 'اطبع'} ملفك أو ${f ? 'شاركي' : 'شارك'} رابطه مع ${f ? 'مديرتك' : 'مديرك'}.</small></div></div><div class="jr-act"><a class="btn sm" href="/print/portfolio?t=classic" target="_blank">${IC('printer', 16)} اطبع ملفي</a></div></div>`;
+  const x = j.focus;
+  const when = j.late.length ? `<span class="jr-late">${j.late.length > 1 ? `${j.late.length} عناصر متأخرة عن موعدها` : 'متأخر عن موعده المقترح'}</span>` : x.due ? `موعده المقترح: ${fmtD(x.due)}` : '';
+  return `<div class="card jr">
+    <div class="jr-top"><span class="jr-k">${IC('compass', 16)} رحلتك هذا الأسبوع</span><span class="jr-p">${j.done} من ${j.total}</span></div>
+    <a class="jr-h" href="#/new?std=${x.id}"><span class="tile-ic warn">${IC('alert', 24)}</span><div><small>حان وقت توثيق</small><b>«${esc(x.name)}»</b>${x.tip ? `<small>مثال شاهد: ${esc(x.tip)}</small>` : ''}</div>${IC('arrow', 20)}</a>
+    <div class="bar"><i style="width:${Math.max(4, j.pct)}%"></i></div>
+    <div class="jr-meta"><span>${when}</span>${j.finishBy ? `<span>يكتمل ملفك قبل ${fmtD(j.finishBy)} لو ${f ? 'مشيتي' : 'مشيت'} على الخطة</span>` : ''}</div>
+    <div class="jr-act"><a class="btn sm" href="#/new?std=${x.id}">${IC('plus', 16)} ${f ? 'وثّقي' : 'وثّق'} الحين</a>${pushBtn()}<a class="btn ghost sm" href="#/alerts">الخطة كاملة</a></div>
+  </div>`;
+}
+const b64u = (s) => { const p = '='.repeat((4 - (s.length % 4)) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
+async function enablePush() {
+  if (!pushOk()) return toast('جهازك ما يدعم الإشعارات من المتصفح. على الآيفون: أضف معياري للشاشة الرئيسية أول، وافتحه من هناك.');
+  if (await Notification.requestPermission() !== 'granted') return toast('ما تم السماح بالإشعارات. تقدر تفعّلها من إعدادات المتصفح.');
+  try {
+    if (!S.notif) await loadNotif();
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(S.notif.push.key) }));
+    await api('/api/push/subscribe', { method: 'POST', body: sub.toJSON() });
+    await loadNotif();
+    toast('تم. بيوصلك تذكير كل أسبوع بالشاهد اللي حان وقته');
+    route();
+  } catch (e) { toast('ما قدرنا نفعّل الإشعارات على هذا الجهاز'); }
+}
+function wirePush() { const b = $('#push-on'); if (b) b.onclick = enablePush; }
+async function alertsView() {
+  view.innerHTML = '<div class="card"><p class="muted">جاري التحميل...</p></div>';
+  await loadNotif();
+  const N = S.notif || { items: [] };
+  const counts = Object.fromEntries(S.standards.map((s) => [s.id, S.evs.filter((e) => e.standard_id === s.id).length]));
+  const j = journeyNow(counts);
+  const ago = (t) => { const d = Math.floor((Date.now() - t) / 864e5); return d < 1 ? 'اليوم' : d === 1 ? 'أمس' : `قبل ${d} ${d < 11 ? 'أيام' : 'يوم'}`; };
+  const plan = j ? j.items.map((x) => `<a class="jr-row${x.done ? ' ok' : x.due && x.due < Date.now() ? ' late' : ''}" href="${x.done ? `#/std/${x.id}` : `#/new?std=${x.id}`}"><span class="jr-ic">${IC(x.done ? 'check' : 'clock', 18)}</span><span class="t"><b>${esc(x.name)}</b><small>${x.done ? 'موثّق' : x.due ? `الموعد المقترح: ${fmtD(x.due)}` : ''}</small></span></a>`).join('') : '';
+  view.innerHTML = `
+  <div class="sec-h"><h2>التنبيهات ورحلتك</h2>${pushBtn()}</div>
+  <p class="muted" style="margin-top:-6px">معياري رفيقك طول السنة: كل أسبوع يذكّرك بالشاهد اللي حان وقته، لين يكتمل ملفك.</p>
+  <div class="dash-cols">
+    <div class="dash-col"><div class="card" style="padding:6px 0">${N.items.length ? N.items.map((n) => `<a class="nt${n.read_at ? '' : ' new'}" href="${esc(n.url || '#/')}"><b>${esc(n.title)}</b>${n.body ? `<span>${esc(n.body)}</span>` : ''}<small>${ago(n.created_at)}</small></a>`).join('') : '<p class="muted" style="text-align:center;margin:18px">ما فيه تنبيهات للحين. أول تذكير يوصلك يوم الأحد.</p>'}</div></div>
+    ${plan ? `<section class="dash-col"><div class="sec-h"><h3 style="margin:0">خطة السنة</h3><span class="pill">${j.done} من ${j.total}</span></div><div class="card" style="padding:4px 0">${plan}</div></section>` : ''}
+  </div>`;
+  wirePush();
+  if (N.unread) { api('/api/notifications/read', { method: 'POST', body: {} }).then(() => { S.notif.unread = 0; document.querySelectorAll('.tb-btn.bell').forEach((a) => { a.outerHTML = bell(); }); }).catch(() => {}); }
+}
+
 function dashboard() {
   const counts = Object.fromEntries(S.standards.map((s) => [s.id, S.evs.filter((e) => e.standard_id === s.id).length]));
   const covered = Object.values(counts).filter(Boolean).length;
@@ -160,7 +236,7 @@ function dashboard() {
   <div class="dash-cols">
     <div class="dash-col">
       ${L.due.length ? `<a class="card due" href="#/logs/contact"><span class="tile-ic warn">${IC('bell', 24)}</span><span style="flex:1"><b style="display:block;font-weight:600">عندك ${L.due.length} ${L.due.length > 2 && L.due.length < 11 ? 'متابعات مستحقة' : 'متابعة مستحقة'}</b><small class="muted">في سجل التواصل مع أولياء الأمور</small></span>${IC('arrow', 18)}</a>` : ''}
-      <a class="card next" href="${next.href}"${next.blank ? ' target="_blank"' : ''}><span class="tile-ic${next.warn ? ' warn' : ''}">${IC(next.k, 24)}</span><span class="t"><small>${next.s}</small><b>${next.t}</b></span>${IC('arrow', 20)}</a>
+      ${journeyCard(counts) || `<a class="card next" href="${next.href}"${next.blank ? ' target="_blank"' : ''}><span class="tile-ic${next.warn ? ' warn' : ''}">${IC(next.k, 24)}</span><span class="t"><small>${next.s}</small><b>${next.t}</b></span>${IC('arrow', 20)}</a>`}
       <div class="qa">
         <a class="pri" href="#/new">${IC('plus', 26)}<span>شاهد جديد</span></a>
         <a href="#/logs/wait">${IC('clock', 26)}<span>حصة انتظار</span></a>
@@ -197,6 +273,7 @@ function dashboard() {
   $('#miss').onclick = (e) => { S.onlyMissing = !S.onlyMissing; e.target.classList.toggle('on', S.onlyMissing); e.target.textContent = S.onlyMissing ? 'عرض الكل' : 'الناقصة فقط'; drawEls(); };
   $('#aiq').onsubmit = (e) => { e.preventDefault(); sessionStorage.setItem('miyar-idea', e.target.idea.value); location.hash = '#/new'; };
   $('#copy').onclick = () => navigator.clipboard.writeText(pub).then(() => toast('تم نسخ الرابط'));
+  wirePush();
 }
 
 // ---------- صفحة التقييم الذاتي ----------
@@ -488,10 +565,11 @@ async function adminView() {
 async function loadEvs() { S.evs = (await api('/api/evidences')).evidences; }
 async function load() {
   const d = await api('/api/me');
-  Object.assign(S, { logs: d.logs || { counts: {}, due: [], open: 0 }, me: d.user, standards: d.standards, bands: d.bands || [], roles: d.roles || [], calendars: d.calendars || [], extras: d.extras || [], ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [] });
+  Object.assign(S, { logs: d.logs || { counts: {}, due: [], open: 0 }, me: d.user, standards: d.standards, bands: d.bands || [], roles: d.roles || [], calendars: d.calendars || [], extras: d.extras || [], ai: d.ai, base: d.base, storeUrl: d.storeUrl, plans: d.plans || [], journey: d.journey || null });
   applyColor();
   await loadEvs();
   await loadTasks();
+  loadNotif();
 }
 async function loadTasks() { try { S.tasks = (await api('/api/my-tasks')).tasks; } catch { S.tasks = []; } }
 async function route() {
@@ -520,6 +598,7 @@ async function route() {
     case 'profile': return profile();
     case 'subscription': return subscription();
     case 'admin': return adminView();
+    case 'alerts': return alertsView();
     default: return dashboard();
   }
 }

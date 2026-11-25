@@ -19,6 +19,7 @@ const RUB = require('./rubric');
 const COV = require('./coverage');
 const SELF = require('./self-export');
 const CAL = require('./calendar');
+const NOTIFY = require('./notify');
 const STORE_URL = process.env.STORE_URL || 'https://miyarstore.com';
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
@@ -156,8 +157,9 @@ app.delete('/api/me', auth, (req, res) => {
 });
 
 app.get('/api/me', auth, (req, res) => {
-  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => ({ ...s, levels: RUB.levelsOf(s.id, req.user.role), parts: COV.partsOf(s.id, req.user.role) })), bands: RUB.BANDS, roles: ROLE_LIST, calendars: CAL.options(), extras: CAL.extras(), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS.map((p) => ({ ...p, url: buyUrl(STORE_URL, p) })), base: baseUrl(req), logs: LOGS.summary(req.user.id) });
+  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => ({ ...s, levels: RUB.levelsOf(s.id, req.user.role), parts: COV.partsOf(s.id, req.user.role) })), bands: RUB.BANDS, roles: ROLE_LIST, calendars: CAL.options(), extras: CAL.extras(), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS.map((p) => ({ ...p, url: buyUrl(STORE_URL, p) })), base: baseUrl(req), logs: LOGS.summary(req.user.id), journey: NOTIFY.journeyOf(req.user) });
 });
+NOTIFY.routes(app, auth);
 
 const PROFILE_FIELDS = { full_name: 80, gender: 1, job_title: 40, subject: 60, school: 100, stage: 40, office: 80, principal: 80, bio: 400, year: 20, theme: 20 };
 app.put('/api/me', auth, (req, res) => {
@@ -470,4 +472,5 @@ const APP_HTML = require('./assetv').bust(require('fs').readFileSync(path.join(_
 app.get('/app', (req, res) => res.type('html').set('Cache-Control', 'no-cache').send(APP_HTML));
 app.use((req, res) => res.status(404).send(views.notFound()));
 
+NOTIFY.start();
 app.listen(PORT, () => console.log(`معياري للمعلم يعمل على http://localhost:${PORT} (AI: ${aiEnabled() ? 'Claude' : 'قوالب'})`));
