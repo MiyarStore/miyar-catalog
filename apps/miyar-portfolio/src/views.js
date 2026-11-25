@@ -178,7 +178,7 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
     bodyClass: 'lp',
     extraHead: shareMeta({ base, url: `${base}/`, title: 'معياري | ملف الإنجاز الوظيفي للمعلم والمعلمة', desc: `وثّق شواهدك على عناصر تقييم الأداء الوظيفي لوظيفتك من جوالك، والمساعد الذكي يصيغها بلغة رسمية، وملفك الكامل يتجهّز تلقائياً. جرّبه ${trialDays} أيام مجاناً.` }) + LANDING_CSS,
     body: `
-<div class="lp-top"><div class="lp-w lp-hd"><a class="logo" href="/">${MI.wordmark(32, true)}</a>
+<div class="lp-top"><div class="lp-w lp-hd"><a class="logo" href="/">${MI.brand(40, true)}</a>
   <nav class="lp-nav" aria-label="القائمة الرئيسية"><a href="#tools">الأدوات</a><a href="#features">المزايا</a><a href="#pricing">الباقات</a><a href="/school">للمدارس</a><a href="/exam-maker">صانع الاختبارات</a></nav>
   <span class="lp-hd-a"><a class="lp-out" href="/app">تسجيل الدخول</a><a class="lp-in" href="/app#/register">ابدأ مجاناً</a></span></div></div>
 <main>
@@ -459,7 +459,7 @@ function privacyPage(storeUrl, base = '') {
   return shell({
     title: 'سياسة الخصوصية وشروط الاستخدام | معياري',
     extraHead: `<meta name="description" content="كيف يحفظ معياري بياناتك ويستخدمها، وحقوقك عليها، وشروط استخدام المنصة.">`,
-    body: `<header class="wrap" style="display:flex;justify-content:space-between;align-items:center;padding-top:18px;padding-bottom:18px"><a class="logo" href="/">${MI.wordmark(30, true)}</a><a class="btn ghost" href="/app">التطبيق</a></header>
+    body: `<header class="wrap" style="display:flex;justify-content:space-between;align-items:center;padding-top:18px;padding-bottom:18px"><a class="logo" href="/">${MI.brand(38, true)}</a><a class="btn ghost" href="/app">التطبيق</a></header>
 <article class="wrap card" style="max-width:820px;margin:0 auto 40px;line-height:1.95">
 <h1 style="margin-top:0">سياسة الخصوصية وشروط الاستخدام</h1>
 <p class="muted">آخر تحديث: ${PRIVACY_UPDATED}. تنطبق على «معياري للمعلم» و«معياري للمدرسة»، ويقدمهما متجر معيار للمنتجات التعليمية الرقمية.</p>
@@ -540,7 +540,7 @@ function examLanding(trialDays, base = '') {
 details.card summary{cursor:pointer;font-weight:600}details.card p{margin:10px 0 0}</style>`,
     body: `
 <header class="wrap" style="display:flex;justify-content:space-between;align-items:center;padding-top:18px;padding-bottom:18px">
-  <a class="logo" href="/">${MI.wordmark(30, true)}</a>
+  <a class="logo" href="/">${MI.brand(38, true)}</a>
   <a class="btn ghost" href="/app#/exam">تسجيل الدخول</a>
 </header>
 <section class="wrap" style="padding:40px 16px 30px;text-align:center">

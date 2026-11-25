@@ -111,7 +111,9 @@
   // كلمة «معياري» كما في الشعار المعتمد. الألوان من متغيرات CSS حتى تتبدل في الوضع الداكن.
   // fixed: ألوان ثابتة بدون متغيرات، للصفحات العامة الفاتحة دائماً.
   const wordmark = (h = 30, fixed = false) => `<svg class="wm${fixed ? ' wm-fixed' : ''}" height="${h}" width="${Math.round(h * 2.43)}" viewBox="130 225 1275 525" role="img" aria-label="معياري"><path class="wm-g" fill="#0E7C66" d="M1180 341H1390V551H677V486H831V413H896V486H994L908 331L964 300L1017 395L1070 300L1126 331L1041 486H1180ZM1244 405V486H1325V405Z"/><rect class="wm-g" fill="#0E7C66" x="677" y="235" width="65" height="316"/><path class="wm-g" fill="#0E7C66" d="M540 405H604V510Q604 680 448 696L437 632Q540 612 540 510Z"/><rect class="wm-a" fill="#B8975A" x="799" y="592" width="52" height="52"/><rect class="wm-a" fill="#B8975A" x="876" y="592" width="52" height="52"/><path class="wm-s" stroke="#0E7C66" d="M366 380L292 446L366 512V600Q366 632 334 632H170Q142 632 142 604V548" fill="none" stroke-width="64" stroke-linejoin="miter"/><rect class="wm-a" fill="#B8975A" x="186" y="688" width="52" height="52"/><rect class="wm-a" fill="#B8975A" x="263" y="688" width="52" height="52"/></svg>`;
-  const api = { iconizeHtml, logo, wordmark, ico, icoFor, nameOf, strip, iconize, ICONS: I };
+  // الشعار كامل: الأيقونة وجنبها الكلمة.
+  const brand = (h = 38, fixed = false) => logo(h) + wordmark(h, fixed);
+  const api = { iconizeHtml, logo, wordmark, brand, ico, icoFor, nameOf, strip, iconize, ICONS: I };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MI = api;
 })(typeof window !== 'undefined' ? window : this);
