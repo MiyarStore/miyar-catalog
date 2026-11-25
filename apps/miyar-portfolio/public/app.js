@@ -453,7 +453,7 @@ function subscription() {
   <form id="rf" class="card" style="margin-bottom:16px"><h3>عندك كود تفعيل؟</h3>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><input name="code" placeholder="MYR-XXXX-XXXX" dir="ltr" style="flex:1;min-width:200px;text-transform:uppercase" required><button class="btn">تفعيل</button></div></form>
   <h3>ما عندك كود؟ اختر باقتك</h3><p class="muted" style="margin-top:0">اضغط على الباقة وتفتح لك صفحة الدفع في متجر معيار. بعد الدفع يوصلك كود التفعيل فوراً على جوالك وإيميلك، ارجع هنا والصقه فوق. ولو عندك اشتراك، المدة الجديدة تنضاف على الباقي.</p>
-  <div class="grid g3">${S.plans.map((p) => `<div class="card" style="text-align:center;${p.best ? 'border:2px solid var(--brand-2)' : ''}">
+  <div class="grid g2">${S.plans.map((p) => `<div class="card" style="text-align:center;${p.best ? 'border:2px solid var(--brand-2)' : ''}">
     ${p.best ? `<span class="pill">⭐ الأوفر${p.saving ? `، توفّر ${p.saving}%` : ''}</span>` : ''}
     <h3 style="margin:8px 0 2px">${esc(p.name)}</h3>
     <div style="font-size:28px;font-weight:800;color:var(--brand-text)">${p.price} <small style="font-size:14px">ريال / ${esc(p.per)}</small></div>

@@ -170,7 +170,7 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
         <div class="tl-b"><b>وش يطلع لك؟</b><ul>${x.gets.map((t) => `<li>${MI.ico('check', 17)}<span>${t}</span></li>`).join('')}</ul></div></div>`
     : `<a class="tl" href="${x.href}"><span class="tl-ic">${MI.ico(x.ic, 24)}</span><h3>${x.t}</h3><p>${x.d}</p>${meta(x)}<span class="tl-go">${x.go} ${MI.ico('arrow', 16)}</span></a>`);
   const bi = (n) => `<span class="bi">${MI.ico(n, 24)}</span>`;
-  const btn = { month: 'اشترك شهرياً', term: 'اشترك للفصل', year: 'اشترك سنوياً' };
+  const btn = { term: 'اشترك للفصل', year: 'اشترك سنوياً' };
   const li = (arr) => arr.map((x) => `<li>${MI.ico('check', 18)}<span>${x}</span></li>`).join('');
   return shell({
     title: 'معياري | ملف الإنجاز الوظيفي للمعلم والمعلمة',
@@ -243,7 +243,7 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
 
   <section class="lp-sec" id="pricing">
     <div class="lp-eb">الباقات</div>
-    <h2>سعر <b>كوب قهوة</b></h2>
+    <h2>سنة كاملة بـ<b>${(plans.find((p) => p.id === 'year') || {}).price || ''} ريال</b></h2>
     <p class="lp-lead">جرّب ${trialDays} أيام مجاناً، وبعدها اختر الباقة اللي تناسبك.</p>
     <div class="plans">${plans.map((p) => `<div class="pl${p.best ? ' best' : ''}">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="nm">${esc(p.name)}</span>${p.best ? `<span class="bdg">الأوفر${p.saving ? ` · وفّر ${p.saving}%` : ''}</span>` : ''}</div>
