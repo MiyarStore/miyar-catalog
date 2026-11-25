@@ -466,7 +466,8 @@ app.get('/manifest.webmanifest', (req, res) => res.type('application/manifest+js
 app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS, PLANS.map((p) => ({ ...p, url: buyUrl(STORE_URL, p) })), baseUrl(req))));
 app.get('/exam-maker', (req, res) => res.send(views.examLanding(TRIAL_DAYS, baseUrl(req))));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
-app.get('/app', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'app.html')));
+const APP_HTML = require('./assetv').bust(require('fs').readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8'));
+app.get('/app', (req, res) => res.type('html').set('Cache-Control', 'no-cache').send(APP_HTML));
 app.use((req, res) => res.status(404).send(views.notFound()));
 
 app.listen(PORT, () => console.log(`معياري للمعلم يعمل على http://localhost:${PORT} (AI: ${aiEnabled() ? 'Claude' : 'قوالب'})`));

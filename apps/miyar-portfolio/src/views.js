@@ -7,6 +7,7 @@ const nl = (s) => esc(s).replace(/\n/g, '<br>');
 const qr = (text, size = 180) => QRCode.toDataURL(text, { margin: 1, width: size, color: { dark: '#10201e', light: '#ffffff' } });
 const F = require('./fmt');
 const MI = require('../public/icons.js');
+const { V: ASSET_V } = require('./assetv');
 function hijri(d) {
   if (!d) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(String(d))) return esc(F.dual(d));
@@ -18,9 +19,9 @@ const FONTS = '<link rel="preconnect" href="https://fonts.googleapis.com"><link 
 
 function shell({ title, body, color = 'miyar', extraHead = '', bodyClass = '', raw = false, help = !raw }) {
   return `<!doctype html><html lang="ar" dir="rtl" data-color="${esc(color)}"><head><meta charset="utf-8"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0E7C66"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="معياري"><meta name="apple-mobile-web-app-status-bar-style" content="default"><script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))</script><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)}</title>${FONTS}<link rel="stylesheet" href="/assets/theme.css">${extraHead}
+<title>${esc(title)}</title>${FONTS}<link rel="stylesheet" href="/assets/theme.css?v=${ASSET_V}">${extraHead}
 <script>try{var t=localStorage.getItem('miyar-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script></head>
-<body class="${bodyClass}">${raw ? body : MI.iconizeHtml(body)}${help ? '<script src="/assets/help.js" defer></script>' : ''}</body></html>`;
+<body class="${bodyClass}">${raw ? body : MI.iconizeHtml(body)}${help ? `<script src="/assets/help.js?v=${ASSET_V}" defer></script>` : ''}</body></html>`;
 }
 
 const notFound = () => shell({ title: 'غير موجود', body: `<div class="wrap" style="padding:80px 16px;text-align:center"><h1>الصفحة غير موجودة</h1><p class="muted">تأكد من الرابط.</p><a class="btn" href="/">الرئيسية</a></div>` });

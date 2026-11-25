@@ -679,13 +679,13 @@ function mountSchool(app, { auth, currentUser }) {
   });
 
   // صفحة المدرسة مع وسوم المشاركة (رابط مطلق للصورة عشان واتساب)
-  const schoolHtml = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'school.html'), 'utf8');
+  const schoolHtml = require('../assetv').bust(fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'school.html'), 'utf8'));
   app.get('/school', (req, res) => {
     const base = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
     const t = 'معياري للمدرسة | خطة التحسين من تقرير التقويم المدرسي';
     const d = 'ارفع تقرير التقويم الذاتي، وتطلع لك خطة التحسين مرتبة من المؤشر الأضعف بصيغة Word وPDF، مع خطة نافس وملف شواهد التقويم.';
     const meta = `<meta name="description" content="${d}"><meta property="og:type" content="website"><meta property="og:locale" content="ar_SA"><meta property="og:site_name" content="معياري"><meta property="og:title" content="${t}"><meta property="og:description" content="${d}"><meta property="og:url" content="${base}/school"><meta property="og:image" content="${base}/assets/og-school.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image">`;
-    res.type('html').send(schoolHtml.replace('</title>', '</title>\n' + meta));
+    res.type('html').set('Cache-Control', 'no-cache').send(schoolHtml.replace('</title>', '</title>\n' + meta));
   });
 }
 
