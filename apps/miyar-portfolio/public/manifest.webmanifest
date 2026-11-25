@@ -1,0 +1,20 @@
+{
+  "name": "معياري",
+  "short_name": "معياري",
+  "description": "ملف الإنجاز والشواهد الإلكتروني للمعلم وأدوات المدرسة",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F7F4EE",
+  "theme_color": "#0E7C66",
+  "icons": [
+    { "src": "/assets/brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/brand/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/assets/brand/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "معياري للمدرسة", "url": "/school" }
+  ]
+}

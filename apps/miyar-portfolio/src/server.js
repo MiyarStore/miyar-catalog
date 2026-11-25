@@ -461,6 +461,8 @@ app.get('/terms', (req, res) => res.redirect('/privacy#terms'));
 // أيقونة المتصفح (حرف «م» بلون الهوية)
 const FAVICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#0E7C66"/><g transform="translate(256 226) scale(1.45) translate(-1285 -446)"><path fill="#FFFFFF" fill-rule="evenodd" d="M1180 341H1390V551H1180ZM1244 405V486H1325V405Z"/></g><path d="M104 404H408" stroke="#E6CF9A" stroke-width="26" stroke-linecap="butt"/></svg>';
 app.get(['/favicon.ico', '/favicon.svg'], (req, res) => { res.type('image/svg+xml').set('Cache-Control', 'public, max-age=604800').send(FAVICON); });
+app.get('/sw.js', (req, res) => res.type('application/javascript').set({ 'Cache-Control': 'no-cache', 'Service-Worker-Allowed': '/' }).sendFile(path.join(__dirname, '..', 'public', 'sw.js')));
+app.get('/manifest.webmanifest', (req, res) => res.type('application/manifest+json').set('Cache-Control', 'public, max-age=3600').sendFile(path.join(__dirname, '..', 'public', 'manifest.webmanifest')));
 app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS, PLANS, baseUrl(req))));
 app.get('/exam-maker', (req, res) => res.send(views.examLanding(TRIAL_DAYS, baseUrl(req))));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
