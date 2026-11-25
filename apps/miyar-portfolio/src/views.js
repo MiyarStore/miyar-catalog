@@ -17,7 +17,7 @@ function hijri(d) {
 const FONTS = '<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Amiri:wght@700&display=swap" rel="stylesheet">';
 
 function shell({ title, body, color = 'miyar', extraHead = '', bodyClass = '', raw = false, help = !raw }) {
-  return `<!doctype html><html lang="ar" dir="rtl" data-color="${esc(color)}"><head><meta charset="utf-8"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><meta name="viewport" content="width=device-width,initial-scale=1">
+  return `<!doctype html><html lang="ar" dir="rtl" data-color="${esc(color)}"><head><meta charset="utf-8"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/brand/miyari-icon.png"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>${FONTS}<link rel="stylesheet" href="/assets/theme.css">${extraHead}
 <script>try{var t=localStorage.getItem('miyar-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script></head>
 <body class="${bodyClass}">${raw ? body : MI.iconizeHtml(body)}${help ? '<script src="/assets/help.js" defer></script>' : ''}</body></html>`;
