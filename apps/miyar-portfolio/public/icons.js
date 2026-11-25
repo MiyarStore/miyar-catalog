@@ -108,7 +108,9 @@
   const logo = (size = 34) => `<svg width="${size}" height="${size}" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#0E7C66"/><g transform="translate(256 226) scale(1.45) translate(-1285 -446)"><path fill="#FFFFFF" fill-rule="evenodd" d="M1180 341H1390V551H1180ZM1244 405V486H1325V405Z"/></g><path d="M104 404H408" stroke="#E6CF9A" stroke-width="26" stroke-linecap="butt"/></svg>`;
   // نفس التحويل لكن على نص HTML (للصفحات اللي يرسمها الخادم)
   const iconizeHtml = (html, size = 20) => String(html).replace(RE, (m) => { const k = nameOf(m); return k ? ico(k, size, 'ie') : m; });
-  const api = { iconizeHtml, logo, ico, icoFor, nameOf, strip, iconize, ICONS: I };
+  // كلمة «معياري» كما في الشعار المعتمد. الألوان من متغيرات CSS حتى تتبدل في الوضع الداكن.
+  const wordmark = (h = 30) => `<svg class="wm" height="${h}" width="${Math.round(h * 2.43)}" viewBox="130 225 1275 525" role="img" aria-label="معياري"><path class="wm-g" d="M1180 341H1390V551H677V486H831V413H896V486H994L908 331L964 300L1017 395L1070 300L1126 331L1041 486H1180ZM1244 405V486H1325V405Z"/><rect class="wm-g" x="677" y="235" width="65" height="316"/><path class="wm-g" d="M540 405H604V510Q604 680 448 696L437 632Q540 612 540 510Z"/><rect class="wm-a" x="799" y="592" width="52" height="52"/><rect class="wm-a" x="876" y="592" width="52" height="52"/><path class="wm-s" d="M366 380L292 446L366 512V600Q366 632 334 632H170Q142 632 142 604V548" fill="none" stroke-width="64" stroke-linejoin="miter"/><rect class="wm-a" x="186" y="688" width="52" height="52"/><rect class="wm-a" x="263" y="688" width="52" height="52"/></svg>`;
+  const api = { iconizeHtml, logo, wordmark, ico, icoFor, nameOf, strip, iconize, ICONS: I };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MI = api;
 })(typeof window !== 'undefined' ? window : this);

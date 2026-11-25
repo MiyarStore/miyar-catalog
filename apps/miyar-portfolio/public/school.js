@@ -54,7 +54,7 @@ function toggleDark() {
 
 function topbar(route) {
   const l = (h, ic, t) => `<a href="#/${h}" class="${route === h ? 'on' : ''}">${ic} <span class="lbl">${t}</span></a>`;
-  $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b><span class="lbl">معياري للمدرسة</span></a>
+  $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/">${MI.wordmark(30)}<span class="lbl sfx">للمدرسة</span></a>
   <nav class="nav">${l('', '🏠', 'الرئيسية')}${l('profile', '🏫', 'المدرسة')}${l('report', '📊', 'التقرير')}${l('plan', '📋', 'خطة التحسين')}${l('ops', '🗓️', 'التشغيلية')}${l('nafis', '🎯', 'نافس')}${l('evidence', '🗂️', 'الشواهد')}${l('board', '📺', 'لوحة المدرسة')}${l('team', '👥', 'الفريق')}${l('license', '⭐', 'الباقة')}<button onclick="toggleDark()" title="الوضع الليلي">🌙 <span class="lbl">ليلي</span></button></nav></div></div>`;
   document.querySelector('.nav a.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 }

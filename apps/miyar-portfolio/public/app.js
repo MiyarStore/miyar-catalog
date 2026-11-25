@@ -47,11 +47,11 @@ function toggleDark() {
 
 function topbar(route) {
   const dk = `<button class="tb-btn" onclick="toggleDark()" title="الوضع الليلي" aria-label="الوضع الليلي">${MI.ico('moon', 20)}</button>`;
-  if (!S.me) { $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="${forSchool() ? '/school' : '/'}"><b>م</b>${forSchool() ? 'معياري للمدرسة' : 'معياري'}</a><div style="display:flex">${dk}</div></div></div>`; return; }
+  if (!S.me) { $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="${forSchool() ? '/school' : '/'}">${MI.wordmark(30)}${forSchool() ? '<span class="sfx">للمدرسة</span>' : ''}</a><div style="display:flex">${dk}</div></div></div>`; return; }
   const T = TEACHES.includes(S.me.role);
   const on = (h) => route === h || (h === '' && route === 'std') || (h === 'new' && route === 'edit');
   const l = (h, ic, t, cls = '') => `<a href="#/${h}" class="${on(h) ? 'on' : ''} ${cls}">${cls ? `<i>${MI.ico(ic, 20)}</i>` : MI.ico(ic, 19)}<span>${t}</span></a>`;
-  $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/"><b>م</b>معياري</a>
+  $('#top').innerHTML = `<div class="topbar"><div class="wrap"><a class="logo" href="#/">${MI.wordmark(30)}</a>
     <nav class="nav" aria-label="التنقل">${l('', 'home', 'الرئيسية')}${l('new', 'plus', 'شاهد جديد')}${T ? l('rec', 'book', 'مساعد المعلم') + l('exam', 'edit', 'صانع الاختبارات') : l('self', 'target', 'التقييم الذاتي')}${l('logs', 'folder', 'السجلات')}${l('profile', 'user', 'حسابي')}${S.me.is_admin ? l('admin', 'tool', 'الإدارة') : ''}${dk}</nav>
     <div class="tb-side"><a class="tb-btn" href="#/subscription" title="الاشتراك" aria-label="الاشتراك">${MI.ico('star', 20)}</a>${dk}</div></div></div>
     <nav class="bnav" aria-label="التنقل">${l('', 'home', 'الرئيسية')}${l('logs', 'folder', 'السجلات')}${l('new', 'plus', 'شاهد', 'add')}${T ? l('rec', 'book', 'المساعد') : l('self', 'target', 'التقييم')}${l('profile', 'user', 'حسابي')}</nav>`;
@@ -73,7 +73,7 @@ const goingTo = () => { try { const n = sessionStorage.getItem('miyar-next') || 
 function authView(mode) {
   const sch = forSchool();
   view.innerHTML = `<div class="auth card">
-    <div style="text-align:center;margin-bottom:12px"><a class="logo" href="${sch ? '/school' : '/'}" style="font-size:22px"><b>م</b>${sch ? 'معياري للمدرسة' : 'معياري للمعلم'}</a><p class="muted" style="margin:6px 0 0">${sch ? 'خطة التحسين وخطة نافس وملف شواهد التقويم' : 'ملف الإنجاز والشواهد الإلكتروني'}</p>${sch ? '<p class="muted" style="margin:8px 0 0;font-size:13px">سجّل دخولك أو أنشئ حساباً جديداً للمدرسة. الحساب نفسه يشتغل في معياري للمعلم.</p>' : ''}${goingTo() ? `<p class="next-tool">بعد ما تنشئ حسابك أو تدخل، تفتح لك مباشرة: <b>${esc(goingTo())}</b></p>` : ''}</div>
+    <div style="text-align:center;margin-bottom:12px"><a class="logo" href="${sch ? '/school' : '/'}" style="font-size:22px">${MI.wordmark(40)}<span class="sfx">${sch ? 'للمدرسة' : 'للمعلم'}</span></a><p class="muted" style="margin:6px 0 0">${sch ? 'خطة التحسين وخطة نافس وملف شواهد التقويم' : 'ملف الإنجاز والشواهد الإلكتروني'}</p>${sch ? '<p class="muted" style="margin:8px 0 0;font-size:13px">سجّل دخولك أو أنشئ حساباً جديداً للمدرسة. الحساب نفسه يشتغل في معياري للمعلم.</p>' : ''}${goingTo() ? `<p class="next-tool">بعد ما تنشئ حسابك أو تدخل، تفتح لك مباشرة: <b>${esc(goingTo())}</b></p>` : ''}</div>
     <div class="tabs"><a href="#/login" class="${mode === 'login' ? 'on' : ''}">تسجيل الدخول</a><a href="#/register" class="${mode === 'register' ? 'on' : ''}">حساب جديد</a></div>
     <form id="f">
       ${mode === 'register' ? `<div class="field"><label>الاسم الكامل</label><input name="full_name" required placeholder="مثال: أحمد محمد العتيبي"></div>
