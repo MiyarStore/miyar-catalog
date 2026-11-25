@@ -186,7 +186,7 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
   <section class="lp-hero">
     <div class="lp-txt">
       <span class="lp-kick"><i></i>معياري رفيقك في رحلتك التعليمية</span>
-      <h1>ملف إنجازك <b>يكتب نفسه</b> وأنت تدرّس</h1>
+      <h1>ركّز على طلابك،<br><b>وملف إنجازك علينا</b></h1>
       <p>مساعدك الشخصي اللي يسوي عنك الشغل اللي كان ياخذ منك وقت وجهد وتفكير، بضغطة زر. اكتب عن الشاهد كلمتين وأرفق صورته، ومعياري يصيغه بلغة رسمية ويربطه بعنصر التقييم المناسب لوظيفتك، ويذكّرك طول السنة بالشاهد اللي حان وقته لين يكتمل ملفك.</p>
       <div class="lp-cta"><a class="lp-b1 g" href="/app#/register">ابدأ مجاناً ${trialDays} أيام</a><a class="lp-b2" href="#tools">اختر أداتك</a></div>
       <div class="lp-trust"><span>${MI.ico('check', 16)}بدون بطاقة دفع</span><span>${MI.ico('check', 16)}من الجوال والكمبيوتر بدون تحميل</span><span>${MI.ico('check', 16)}مبني على الدليل الإرشادي</span></div>
