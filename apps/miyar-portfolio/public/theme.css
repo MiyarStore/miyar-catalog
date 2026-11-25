@@ -80,7 +80,7 @@ label { display: block; font-weight: 500; font-size: 14px; margin-bottom: 6px; }
 .logo .sfx { font-size: 1.05em; color: var(--muted); font-weight: 600; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --wm: #F7F4EE; --wm-gold: #D4B77A; } }
 :root[data-theme="dark"] { --wm: #F7F4EE; --wm-gold: #D4B77A; }
-@media (max-width: 520px) { .logo > svg:first-child { width: 32px; height: 32px; } .logo .wm { height: 32px; width: 78px; } }
+@media (max-width: 520px) { .logo > svg:first-child { width: 32px; height: 32px; } .logo .wm { height: 32px; width: 88px; } }
 /* رحلتك: بطاقة الأسبوع، الجرس، التنبيهات */
 .tb-btn.bell { position: relative; }
 .tb-btn.bell .dot { position: absolute; top: 2px; inset-inline-end: 2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--danger); color: #fff; font: 700 10.5px/17px inherit; text-align: center; }
