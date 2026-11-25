@@ -248,7 +248,7 @@ function landing(storeUrl, trialDays, plans = [], base = '') {
     <div class="plans">${plans.map((p) => `<div class="pl${p.best ? ' best' : ''}">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="nm">${esc(p.name)}</span>${p.best ? `<span class="bdg">الأوفر${p.saving ? ` · وفّر ${p.saving}%` : ''}</span>` : ''}</div>
       <div class="pc">${p.price} <small>ريال / ${esc(p.per)}</small></div><p>${esc(p.note)}</p>
-      <a href="${esc(storeUrl)}">${btn[p.id] || 'اشترك'}</a></div>`).join('')}</div>
+      <a href="${esc(p.url || storeUrl)}" target="_blank" rel="noopener">${btn[p.id] || 'اشترك'}</a></div>`).join('')}</div>
     <p class="note">إذا انتهى اشتراكك، تبقى شواهدك محفوظة وصفحتك ظاهرة، وتتوقف الإضافة والطباعة فقط إلى أن تجدد.</p>
   </section>
 

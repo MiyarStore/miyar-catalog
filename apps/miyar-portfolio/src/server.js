@@ -14,7 +14,7 @@ const PORT = Number(process.env.PORT || 3000);
 const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 7);
 const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT || 40);
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-const { PLANS } = require('./plans');
+const { PLANS, buyUrl } = require('./plans');
 const RUB = require('./rubric');
 const COV = require('./coverage');
 const SELF = require('./self-export');
@@ -156,7 +156,7 @@ app.delete('/api/me', auth, (req, res) => {
 });
 
 app.get('/api/me', auth, (req, res) => {
-  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => ({ ...s, levels: RUB.levelsOf(s.id, req.user.role), parts: COV.partsOf(s.id, req.user.role) })), bands: RUB.BANDS, roles: ROLE_LIST, calendars: CAL.options(), extras: CAL.extras(), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS, base: baseUrl(req), logs: LOGS.summary(req.user.id) });
+  res.json({ user: publicUser(req.user), standards: forRole(req.user.role).map(({ keywords, ...s }) => ({ ...s, levels: RUB.levelsOf(s.id, req.user.role), parts: COV.partsOf(s.id, req.user.role) })), bands: RUB.BANDS, roles: ROLE_LIST, calendars: CAL.options(), extras: CAL.extras(), ai: aiEnabled(), storeUrl: STORE_URL, plans: PLANS.map((p) => ({ ...p, url: buyUrl(STORE_URL, p) })), base: baseUrl(req), logs: LOGS.summary(req.user.id) });
 });
 
 const PROFILE_FIELDS = { full_name: 80, gender: 1, job_title: 40, subject: 60, school: 100, stage: 40, office: 80, principal: 80, bio: 400, year: 20, theme: 20 };
@@ -321,7 +321,7 @@ app.get('/api/admin/stats', auth, admin, (req, res) => {
   const q = (s) => db.prepare(s).get().n;
   const now = Date.now();
   res.json({
-    packages: SCHOOL_PACKAGES.map(({ id, name, price }) => ({ id, name, price })),
+    packages: SCHOOL_PACKAGES.map(({ id, name, price, buy, best }) => ({ id, name, price, best, url: buyUrl(STORE_URL, { buy }) })),
     users: q('SELECT COUNT(*) n FROM users'),
     paid: db.prepare('SELECT COUNT(*) n FROM users WHERE plan_ends > ?').get(now).n,
     trial: db.prepare('SELECT COUNT(*) n FROM users WHERE plan_ends <= ? AND trial_ends > ?').get(now, now).n,
@@ -463,7 +463,7 @@ const FAVICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><
 app.get(['/favicon.ico', '/favicon.svg'], (req, res) => { res.type('image/svg+xml').set('Cache-Control', 'public, max-age=604800').send(FAVICON); });
 app.get('/sw.js', (req, res) => res.type('application/javascript').set({ 'Cache-Control': 'no-cache', 'Service-Worker-Allowed': '/' }).sendFile(path.join(__dirname, '..', 'public', 'sw.js')));
 app.get('/manifest.webmanifest', (req, res) => res.type('application/manifest+json').set('Cache-Control', 'public, max-age=3600').sendFile(path.join(__dirname, '..', 'public', 'manifest.webmanifest')));
-app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS, PLANS, baseUrl(req))));
+app.get('/', (req, res) => res.send(views.landing(STORE_URL, TRIAL_DAYS, PLANS.map((p) => ({ ...p, url: buyUrl(STORE_URL, p) })), baseUrl(req))));
 app.get('/exam-maker', (req, res) => res.send(views.examLanding(TRIAL_DAYS, baseUrl(req))));
 app.use('/assets', express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'app.html')));

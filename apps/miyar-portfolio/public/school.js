@@ -508,10 +508,10 @@ function license() {
   const pk = S.data.packages.map((p) => `<div class="card pkg ${p.best ? 'best' : ''}">
     ${p.best ? '<span class="pill">الأوفر</span>' : ''}<h3 style="margin:0">${esc(p.name)}</h3><div class="price">${p.price} <small style="font-size:14px">ريال / سنة</small></div>
     <p class="muted" style="margin:0">${p.id === 'school_improve' ? 'خطة التحسين كاملة من تقرير التقويم، Word وPDF، وتعديل وإعادة بناء طوال السنة.' : p.id === 'school_nafis' ? 'خطة علاجية لنافس من بطاقة الأداء ونواتج التعلم.' : p.id === 'school_evidence' ? 'ملف شواهد التقويم لكل المؤشرات، بدون حد للشواهد، ورابط المقيّم بباركود، وفهرس PDF وWord.' : p.id === 'school_bundle' ? 'خطة التحسين + خطة نافس + ملف الشواهد + الخطة التشغيلية لمدرسة واحدة.' : 'نجهز لك الخطط ونراجعها معك، وتستلمها جاهزة.'}</p>
-    ${p.soon ? '<span class="muted" style="font-size:13px">قريباً</span>' : ''}</div>`).join('');
+    ${p.soon ? '<span class="muted" style="font-size:13px">قريباً</span>' : `<p style="margin:12px 0 0"><a class="btn ${p.best ? '' : 'ghost'}" href="${esc(p.url || S.data.store)}" target="_blank" rel="noopener">اشترك في ${esc(p.name)}</a></p>`}</div>`).join('');
   view.innerHTML = `<div class="card" style="margin-bottom:16px">
     <h2>باقة المدرسة</h2>
-    ${L.active ? `<p>✅ الباقة مفعّلة للرقم الوزاري <b dir="ltr">${esc(S.data.school.ministry_number)}</b>، باقي ${L.daysLeft} يوم.</p>` : '<p class="muted">الترخيص سنوي لمدرسة واحدة ويرتبط برقمها الوزاري. اشترِ الكود من المتجر وفعّله هنا.</p>'}
+    ${L.active ? `<p>✅ الباقة مفعّلة للرقم الوزاري <b dir="ltr">${esc(S.data.school.ministry_number)}</b>، باقي ${L.daysLeft} يوم.</p>` : '<p class="muted">الترخيص سنوي لمدرسة واحدة ويرتبط برقمها الوزاري. اختر الباقة تحت وادفع في متجر معيار، ويوصلك كود التفعيل فوراً، الصقه هنا.</p>'}
     <form id="rf" style="display:flex;gap:8px;flex-wrap:wrap;max-width:520px"><input name="code" placeholder="SCH-XXXX-XXXX" dir="ltr" required style="flex:1;min-width:200px"><button class="btn">تفعيل</button></form>
     ${!S.data.school.ministry_number ? '<p class="muted" style="font-size:13px">أدخل الرقم الوزاري في <a href="#/profile">بيانات المدرسة</a> قبل التفعيل.</p>' : ''}
     <p style="margin-bottom:0"><a class="btn ghost" href="${esc(S.data.store)}" target="_blank" rel="noopener">اشترِ من متجر معيار</a></p>
