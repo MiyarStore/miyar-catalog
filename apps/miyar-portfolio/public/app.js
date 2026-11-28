@@ -83,6 +83,7 @@ function authView(mode) {
       <div class="field"><label>كلمة المرور</label><input name="password" type="password" required minlength="6" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" dir="ltr"></div>
       ${mode === 'register' ? '<label class="consent"><input type="checkbox" name="accept" value="1" required><span>قرأت وأوافق على <a href="/privacy" target="_blank">سياسة الخصوصية وشروط الاستخدام</a>، بما فيها حفظ البيانات على خوادم خارج المملكة.</span></label>' : ''}
       <button class="btn" style="width:100%;justify-content:center">${mode === 'login' ? 'دخول' : 'ابدأ التجربة المجانية'}</button>
+      ${mode === 'login' ? '<p style="text-align:center;margin:14px 0 0"><a href="#/forgot">نسيت كلمة المرور؟</a></p>' : ''}
     </form><p class="muted" style="text-align:center;font-size:12.5px;margin:12px 0 0"><a href="/privacy" target="_blank">الخصوصية وشروط الاستخدام</a></p></div>`;
   $('#f').onsubmit = async (e) => {
     e.preventDefault();
@@ -91,6 +92,43 @@ function authView(mode) {
     try { await api(mode === 'login' ? '/api/login' : '/api/register', { method: 'POST', body: b }); await load(); const nx = sessionStorage.getItem('miyar-next'); if (nx) { sessionStorage.removeItem('miyar-next'); location.href = nx; return; } location.hash = '#/'; }
     catch (err) { toast(err.message); btn.disabled = false; }
   };
+}
+
+// نسيت كلمة المرور: خطوتين، البريد ثم الرمز وكلمة المرور الجديدة
+function forgotView() {
+  let email = '';
+  const head = `<div style="text-align:center;margin-bottom:14px"><a class="logo" href="/" style="font-size:22px">${MI.brand(48)}</a></div>`;
+  const step1 = () => {
+    view.innerHTML = `<div class="auth card">${head}<h2 style="margin:0 0 6px;font-size:20px">نسيت كلمة المرور؟</h2>
+      <p class="muted" style="margin:0 0 16px">اكتب بريدك المسجّل، ونرسل لك رمز من 6 أرقام.</p>
+      <form id="f"><div class="field"><label>البريد الإلكتروني</label><input name="email" type="email" required autocomplete="email" dir="ltr" value="${esc(email)}"></div>
+      <button class="btn" style="width:100%;justify-content:center">أرسل الرمز</button></form>
+      <p style="text-align:center;margin:14px 0 0"><a href="#/login">رجوع لتسجيل الدخول</a></p></div>`;
+    $('#f').onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = $('button', e.target); btn.disabled = true;
+      email = e.target.email.value.trim();
+      try { await api('/api/password/forgot', { method: 'POST', body: { email } }); step2(); }
+      catch (err) { toast(err.message); btn.disabled = false; }
+    };
+  };
+  const step2 = () => {
+    view.innerHTML = `<div class="auth card">${head}<h2 style="margin:0 0 6px;font-size:20px">اكتب الرمز</h2>
+      <p class="muted" style="margin:0 0 16px">إذا البريد <b dir="ltr">${esc(email)}</b> مسجّل عندنا، وصلك رمز عليه. شيّك على الوارد والرسائل غير المرغوبة. الرمز صالح 15 دقيقة.</p>
+      <form id="f"><div class="field"><label>الرمز</label><input name="code" required inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" dir="ltr" style="letter-spacing:6px;text-align:center;font-size:20px"></div>
+      <div class="field"><label>كلمة المرور الجديدة</label><input name="password" type="password" required minlength="6" autocomplete="new-password" dir="ltr"></div>
+      <button class="btn" style="width:100%;justify-content:center">احفظ وادخل</button></form>
+      <p style="text-align:center;margin:14px 0 0"><a href="#" id="again">ما وصلني الرمز</a></p></div>`;
+    $('#again').onclick = (e) => { e.preventDefault(); step1(); };
+    $('#f').onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = $('button', e.target); btn.disabled = true;
+      const b = Object.fromEntries(new FormData(e.target));
+      try { await api('/api/password/reset', { method: 'POST', body: { ...b, email } }); await load(); toast('تم تغيير كلمة المرور'); location.hash = '#/'; }
+      catch (err) { toast(err.message); btn.disabled = false; }
+    };
+  };
+  step1();
 }
 
 // ---------- التقييم الذاتي بسلّم التقدير الرسمي ----------
@@ -576,7 +614,7 @@ async function route() {
   const [p, qs] = (location.hash.slice(2) || '').split('?');
   const parts = p.split('/');
   const q = new URLSearchParams(qs || '');
-  if (!S.me && !['login', 'register'].includes(parts[0])) {
+  if (!S.me && !['login', 'register', 'forgot'].includes(parts[0])) {
     const want = location.hash.slice(2);
     try { await load(); } catch {
       // زائر جاي لأداة محددة: نحفظ وجهته، ونفتح له إنشاء الحساب، وبعدها يدخل الأداة مباشرة
@@ -588,6 +626,7 @@ async function route() {
   window.scrollTo(0, 0);
   switch (parts[0]) {
     case 'login': case 'register': if (S.me) { location.hash = '#/'; return; } return authView(parts[0]);
+    case 'forgot': if (S.me) { location.hash = '#/'; return; } return forgotView();
     case 'std': return standardView(parts[1]);
     case 'self': return selfView();
     case 'new': return editor(null, q);

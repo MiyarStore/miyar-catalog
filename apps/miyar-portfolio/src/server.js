@@ -20,6 +20,8 @@ const COV = require('./coverage');
 const SELF = require('./self-export');
 const CAL = require('./calendar');
 const NOTIFY = require('./notify');
+const GUARD = require('./guard');
+const MAIL = require('./mailer');
 const STORE_URL = process.env.STORE_URL || 'https://miyarstore.com';
 const DAY = 86400000;
 const UPLOADS = path.join(DATA_DIR, 'uploads');
@@ -102,7 +104,13 @@ const userEvidences = (uid) => db.prepare('SELECT * FROM evidences WHERE user_id
 const clip = (v, n) => String(v ?? '').slice(0, n);
 
 // ---------- الحسابات ----------
+const MIN15 = 15 * 60000;
+const HOUR = 3600000;
 app.post('/api/register', (req, res) => {
+  const ipKey = `reg:ip:${req.ip}`;
+  const lim = GUARD.check(ipKey, 10, HOUR);
+  if (!lim.ok) return res.status(429).json({ error: GUARD.tooMany(lim) });
+  GUARD.hit(ipKey, HOUR);
   const email = clip(req.body.email, 120).trim().toLowerCase();
   const password = String(req.body.password || '');
   const full_name = clip(req.body.full_name, 80).trim();
@@ -125,8 +133,74 @@ app.post('/api/register', (req, res) => {
 
 app.post('/api/login', (req, res) => {
   const email = clip(req.body.email, 120).trim().toLowerCase();
+  const eKey = `login:e:${email}`;
+  const iKey = `login:ip:${req.ip}`;
+  const lim = [GUARD.check(eKey, 8, MIN15), GUARD.check(iKey, 40, MIN15)].find((r) => !r.ok);
+  if (lim) return res.status(429).json({ error: GUARD.tooMany(lim) });
   const u = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-  if (!u || hash(String(req.body.password || ''), u.salt) !== u.pass_hash) return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة' });
+  const given = hash(String(req.body.password || ''), u ? u.salt : 'x');
+  if (!u || !crypto.timingSafeEqual(Buffer.from(given, 'hex'), Buffer.from(u.pass_hash, 'hex'))) {
+    GUARD.hit(eKey, MIN15); GUARD.hit(iKey, MIN15);
+    return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة' });
+  }
+  GUARD.clear(eKey);
+  startSession(res, u.id);
+  res.json({ ok: true });
+});
+
+// ---------- نسيت كلمة المرور: رمز من 6 أرقام على الإيميل، صالح 15 دقيقة و5 محاولات ----------
+db.exec(`CREATE TABLE IF NOT EXISTS password_resets (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  code_hash TEXT NOT NULL,
+  expires INTEGER NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+)`);
+const codeHash = (code, uid) => crypto.createHash('sha256').update(`${uid}:${code}`).digest('hex');
+app.post('/api/password/forgot', async (req, res) => {
+  const email = clip(req.body.email, 120).trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'البريد الإلكتروني غير صحيح' });
+  if (!MAIL.enabled()) return res.status(503).json({ error: 'استعادة كلمة المرور غير متاحة الحين. تواصل معنا ونساعدك.' });
+  const eKey = `forgot:e:${email}`;
+  const iKey = `forgot:ip:${req.ip}`;
+  const lim = [GUARD.check(eKey, 3, HOUR), GUARD.check(iKey, 10, HOUR)].find((r) => !r.ok);
+  if (lim) return res.status(429).json({ error: GUARD.tooMany(lim) });
+  GUARD.hit(eKey, HOUR); GUARD.hit(iKey, HOUR);
+  const u = db.prepare('SELECT id, full_name FROM users WHERE email = ?').get(email);
+  // نفس الرد سواء الحساب موجود أو لا، عشان ما نكشف مين مسجّل
+  if (u) {
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    db.prepare(`INSERT INTO password_resets (user_id, code_hash, expires, attempts, created_at) VALUES (?, ?, ?, 0, ?)
+      ON CONFLICT(user_id) DO UPDATE SET code_hash = excluded.code_hash, expires = excluded.expires, attempts = 0, created_at = excluded.created_at`)
+      .run(u.id, codeHash(code, u.id), Date.now() + MIN15, Date.now());
+    try { await MAIL.send({ to: email, ...MAIL.resetCodeMail(u.full_name, code) }); }
+    catch (e) { console.error('reset mail failed:', e.message); return res.status(502).json({ error: 'ما قدرنا نرسل الإيميل الحين، حاول بعد شوي.' }); }
+  }
+  res.json({ ok: true });
+});
+app.post('/api/password/reset', (req, res) => {
+  const email = clip(req.body.email, 120).trim().toLowerCase();
+  const code = String(req.body.code || '').replace(/\D/g, '').slice(0, 6);
+  const password = String(req.body.password || '');
+  if (password.length < 6) return res.status(400).json({ error: 'كلمة المرور لازم تكون 6 أحرف على الأقل' });
+  const iKey = `reset:ip:${req.ip}`;
+  const lim = GUARD.check(iKey, 20, HOUR);
+  if (!lim.ok) return res.status(429).json({ error: GUARD.tooMany(lim) });
+  GUARD.hit(iKey, HOUR);
+  const bad = () => res.status(400).json({ error: 'الرمز غير صحيح أو انتهت صلاحيته. اطلب رمز جديد.' });
+  const u = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  if (!u) return bad();
+  const r = db.prepare('SELECT * FROM password_resets WHERE user_id = ?').get(u.id);
+  if (!r || r.expires < Date.now() || r.attempts >= 5) return bad();
+  if (!crypto.timingSafeEqual(Buffer.from(codeHash(code, u.id), 'hex'), Buffer.from(r.code_hash, 'hex'))) {
+    db.prepare('UPDATE password_resets SET attempts = attempts + 1 WHERE user_id = ?').run(u.id);
+    return bad();
+  }
+  const salt = crypto.randomBytes(16).toString('hex');
+  db.prepare('UPDATE users SET pass_hash = ?, salt = ? WHERE id = ?').run(hash(password, salt), salt, u.id);
+  db.prepare('DELETE FROM password_resets WHERE user_id = ?').run(u.id);
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id); // يطلع من كل الأجهزة الثانية
+  GUARD.clear(`login:e:${email}`);
   startSession(res, u.id);
   res.json({ ok: true });
 });
